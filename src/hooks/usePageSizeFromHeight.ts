@@ -2,6 +2,8 @@ import { useEffect, useState, type RefObject } from 'react'
 
 const TABLE_HEADER_HEIGHT = 44
 const TABLE_ROW_HEIGHT = 46
+/** Extra space so the last fitted row isn’t clipped by borders/subpixels. */
+const TABLE_FIT_BUFFER = 16
 const MIN_PAGE_SIZE = 3
 const DEFAULT_PAGE_SIZE = 5
 
@@ -19,7 +21,8 @@ export function usePageSizeFromHeight(
       const el = containerRef.current
       if (!el) return
 
-      const availableHeight = el.clientHeight - TABLE_HEADER_HEIGHT
+      const availableHeight =
+        el.clientHeight - TABLE_HEADER_HEIGHT - TABLE_FIT_BUFFER
       const nextPageSize = Math.max(
         MIN_PAGE_SIZE,
         Math.floor(availableHeight / rowHeight),

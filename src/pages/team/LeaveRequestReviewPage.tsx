@@ -13,6 +13,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   getApprovalProgressLabel,
@@ -214,7 +215,7 @@ export function LeaveRequestReviewPage() {
             <button
               type="button"
               onClick={() => openPreview(detail.attachmentFileName!)}
-              className="rounded-md border border-border bg-surface-muted px-2.5 py-1 text-small text-text-black transition-colors hover:bg-background"
+              className={TABLE_ACTION_BUTTON_CLASS}
             >
               View
             </button>
@@ -299,14 +300,14 @@ export function LeaveRequestReviewPage() {
           <button
             type="button"
             onClick={() => setRejectOpen(true)}
-            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body text-text-black transition-colors hover:bg-surface-muted"
+            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
           >
             Reject
           </button>
           <button
             type="button"
             onClick={() => setApproveOpen(true)}
-            className="rounded-md bg-primary px-4 py-2.5 text-body text-white transition-opacity hover:opacity-90"
+            className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
           >
             Approve
           </button>

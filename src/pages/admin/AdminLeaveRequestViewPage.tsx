@@ -13,6 +13,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   canSendApproverReminder,
@@ -201,7 +202,7 @@ export function AdminLeaveRequestViewPage() {
             <button
               type="button"
               onClick={() => openPreview(detail.attachmentFileName!)}
-              className="rounded-md border border-border bg-surface-muted px-2.5 py-1 text-small text-text-black transition-colors hover:bg-background"
+              className={TABLE_ACTION_BUTTON_CLASS}
             >
               View
             </button>
@@ -277,7 +278,7 @@ export function AdminLeaveRequestViewPage() {
                         type="button"
                         disabled={!canRemind}
                         onClick={() => setReminderTarget(approver)}
-                        className="inline-flex rounded-md border border-border bg-surface-muted px-3 py-1.5 text-small text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                        className={TABLE_ACTION_BUTTON_CLASS}
                       >
                         Send Reminder
                       </button>

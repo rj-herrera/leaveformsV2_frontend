@@ -13,6 +13,7 @@ import {
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -122,7 +123,7 @@ export function LeaveRequestDetailsPage() {
           {canConvertToSick ? (
             <Link
               to={`/my-leave/requests/${detail.id}/convert`}
-              className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-2 text-body text-white transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-2 text-body font-medium text-white transition-opacity hover:opacity-90"
             >
               <RefreshCw className="size-4" aria-hidden="true" />
               Convert to Sick Leave
@@ -130,7 +131,7 @@ export function LeaveRequestDetailsPage() {
           ) : canEdit ? (
             <Link
               to={`/my-leave/requests/${detail.id}/edit`}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body text-text-black transition-colors hover:bg-surface-muted"
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit Request
@@ -144,7 +145,7 @@ export function LeaveRequestDetailsPage() {
                   ? 'Editing is not available during leave conversion'
                   : 'Editing is disabled after an approver has taken action'
               }
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body text-text-gray opacity-50"
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-gray opacity-50"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit Request
@@ -155,7 +156,7 @@ export function LeaveRequestDetailsPage() {
             type="button"
             disabled={!canCancel}
             onClick={() => setCancelOpen(true)}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body text-text-black transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="size-4" aria-hidden="true" />
             Cancel Request
@@ -184,7 +185,7 @@ export function LeaveRequestDetailsPage() {
               <InfoRow label="Reason" value={detail.conversion.originalReason} />
               <InfoRow
                 label="Attachment"
-                value={detail.conversion.originalAttachment ?? '—'}
+                value={detail.conversion.originalAttachment ?? '�'}
               />
             </dl>
           </article>
@@ -216,7 +217,7 @@ export function LeaveRequestDetailsPage() {
                       onClick={() =>
                         openPreview(detail.conversion!.conversionAttachment!)
                       }
-                      className="rounded-md border border-border bg-surface-muted px-2.5 py-1 text-small text-text-black transition-colors hover:bg-background"
+                      className={TABLE_ACTION_BUTTON_CLASS}
                     >
                       View
                     </button>
@@ -303,7 +304,7 @@ export function LeaveRequestDetailsPage() {
               <button
                 type="button"
                 onClick={() => openPreview(detail.attachmentFileName!)}
-                className="rounded-md border border-border bg-surface-muted px-2.5 py-1 text-small text-text-black transition-colors hover:bg-background"
+                className={TABLE_ACTION_BUTTON_CLASS}
               >
                 View
               </button>
@@ -365,10 +366,10 @@ export function LeaveRequestDetailsPage() {
                     )}
                   </td>
                   <td className="px-5 py-3.5 text-text-gray">
-                    {approver.actionDate ?? '—'}
+                    {approver.actionDate ?? '�'}
                   </td>
                   <td className="px-5 py-3.5 text-text-gray">
-                    {approver.remarks ?? '—'}
+                    {approver.remarks ?? '�'}
                   </td>
                 </tr>
               ))}

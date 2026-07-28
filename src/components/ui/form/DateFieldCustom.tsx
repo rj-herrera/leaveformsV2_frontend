@@ -269,7 +269,7 @@ export function DateFieldCustom({
                       isDisabled
                         ? 'cursor-not-allowed text-text-gray/40'
                         : isSelected
-                          ? 'bg-primary font-semibold text-white'
+                          ? 'bg-primary font-medium text-white'
                           : isToday
                             ? 'bg-primary/10 font-medium text-primary'
                             : 'text-text-black hover:bg-surface-muted'

@@ -1,10 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ExternalLink,
-} from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { FilterSelect } from '../../components/ui/FilterSelect'
@@ -15,6 +10,7 @@ import {
   TableBodySkeleton,
 } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -373,13 +369,9 @@ export function DashboardPage() {
                     <td className="px-5 text-center">
                       <Link
                         to={`/my-leave/requests/${request.id}`}
-                        className="inline-flex rounded-md p-1.5 text-text-gray hover:bg-background hover:text-text-black"
-                        aria-label={`View ${request.leaveType} request`}
+                        className={TABLE_ACTION_BUTTON_CLASS}
                       >
-                        <ExternalLink
-                          className="size-4"
-                          aria-hidden="true"
-                        />
+                        View
                       </Link>
                     </td>
                   </tr>

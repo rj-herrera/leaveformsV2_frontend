@@ -232,7 +232,7 @@ export function TeamLeaveCalendarPage() {
                                 onClick={() => handleMonthChange(option.value)}
                                 className={`w-full px-3 py-1.5 text-left text-body transition-colors hover:bg-surface-muted ${
                                   selected
-                                    ? 'font-semibold text-primary'
+                                    ? 'font-medium text-primary'
                                     : 'text-text-black'
                                 }`}
                               >
@@ -401,7 +401,7 @@ function ViewToggle({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded px-3 py-1 text-small font-semibold transition-colors ${
+      className={`rounded px-3 py-1 text-small font-medium transition-colors ${
         active
           ? 'bg-surface text-text-black shadow-sm'
           : 'text-text-gray hover:text-text-black'

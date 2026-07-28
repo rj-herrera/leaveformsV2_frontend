@@ -7,6 +7,7 @@ import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type LeaveRequestStatus,
@@ -235,7 +236,7 @@ export function AdminLeaveRequestsPage() {
             type="button"
             disabled={reminderSentToday || showSkeleton}
             onClick={() => setReminderConfirmOpen(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-status-pending-conversion px-4 py-2 text-body font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-status-pending-conversion px-4 py-2 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send className="size-4" aria-hidden="true" />
             Send Reminder to All
@@ -459,7 +460,7 @@ function TabButton({
       onClick={onClick}
       className={`-mb-px inline-flex items-center gap-2 border-b-2 pb-2.5 text-body transition-colors ${
         active
-          ? 'border-primary font-semibold text-primary'
+          ? 'border-primary font-medium text-primary'
           : 'border-transparent text-text-gray hover:text-text-black'
       }`}
     >
@@ -527,7 +528,7 @@ function AdminRequestRow({
         <Link
           to={actionTo}
           state={{ listTab } satisfies ListReturnState}
-          className="inline-flex rounded-md border border-border bg-surface-muted px-3 py-1.5 text-body text-text-black transition-colors hover:bg-background"
+          className={TABLE_ACTION_BUTTON_CLASS}
         >
           {actionLabel}
         </Link>

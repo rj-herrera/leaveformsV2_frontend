@@ -67,6 +67,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  button {
+    font-weight: 500;
+  }
+
   h1 {
     font-size: var(--text-h1);
     line-height: var(--text-h1--line-height);

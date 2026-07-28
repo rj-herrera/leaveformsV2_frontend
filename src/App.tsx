@@ -12,6 +12,7 @@ import { FileLeaveForMemberPage } from './pages/team/FileLeaveForMemberPage'
 import { LeaveRequestReviewPage } from './pages/team/LeaveRequestReviewPage'
 import { TeamLeaveCalendarPage } from './pages/team/TeamLeaveCalendarPage'
 import { UpcomingApprovedLeavesPage } from './pages/team/UpcomingApprovedLeavesPage'
+import { AdminLeaveBalancesPage } from './pages/admin/AdminLeaveBalancesPage'
 import { AdminLeaveRequestsPage } from './pages/admin/AdminLeaveRequestsPage'
 import { AdminLeaveRequestViewPage } from './pages/admin/AdminLeaveRequestViewPage'
 import { AdminLeaveValidatePage } from './pages/admin/AdminLeaveValidatePage'
@@ -75,7 +76,7 @@ function App() {
         />
         <Route
           path="admin/leave-balances"
-          element={<PagePlaceholder title="Leave Balances" />}
+          element={<AdminLeaveBalancesPage />}
         />
         <Route
           path="admin/leave-balances/distributions/new"

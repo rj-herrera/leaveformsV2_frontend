@@ -30,7 +30,7 @@ export function SuccessDialog({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md bg-primary px-4 py-2 text-body font-semibold text-white transition-opacity hover:opacity-90"
+          className="rounded-md bg-primary px-4 py-2 text-body font-medium text-white transition-opacity hover:opacity-90"
         >
           {confirmLabel}
         </button>

@@ -82,7 +82,7 @@ export function ConfirmReasonModal({
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-md border border-border bg-surface px-4 py-2 text-body text-text-black transition-colors hover:bg-surface-muted"
+            className="rounded-md border border-border bg-surface px-4 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
           >
             {cancelLabel}
           </button>
@@ -90,7 +90,7 @@ export function ConfirmReasonModal({
             type="button"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className={`rounded-md px-4 py-2 text-body font-semibold transition-opacity ${confirmClass}`}
+            className={`rounded-md px-4 py-2 text-body font-medium transition-opacity ${confirmClass}`}
           >
             {confirmLabel}
           </button>

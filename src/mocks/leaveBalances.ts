@@ -1,0 +1,900 @@
+/**
+ * TODO(REPLACE): Admin leave balances + distribution drafts — replace with API.
+ */
+import { MOCK_DATA_ENABLED } from './config'
+import { appendActivityLogEntry } from './activityLog'
+import { appendAdminLogEntry } from './adminLog'
+
+export type EmploymentStatus = 'regular' | 'probationary' | 'contractual'
+
+export type LeaveBalanceKey = 'vl' | 'sl' | 'el' | 'ml' | 'pl' | 'ptb'
+
+export type LeaveBalances = Record<LeaveBalanceKey, number | null>
+
+export type LeaveBalanceEmployee = {
+  id: string
+  name: string
+  employeeNumber: string
+  department: string
+  groupLabel: string
+  employmentStatus: EmploymentStatus
+  balances: LeaveBalances
+  /** ISO date */
+  dateHired: string
+  /** ISO date — null if not yet regularized */
+  regularizationDate: string | null
+  yearsOfServiceLabel: string
+  /** For parental eligibility — leave type labels already filed */
+  filedParentalLeaveTypes: Array<'Maternity Leave' | 'Paternity Leave'>
+}
+
+export const EMPLOYMENT_STATUS_LABELS: Record<EmploymentStatus, string> = {
+  regular: 'Regular',
+  probationary: 'Probationary',
+  contractual: 'Contractual',
+}
+
+export const LEAVE_BALANCE_KEYS: LeaveBalanceKey[] = [
+  'vl',
+  'sl',
+  'el',
+  'ml',
+  'pl',
+  'ptb',
+]
+
+export const LEAVE_BALANCE_LABELS: Record<LeaveBalanceKey, string> = {
+  vl: 'Vacation Leave',
+  sl: 'Sick Leave',
+  el: 'Emergency Leave',
+  ml: 'Maternity Leave',
+  pl: 'Paternity Leave',
+  ptb: 'PTB Leave',
+}
+
+export const LEAVE_BALANCE_SHORT: Record<LeaveBalanceKey, string> = {
+  vl: 'VL',
+  sl: 'SL',
+  el: 'EL',
+  ml: 'ML',
+  pl: 'PL',
+  ptb: 'PTB',
+}
+
+export const LEAVE_BALANCE_CHIP_CLASS: Record<LeaveBalanceKey, string> = {
+  vl: 'bg-leave-vacation/30 text-text-black',
+  sl: 'bg-leave-sick/30 text-text-black',
+  el: 'bg-leave-emergency/35 text-text-black',
+  ml: 'bg-leave-maternity/30 text-text-black',
+  pl: 'bg-leave-paternity/30 text-text-black',
+  ptb: 'bg-leave-ptb/30 text-text-black',
+}
+
+const ANNUAL_VL_TO_ADD = 15
+const ANNUAL_SL_TO_ADD = 15
+const NEWLY_REG_RATE = 1.25
+const NEWLY_REG_EL = 5
+const NEWLY_REG_PTB = 180
+const PARENTAL_ML_DAYS = 105
+const PARENTAL_PL_DAYS = 7
+
+/** Mutable seed — adjustments mutate balances in place. */
+const EMPLOYEES: LeaveBalanceEmployee[] = [
+  {
+    id: 'user-employee',
+    name: 'Alex Employee',
+    employeeNumber: '801',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 12, sl: 8, el: 3, ml: 105, pl: null, ptb: 7 },
+    dateHired: '2020-03-01',
+    regularizationDate: '2020-09-01',
+    yearsOfServiceLabel: '6 yrs',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-employee-2',
+    name: 'Sam Rivera',
+    employeeNumber: '807',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 5, sl: 10, el: 2, ml: null, pl: 7, ptb: 7 },
+    dateHired: '2021-06-15',
+    regularizationDate: '2021-12-15',
+    yearsOfServiceLabel: '5 yrs',
+    filedParentalLeaveTypes: ['Paternity Leave'],
+  },
+  {
+    id: 'user-employee-3',
+    name: 'Taylor Cruz',
+    employeeNumber: '808',
+    department: 'IT',
+    groupLabel: 'IT',
+    employmentStatus: 'regular',
+    balances: { vl: 1, sl: 4, el: 0, ml: 60, pl: null, ptb: 3 },
+    dateHired: '2019-01-10',
+    regularizationDate: '2019-07-10',
+    yearsOfServiceLabel: '7 yrs',
+    filedParentalLeaveTypes: ['Maternity Leave'],
+  },
+  {
+    id: 'user-cecile',
+    name: 'Cecile Santos',
+    employeeNumber: '810',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 9.5, sl: 12, el: 5, ml: null, pl: null, ptb: 180 },
+    dateHired: '2018-04-02',
+    regularizationDate: '2018-10-02',
+    yearsOfServiceLabel: '8 yrs',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-melissa',
+    name: 'Melissa Aguilar',
+    employeeNumber: '811',
+    department: 'Project',
+    groupLabel: 'PIP',
+    employmentStatus: 'probationary',
+    balances: { vl: 0, sl: 0, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2026-02-01',
+    regularizationDate: null,
+    yearsOfServiceLabel: '< 1 yr',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-sally',
+    name: 'Sally Bautista',
+    employeeNumber: '812',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 14, sl: 15, el: 5, ml: 105, pl: null, ptb: 180 },
+    dateHired: '2017-08-20',
+    regularizationDate: '2018-02-20',
+    yearsOfServiceLabel: '8 yrs',
+    filedParentalLeaveTypes: ['Maternity Leave'],
+  },
+  {
+    id: 'user-emman',
+    name: 'Emman De Leon',
+    employeeNumber: '813',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 7, sl: 6.5, el: 3, ml: null, pl: 0, ptb: 90 },
+    dateHired: '2022-01-05',
+    regularizationDate: '2022-07-05',
+    yearsOfServiceLabel: '4 yrs',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-paul',
+    name: 'Paul Hernandez',
+    employeeNumber: '899',
+    department: 'Project',
+    groupLabel: 'CIV',
+    employmentStatus: 'regular',
+    balances: { vl: 3, sl: 8, el: 1, ml: null, pl: 7, ptb: 120 },
+    dateHired: '2023-05-12',
+    regularizationDate: '2023-11-12',
+    yearsOfServiceLabel: '3 yrs',
+    filedParentalLeaveTypes: ['Paternity Leave'],
+  },
+  {
+    id: 'user-newly-reg-1',
+    name: 'Nina Gomez',
+    employeeNumber: '820',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'regular',
+    balances: { vl: 0, sl: 0, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2025-08-01',
+    regularizationDate: '2026-02-01',
+    yearsOfServiceLabel: '< 1 yr',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-newly-reg-2',
+    name: 'Rico Tan',
+    employeeNumber: '821',
+    department: 'IT',
+    groupLabel: 'IT',
+    employmentStatus: 'regular',
+    balances: { vl: 1.25, sl: 1.25, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2025-06-15',
+    regularizationDate: '2025-12-15',
+    yearsOfServiceLabel: '< 1 yr',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-contract-1',
+    name: 'Kai Morales',
+    employeeNumber: '830',
+    department: 'Project',
+    groupLabel: 'PIP',
+    employmentStatus: 'contractual',
+    balances: { vl: 2, sl: 2, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2026-01-15',
+    regularizationDate: null,
+    yearsOfServiceLabel: '< 1 yr',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-contract-2',
+    name: 'Lara Lim',
+    employeeNumber: '831',
+    department: 'Solution',
+    groupLabel: 'SYS',
+    employmentStatus: 'contractual',
+    balances: { vl: 0, sl: 0, el: 0, ml: null, pl: null, ptb: null },
+    dateHired: '2025-11-01',
+    regularizationDate: null,
+    yearsOfServiceLabel: '< 1 yr',
+    filedParentalLeaveTypes: [],
+  },
+]
+
+export function formatBalanceValue(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
+
+function cloneEmployee(employee: LeaveBalanceEmployee): LeaveBalanceEmployee {
+  return {
+    ...employee,
+    balances: { ...employee.balances },
+    filedParentalLeaveTypes: [...employee.filedParentalLeaveTypes],
+  }
+}
+
+export function getAdminLeaveBalanceRows(): LeaveBalanceEmployee[] {
+  if (!MOCK_DATA_ENABLED) return []
+  return EMPLOYEES.map(cloneEmployee)
+}
+
+export function getLeaveBalanceEmployeeById(
+  id: string,
+): LeaveBalanceEmployee | null {
+  if (!MOCK_DATA_ENABLED) return null
+  const found = EMPLOYEES.find((row) => row.id === id)
+  return found ? cloneEmployee(found) : null
+}
+
+export function getLeaveBalanceDepartments(): string[] {
+  return Array.from(new Set(EMPLOYEES.map((e) => e.department))).sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
+export function getLeaveBalanceGroups(): string[] {
+  return Array.from(new Set(EMPLOYEES.map((e) => e.groupLabel))).sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
+export function filterLeaveBalanceRows(
+  rows: LeaveBalanceEmployee[],
+  filters: {
+    search?: string
+    department?: string
+    group?: string
+  },
+): LeaveBalanceEmployee[] {
+  const query = (filters.search ?? '').trim().toLowerCase()
+  const department = filters.department ?? 'ALL'
+  const group = filters.group ?? 'ALL'
+
+  return rows.filter((row) => {
+    const matchesSearch =
+      query.length === 0 ||
+      row.name.toLowerCase().includes(query) ||
+      row.employeeNumber.toLowerCase().includes(query)
+    const matchesDepartment =
+      department === 'ALL' || row.department === department
+    const matchesGroup = group === 'ALL' || row.groupLabel === group
+    return matchesSearch && matchesDepartment && matchesGroup
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Annual distribution
+// ---------------------------------------------------------------------------
+
+export type AnnualCandidate = {
+  employee: LeaveBalanceEmployee
+  eligible: boolean
+  yearsOfServiceLabel: string
+  vlToAdd: number | null
+  slToAdd: number | null
+}
+
+export type AnnualDistributionDraft = {
+  selectedEmployeeIds: string[]
+  groupFilter: string
+  effectiveDate: string
+}
+
+let annualDraft: AnnualDistributionDraft | null = null
+
+export function getAnnualDistributionCandidates(): AnnualCandidate[] {
+  if (!MOCK_DATA_ENABLED) return []
+  return EMPLOYEES.map((employee) => {
+    const eligible = employee.employmentStatus === 'regular'
+    return {
+      employee: cloneEmployee(employee),
+      eligible,
+      yearsOfServiceLabel: employee.yearsOfServiceLabel,
+      vlToAdd: eligible ? ANNUAL_VL_TO_ADD : null,
+      slToAdd: eligible ? ANNUAL_SL_TO_ADD : null,
+    }
+  })
+}
+
+export function setAnnualDistributionDraft(
+  draft: AnnualDistributionDraft,
+): void {
+  annualDraft = { ...draft, selectedEmployeeIds: [...draft.selectedEmployeeIds] }
+}
+
+export function getAnnualDistributionDraft(): AnnualDistributionDraft | null {
+  return annualDraft
+    ? {
+        ...annualDraft,
+        selectedEmployeeIds: [...annualDraft.selectedEmployeeIds],
+      }
+    : null
+}
+
+export function clearAnnualDistributionDraft(): void {
+  annualDraft = null
+}
+
+export type AnnualReviewRow = {
+  employee: LeaveBalanceEmployee
+  yearsOfServiceLabel: string
+  vlBefore: number
+  vlToAdd: number
+  vlAfter: number
+  slBefore: number
+  slToAdd: number
+  slAfter: number
+}
+
+export function getAnnualReviewRows(
+  selectedEmployeeIds: string[],
+): AnnualReviewRow[] {
+  const idSet = new Set(selectedEmployeeIds)
+  return getAnnualDistributionCandidates()
+    .filter((c) => c.eligible && idSet.has(c.employee.id))
+    .map((c) => {
+      const vlBefore = c.employee.balances.vl ?? 0
+      const slBefore = c.employee.balances.sl ?? 0
+      const vlToAdd = c.vlToAdd ?? 0
+      const slToAdd = c.slToAdd ?? 0
+      return {
+        employee: c.employee,
+        yearsOfServiceLabel: c.yearsOfServiceLabel,
+        vlBefore,
+        vlToAdd,
+        vlAfter: vlBefore + vlToAdd,
+        slBefore,
+        slToAdd,
+        slAfter: slBefore + slToAdd,
+      }
+    })
+}
+
+export function applyAnnualDistribution(selectedEmployeeIds: string[]): void {
+  const idSet = new Set(selectedEmployeeIds)
+  for (const employee of EMPLOYEES) {
+    if (!idSet.has(employee.id) || employee.employmentStatus !== 'regular') {
+      continue
+    }
+    employee.balances.vl = (employee.balances.vl ?? 0) + ANNUAL_VL_TO_ADD
+    employee.balances.sl = (employee.balances.sl ?? 0) + ANNUAL_SL_TO_ADD
+  }
+  clearAnnualDistributionDraft()
+}
+
+// ---------------------------------------------------------------------------
+// Newly regularized
+// ---------------------------------------------------------------------------
+
+export type NewlyRegularizedCandidate = {
+  employee: LeaveBalanceEmployee
+  eligible: boolean
+  monthsSinceHired: number
+  monthsProrated: number
+  vlToAdd: number | null
+  slToAdd: number | null
+  elToAdd: number | null
+  ptbToAdd: number | null
+}
+
+export type NewlyRegularizedDraft = {
+  selectedEmployeeIds: string[]
+  groupFilter: string
+  effectiveDate: string
+}
+
+let newlyRegDraft: NewlyRegularizedDraft | null = null
+
+function monthsBetween(startIso: string, endIso: string): number {
+  const start = new Date(startIso)
+  const end = new Date(endIso)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
+  const months =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth())
+  return Math.max(0, months)
+}
+
+/** Months from regularization date through December of that year (inclusive). */
+function proratedMonthsThroughDecember(regularizationIso: string): number {
+  const date = new Date(regularizationIso)
+  if (Number.isNaN(date.getTime())) return 0
+  return 12 - date.getMonth()
+}
+
+export function getNewlyRegularizedCandidates(
+  asOfIso = '2026-07-28',
+): NewlyRegularizedCandidate[] {
+  if (!MOCK_DATA_ENABLED) return []
+  return EMPLOYEES.map((employee) => {
+    const monthsSinceHired = monthsBetween(employee.dateHired, asOfIso)
+    const eligible =
+      employee.employmentStatus === 'regular' &&
+      employee.regularizationDate != null &&
+      monthsSinceHired >= 6 &&
+      (employee.balances.vl ?? 0) < 5
+    const monthsProrated = employee.regularizationDate
+      ? proratedMonthsThroughDecember(employee.regularizationDate)
+      : 0
+    const credit = Math.round(monthsProrated * NEWLY_REG_RATE * 2) / 2
+    return {
+      employee: cloneEmployee(employee),
+      eligible,
+      monthsSinceHired,
+      monthsProrated,
+      vlToAdd: eligible ? credit : null,
+      slToAdd: eligible ? credit : null,
+      elToAdd: eligible ? NEWLY_REG_EL : null,
+      ptbToAdd: eligible ? NEWLY_REG_PTB : null,
+    }
+  })
+}
+
+export function setNewlyRegularizedDraft(draft: NewlyRegularizedDraft): void {
+  newlyRegDraft = {
+    ...draft,
+    selectedEmployeeIds: [...draft.selectedEmployeeIds],
+  }
+}
+
+export function getNewlyRegularizedDraft(): NewlyRegularizedDraft | null {
+  return newlyRegDraft
+    ? {
+        ...newlyRegDraft,
+        selectedEmployeeIds: [...newlyRegDraft.selectedEmployeeIds],
+      }
+    : null
+}
+
+export function clearNewlyRegularizedDraft(): void {
+  newlyRegDraft = null
+}
+
+export type NewlyRegularizedReviewRow = {
+  employee: LeaveBalanceEmployee
+  monthsProrated: number
+  vlBefore: number
+  vlToAdd: number
+  vlAfter: number
+  slBefore: number
+  slToAdd: number
+  slAfter: number
+  elToAdd: number
+  ptbToAdd: number
+}
+
+export function getNewlyRegularizedReviewRows(
+  selectedEmployeeIds: string[],
+): NewlyRegularizedReviewRow[] {
+  const idSet = new Set(selectedEmployeeIds)
+  return getNewlyRegularizedCandidates()
+    .filter((c) => c.eligible && idSet.has(c.employee.id))
+    .map((c) => {
+      const vlBefore = c.employee.balances.vl ?? 0
+      const slBefore = c.employee.balances.sl ?? 0
+      const vlToAdd = c.vlToAdd ?? 0
+      const slToAdd = c.slToAdd ?? 0
+      return {
+        employee: c.employee,
+        monthsProrated: c.monthsProrated,
+        vlBefore,
+        vlToAdd,
+        vlAfter: vlBefore + vlToAdd,
+        slBefore,
+        slToAdd,
+        slAfter: slBefore + slToAdd,
+        elToAdd: c.elToAdd ?? 0,
+        ptbToAdd: c.ptbToAdd ?? 0,
+      }
+    })
+}
+
+export function applyNewlyRegularizedDistribution(
+  selectedEmployeeIds: string[],
+): void {
+  const rows = getNewlyRegularizedReviewRows(selectedEmployeeIds)
+  const byId = new Map(rows.map((row) => [row.employee.id, row]))
+  for (const employee of EMPLOYEES) {
+    const row = byId.get(employee.id)
+    if (!row) continue
+    employee.balances.vl = row.vlAfter
+    employee.balances.sl = row.slAfter
+    employee.balances.el = (employee.balances.el ?? 0) + row.elToAdd
+    employee.balances.ptb = (employee.balances.ptb ?? 0) + row.ptbToAdd
+  }
+  clearNewlyRegularizedDraft()
+}
+
+// ---------------------------------------------------------------------------
+// Parental (Maternity / Paternity)
+// ---------------------------------------------------------------------------
+
+export type ParentalCandidate = {
+  employee: LeaveBalanceEmployee
+  leaveType: 'Maternity Leave' | 'Paternity Leave'
+  balanceKey: 'ml' | 'pl'
+  entitlement: number
+  currentBalance: number | null
+}
+
+export type ParentalDistributionDraft = {
+  selectedKeys: string[]
+  groupFilter: string
+  effectiveDate: string
+}
+
+let parentalDraft: ParentalDistributionDraft | null = null
+
+export function parentalCandidateKey(
+  employeeId: string,
+  leaveType: string,
+): string {
+  return `${employeeId}::${leaveType}`
+}
+
+export function getParentalDistributionCandidates(): ParentalCandidate[] {
+  if (!MOCK_DATA_ENABLED) return []
+  const rows: ParentalCandidate[] = []
+  for (const employee of EMPLOYEES) {
+    for (const leaveType of employee.filedParentalLeaveTypes) {
+      const balanceKey = leaveType === 'Maternity Leave' ? 'ml' : 'pl'
+      const entitlement =
+        leaveType === 'Maternity Leave' ? PARENTAL_ML_DAYS : PARENTAL_PL_DAYS
+      rows.push({
+        employee: cloneEmployee(employee),
+        leaveType,
+        balanceKey,
+        entitlement,
+        currentBalance: employee.balances[balanceKey],
+      })
+    }
+  }
+  return rows
+}
+
+export function setParentalDistributionDraft(
+  draft: ParentalDistributionDraft,
+): void {
+  parentalDraft = { ...draft, selectedKeys: [...draft.selectedKeys] }
+}
+
+export function getParentalDistributionDraft(): ParentalDistributionDraft | null {
+  return parentalDraft
+    ? { ...parentalDraft, selectedKeys: [...parentalDraft.selectedKeys] }
+    : null
+}
+
+export function clearParentalDistributionDraft(): void {
+  parentalDraft = null
+}
+
+export type ParentalReviewRow = {
+  employee: LeaveBalanceEmployee
+  leaveType: 'Maternity Leave' | 'Paternity Leave'
+  balanceKey: 'ml' | 'pl'
+  before: number
+  toAdd: number
+  after: number
+}
+
+export function getParentalReviewRows(
+  selectedKeys: string[],
+): ParentalReviewRow[] {
+  const keySet = new Set(selectedKeys)
+  return getParentalDistributionCandidates()
+    .filter((c) =>
+      keySet.has(parentalCandidateKey(c.employee.id, c.leaveType)),
+    )
+    .map((c) => {
+      const before = c.currentBalance ?? 0
+      return {
+        employee: c.employee,
+        leaveType: c.leaveType,
+        balanceKey: c.balanceKey,
+        before,
+        toAdd: c.entitlement,
+        after: before + c.entitlement,
+      }
+    })
+}
+
+export function applyParentalDistribution(selectedKeys: string[]): void {
+  const rows = getParentalReviewRows(selectedKeys)
+  for (const row of rows) {
+    const employee = EMPLOYEES.find((e) => e.id === row.employee.id)
+    if (!employee) continue
+    employee.balances[row.balanceKey] = row.after
+  }
+  clearParentalDistributionDraft()
+}
+
+// ---------------------------------------------------------------------------
+// Contractual
+// ---------------------------------------------------------------------------
+
+export type ContractualAssignment = {
+  leaveTypeKey: LeaveBalanceKey
+  amount: number
+}
+
+export type ContractualDistributionDraft = {
+  selectedEmployeeIds: string[]
+  /** employeeId → assignments */
+  assignmentsByEmployeeId: Record<string, ContractualAssignment[]>
+  groupFilter: string
+  effectiveDate: string
+}
+
+let contractualDraft: ContractualDistributionDraft | null = null
+
+export function getContractualCandidates(): LeaveBalanceEmployee[] {
+  if (!MOCK_DATA_ENABLED) return []
+  return EMPLOYEES.filter((e) => e.employmentStatus === 'contractual').map(
+    cloneEmployee,
+  )
+}
+
+export function setContractualDistributionDraft(
+  draft: ContractualDistributionDraft,
+): void {
+  contractualDraft = {
+    ...draft,
+    selectedEmployeeIds: [...draft.selectedEmployeeIds],
+    assignmentsByEmployeeId: Object.fromEntries(
+      Object.entries(draft.assignmentsByEmployeeId).map(([id, list]) => [
+        id,
+        list.map((a) => ({ ...a })),
+      ]),
+    ),
+  }
+}
+
+export function getContractualDistributionDraft(): ContractualDistributionDraft | null {
+  if (!contractualDraft) return null
+  return {
+    ...contractualDraft,
+    selectedEmployeeIds: [...contractualDraft.selectedEmployeeIds],
+    assignmentsByEmployeeId: Object.fromEntries(
+      Object.entries(contractualDraft.assignmentsByEmployeeId).map(
+        ([id, list]) => [id, list.map((a) => ({ ...a }))],
+      ),
+    ),
+  }
+}
+
+export function clearContractualDistributionDraft(): void {
+  contractualDraft = null
+}
+
+export type ContractualReviewRow = {
+  employee: LeaveBalanceEmployee
+  leaveTypeKey: LeaveBalanceKey
+  before: number
+  toAdd: number
+  after: number
+}
+
+export function getContractualReviewRows(
+  draft: ContractualDistributionDraft = getContractualDistributionDraft() ?? {
+    selectedEmployeeIds: [],
+    assignmentsByEmployeeId: {},
+    groupFilter: 'ALL',
+    effectiveDate: '',
+  },
+): ContractualReviewRow[] {
+  const rows: ContractualReviewRow[] = []
+  for (const employeeId of draft.selectedEmployeeIds) {
+    const employee = EMPLOYEES.find((e) => e.id === employeeId)
+    if (!employee) continue
+    const assignments = draft.assignmentsByEmployeeId[employeeId] ?? []
+    for (const assignment of assignments) {
+      const before = employee.balances[assignment.leaveTypeKey] ?? 0
+      rows.push({
+        employee: cloneEmployee(employee),
+        leaveTypeKey: assignment.leaveTypeKey,
+        before,
+        toAdd: assignment.amount,
+        after: before + assignment.amount,
+      })
+    }
+  }
+  return rows
+}
+
+export function applyContractualDistribution(
+  draft: ContractualDistributionDraft = getContractualDistributionDraft() ?? {
+    selectedEmployeeIds: [],
+    assignmentsByEmployeeId: {},
+    groupFilter: 'ALL',
+    effectiveDate: '',
+  },
+): void {
+  for (const employeeId of draft.selectedEmployeeIds) {
+    const employee = EMPLOYEES.find((e) => e.id === employeeId)
+    if (!employee) continue
+    const assignments = draft.assignmentsByEmployeeId[employeeId] ?? []
+    for (const assignment of assignments) {
+      const before = employee.balances[assignment.leaveTypeKey] ?? 0
+      employee.balances[assignment.leaveTypeKey] = before + assignment.amount
+    }
+  }
+  clearContractualDistributionDraft()
+}
+
+// ---------------------------------------------------------------------------
+// Individual adjust + audit
+// ---------------------------------------------------------------------------
+
+export type AdjustmentDirection = 'add' | 'deduct'
+
+export type AdjustmentReasonCategory =
+  | 'distribution_error'
+  | 'emergency_grant'
+  | 'system_fix'
+  | 'policy_exception'
+  | 'other'
+
+export const ADJUSTMENT_REASON_OPTIONS: Array<{
+  value: AdjustmentReasonCategory
+  label: string
+}> = [
+  { value: 'distribution_error', label: 'Distribution error' },
+  { value: 'emergency_grant', label: 'Emergency grant' },
+  { value: 'system_fix', label: 'System fix' },
+  { value: 'policy_exception', label: 'Policy exception' },
+  { value: 'other', label: 'Other' },
+]
+
+export type BalanceAdjustmentPayload = {
+  leaveTypeKey: LeaveBalanceKey
+  direction: AdjustmentDirection
+  amount: number
+  effectiveDate: string
+  reasonCategory: AdjustmentReasonCategory
+  reason: string
+  ticketRef?: string | null
+  attachmentFileName?: string | null
+  performedBy: string
+}
+
+export type RecordedAdjustment = {
+  id: string
+  employeeId: string
+  leaveTypeKey: LeaveBalanceKey
+  direction: AdjustmentDirection
+  amount: number
+  effectiveDate: string
+  before: number
+  after: number
+  occurredAt: string
+}
+
+const RECENT_ADJUSTMENTS: RecordedAdjustment[] = []
+
+export function getRecentAdjustments(
+  employeeId: string,
+): RecordedAdjustment[] {
+  return RECENT_ADJUSTMENTS.filter((row) => row.employeeId === employeeId)
+}
+
+export function hasDuplicateAdjustment(
+  employeeId: string,
+  leaveTypeKey: LeaveBalanceKey,
+  amount: number,
+  effectiveDate: string,
+): boolean {
+  return RECENT_ADJUSTMENTS.some(
+    (row) =>
+      row.employeeId === employeeId &&
+      row.leaveTypeKey === leaveTypeKey &&
+      row.amount === amount &&
+      row.effectiveDate === effectiveDate,
+  )
+}
+
+export function applyBalanceAdjustment(
+  employeeId: string,
+  payload: BalanceAdjustmentPayload,
+): RecordedAdjustment | null {
+  if (!MOCK_DATA_ENABLED) return null
+  const employee = EMPLOYEES.find((row) => row.id === employeeId)
+  if (!employee) return null
+
+  const before = employee.balances[payload.leaveTypeKey] ?? 0
+  const delta =
+    payload.direction === 'add' ? payload.amount : -payload.amount
+  const after = before + delta
+  if (after < 0) return null
+
+  employee.balances[payload.leaveTypeKey] = after
+
+  const occurredAt = new Date().toISOString()
+  const recorded: RecordedAdjustment = {
+    id: `adj-${Date.now()}-${RECENT_ADJUSTMENTS.length + 1}`,
+    employeeId,
+    leaveTypeKey: payload.leaveTypeKey,
+    direction: payload.direction,
+    amount: payload.amount,
+    effectiveDate: payload.effectiveDate,
+    before,
+    after,
+    occurredAt,
+  }
+  RECENT_ADJUSTMENTS.unshift(recorded)
+
+  const short = LEAVE_BALANCE_SHORT[payload.leaveTypeKey]
+  const label = LEAVE_BALANCE_LABELS[payload.leaveTypeKey]
+  const signed =
+    payload.direction === 'add'
+      ? `+${formatBalanceValue(payload.amount)}`
+      : `-${formatBalanceValue(payload.amount)}`
+
+  appendActivityLogEntry({
+    occurredAt,
+    activity:
+      payload.direction === 'add'
+        ? 'Leave credits adjusted'
+        : 'Leave credits deducted',
+    leaveType: label,
+    balanceImpact: `${signed} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
+    performedBy: payload.performedBy,
+    remarks: payload.reason,
+  })
+
+  appendAdminLogEntry({
+    eventType: 'BALANCE_ADJUSTMENT',
+    occurredAt,
+    actorName: payload.performedBy,
+    targetEmployeeId: employee.id,
+    targetEmployeeName: employee.name,
+    leaveType: label,
+    direction: payload.direction,
+    amount: payload.amount,
+    before,
+    after,
+    effectiveDate: payload.effectiveDate,
+    reasonCategory: payload.reasonCategory,
+    reason: payload.reason,
+    ticketRef: payload.ticketRef ?? null,
+  })
+
+  return recorded
+}

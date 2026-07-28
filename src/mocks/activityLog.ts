@@ -13,6 +13,7 @@ export type ActivityLogEntry = {
   remarks: string | null
 }
 
+/** Mutable store so adjust/distribution mocks can append entries. */
 export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   {
     id: 'act-1',
@@ -75,6 +76,22 @@ export function getActivityLogEntries(): ActivityLogEntry[] {
   return [...MOCK_ACTIVITY_LOG].sort((a, b) =>
     b.occurredAt.localeCompare(a.occurredAt),
   )
+}
+
+export function appendActivityLogEntry(
+  entry: Omit<ActivityLogEntry, 'id'> & { id?: string },
+): ActivityLogEntry {
+  const full: ActivityLogEntry = {
+    id: entry.id ?? `act-${Date.now()}-${MOCK_ACTIVITY_LOG.length + 1}`,
+    occurredAt: entry.occurredAt,
+    activity: entry.activity,
+    leaveType: entry.leaveType,
+    balanceImpact: entry.balanceImpact,
+    performedBy: entry.performedBy,
+    remarks: entry.remarks,
+  }
+  MOCK_ACTIVITY_LOG.unshift(full)
+  return full
 }
 
 export function formatActivityTimestamp(iso: string): string {

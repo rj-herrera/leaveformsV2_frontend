@@ -6,6 +6,7 @@ import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -357,7 +358,7 @@ function TabButton({
       onClick={onClick}
       className={`-mb-px inline-flex items-center gap-2 border-b-2 pb-2.5 text-body transition-colors ${
         active
-          ? 'border-primary font-semibold text-primary'
+          ? 'border-primary font-medium text-primary'
           : 'border-transparent text-text-gray hover:text-text-black'
       }`}
     >
@@ -438,7 +439,7 @@ function ApprovalRow({
         <Link
           to={actionTo}
           state={{ listTab } satisfies ListReturnState}
-          className="inline-flex rounded-md border border-border bg-surface-muted px-3 py-1.5 text-body text-text-black transition-colors hover:bg-background"
+          className={TABLE_ACTION_BUTTON_CLASS}
         >
           {actionLabel}
         </Link>

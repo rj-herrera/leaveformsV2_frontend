@@ -27,7 +27,7 @@ export function AttachmentPreviewModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md border border-border bg-surface px-4 py-2 text-body text-text-black transition-colors hover:bg-surface-muted"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
         >
           Close
         </button>

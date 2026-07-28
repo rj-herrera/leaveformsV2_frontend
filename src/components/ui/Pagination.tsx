@@ -30,7 +30,7 @@ export function Pagination({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-md border border-black/15 px-3 py-1.5 text-body text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded-md border border-black/15 px-3 py-1.5 text-body font-medium text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage <= 1}
           aria-label="Previous page"
@@ -45,7 +45,7 @@ export function Pagination({
 
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-md border border-black/15 px-3 py-1.5 text-body text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded-md border border-black/15 px-3 py-1.5 text-body font-medium text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage >= totalPages}
           aria-label="Next page"
