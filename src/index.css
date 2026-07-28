@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #009688;
+  --color-secondary: #ffc107;
+  /* --color-background: #e0e1e7; */
+  --color-background: #f0f0f3;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4f5f7;
+  --color-border: rgba(33, 37, 41, 0.1);
+  --color-overlay: rgba(33, 37, 41, 0.45);
+  --color-text-black: #212529;
+  --color-text-white: #f1f1f1;
+  --color-text-gray: #6c757d;
+
+  --color-leave-vacation: #4bc0c0;
+  --color-leave-sick: #ff9f40;
+  --color-leave-maternity: #ff6384;
+  --color-leave-paternity: #36a2eb;
+  --color-leave-ptb: #9966ff;
+  --color-leave-emergency: #ffcd56;
+
+  --color-status-approved: #28a745;
+  --color-status-pending: #ffc107;
+  --color-status-pending-conversion: #fd7e14;
+  --color-status-rejected: #dc3545;
+  --color-status-cancelled: #495057;
+
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.5;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 1.125rem;
+  --text-h2--line-height: 1.5;
+  --text-h2--font-weight: 700;
+
+  --text-header: 0.75rem;
+  --text-header--line-height: 1.5rem;
+  --text-header--letter-spacing: 0.125rem;
+  --text-header--font-weight: 600;
+
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5;
+  --text-body--font-weight: 500;
+
+  --text-small: 0.75rem;
+  --text-small--line-height: 1.5;
+  --text-small--font-weight: 500;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+    background-color: var(--color-background);
+    color: var(--color-text-black);
+    font-size: var(--text-body);
+    font-weight: var(--text-body--font-weight);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    font-size: var(--text-h1);
+    line-height: var(--text-h1--line-height);
+    font-weight: var(--text-h1--font-weight);
+  }
+
+  h2 {
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    font-weight: var(--text-h2--font-weight);
+  }
+}
