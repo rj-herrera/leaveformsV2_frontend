@@ -1,8 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { EmploymentStatusPill } from '../../components/admin/EmploymentStatusPill'
 import { LeaveTypeChipHeader } from '../../components/admin/LeaveTypeChipHeader'
-import { SelectDistributionModal } from '../../components/admin/SelectDistributionModal'
+import {
+  SelectDistributionModal,
+  type DistributionType,
+} from '../../components/admin/SelectDistributionModal'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
@@ -24,6 +28,7 @@ import {
   getLeaveBalanceGroups,
   type LeaveBalanceEmployee,
 } from '../../mocks/leaveBalances'
+import { distributionEmployeesPath } from '../../utils/distributionPaths'
 
 type DepartmentFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
@@ -32,6 +37,7 @@ const ADJUST_TOOLTIP =
   'For corrections and exceptions only. Use Distribute Leave Credits for routine grants.'
 
 export function AdminLeaveBalancesPage() {
+  const navigate = useNavigate()
   const tableAreaRef = useRef<HTMLDivElement>(null)
   const pageSize = usePageSizeFromHeight(
     tableAreaRef,
@@ -82,6 +88,10 @@ export function AdminLeaveBalancesPage() {
   const filterResetKey = [search, departmentFilter, groupFilter].join('|')
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(filteredRows, pageSize, filterResetKey)
+
+  function handleDistributeContinue(type: DistributionType) {
+    navigate(distributionEmployeesPath(type))
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -252,6 +262,7 @@ export function AdminLeaveBalancesPage() {
       <SelectDistributionModal
         open={distributeOpen}
         onClose={() => setDistributeOpen(false)}
+        onContinue={handleDistributeContinue}
       />
 
       <Modal

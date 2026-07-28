@@ -16,6 +16,8 @@ import { AdminLeaveBalancesPage } from './pages/admin/AdminLeaveBalancesPage'
 import { AdminLeaveRequestsPage } from './pages/admin/AdminLeaveRequestsPage'
 import { AdminLeaveRequestViewPage } from './pages/admin/AdminLeaveRequestViewPage'
 import { AdminLeaveValidatePage } from './pages/admin/AdminLeaveValidatePage'
+import { AnnualDistributionEmployeesPage } from './pages/admin/AnnualDistributionEmployeesPage'
+import { AnnualDistributionReviewPage } from './pages/admin/AnnualDistributionReviewPage'
 
 /**
  * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
@@ -79,24 +81,42 @@ function App() {
           element={<AdminLeaveBalancesPage />}
         />
         <Route
-          path="admin/leave-balances/distributions/new"
-          element={<PagePlaceholder title="Select Distribution Type" />}
+          path="admin/leave-balances/distributions/annual/employees"
+          element={<AnnualDistributionEmployeesPage />}
         />
         <Route
-          path="admin/leave-balances/distributions/new/configure"
-          element={<PagePlaceholder title="Configure Distribution" />}
+          path="admin/leave-balances/distributions/annual/review"
+          element={<AnnualDistributionReviewPage />}
         />
         <Route
-          path="admin/leave-balances/distributions/new/employees"
-          element={<PagePlaceholder title="Select Employees" />}
+          path="admin/leave-balances/distributions/newly-regularized/employees"
+          element={
+            <PagePlaceholder title="Newly Regularized — Select Employees" />
+          }
         />
         <Route
-          path="admin/leave-balances/distributions/new/review"
-          element={<PagePlaceholder title="Review Distribution" />}
+          path="admin/leave-balances/distributions/newly-regularized/review"
+          element={
+            <PagePlaceholder title="Newly Regularized — Review Distribution" />
+          }
         />
         <Route
-          path="admin/leave-balances/distributions/:distributionId"
-          element={<PagePlaceholder title="Distribution Details" />}
+          path="admin/leave-balances/distributions/parental/employees"
+          element={<PagePlaceholder title="Parental — Select Employees" />}
+        />
+        <Route
+          path="admin/leave-balances/distributions/parental/review"
+          element={<PagePlaceholder title="Parental — Review Distribution" />}
+        />
+        <Route
+          path="admin/leave-balances/distributions/contractual/employees"
+          element={<PagePlaceholder title="Contractual — Select Employees" />}
+        />
+        <Route
+          path="admin/leave-balances/distributions/contractual/review"
+          element={
+            <PagePlaceholder title="Contractual — Review Distribution" />
+          }
         />
         <Route
           path="admin/logs"

@@ -37,8 +37,7 @@ const OPTIONS: Array<{
 type SelectDistributionModalProps = {
   open: boolean
   onClose: () => void
-  /** Stub: landing only — wizards wire this in a later todo. */
-  onContinue?: (type: DistributionType) => void
+  onContinue: (type: DistributionType) => void
 }
 
 export function SelectDistributionModal({
@@ -70,7 +69,7 @@ export function SelectDistributionModal({
           <button
             type="button"
             onClick={() => {
-              onContinue?.(selected)
+              onContinue(selected)
               onClose()
             }}
             className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
@@ -81,8 +80,7 @@ export function SelectDistributionModal({
       }
     >
       <p className="mb-4 text-body text-text-gray">
-        Choose how leave credits should be distributed. Wizard steps will open
-        from here in a later update.
+        Choose how leave credits should be distributed.
       </p>
       <div className="flex flex-col gap-2">
         {OPTIONS.map((option) => {
@@ -102,7 +100,7 @@ export function SelectDistributionModal({
                 value={option.value}
                 checked={active}
                 onChange={() => setSelected(option.value)}
-                className="mt-1"
+                className="mt-1 accent-primary"
               />
               <span className="min-w-0">
                 <span className="block text-body font-semibold text-text-black">
