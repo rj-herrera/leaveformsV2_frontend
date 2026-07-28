@@ -64,11 +64,6 @@ export function NewlyRegularizedReviewPage() {
     )
   }
 
-  const scopeLabel =
-    draft.groupFilter === 'ALL' || !draft.groupFilter
-      ? 'All Groups'
-      : draft.groupFilter
-
   function handleConfirmApply() {
     applyNewlyRegularizedDistribution(draft!.selectedEmployeeIds)
     setConfirmOpen(false)
@@ -96,7 +91,7 @@ export function NewlyRegularizedReviewPage() {
 
       <section className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <h2 className="text-h2 text-text-black">Distribution Summary</h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SummaryItem label="Type" value="Newly Regularized Employees" />
           <SummaryItem
             label="Effective date"
@@ -106,7 +101,6 @@ export function NewlyRegularizedReviewPage() {
             label="Selected employees"
             value={String(reviewRows.length)}
           />
-          <SummaryItem label="Scope" value={scopeLabel} />
         </dl>
       </section>
 

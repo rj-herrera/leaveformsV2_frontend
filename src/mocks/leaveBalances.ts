@@ -4,6 +4,7 @@
 import { MOCK_DATA_ENABLED } from './config'
 import { appendActivityLogEntry } from './activityLog'
 import { appendAdminLogEntry } from './adminLog'
+import { parentalEntitlementDays } from '../utils/leaveDates'
 
 export type EmploymentStatus = 'regular' | 'probationary' | 'contractual'
 
@@ -24,8 +25,25 @@ export type LeaveBalanceEmployee = {
   /** ISO date — null if not yet regularized */
   regularizationDate: string | null
   yearsOfServiceLabel: string
-  /** For parental eligibility — leave type labels already filed */
-  filedParentalLeaveTypes: Array<'Maternity Leave' | 'Paternity Leave'>
+  /** Filed ML/PL requests eligible for parental credit distribution */
+  filedParentalRequests: FiledParentalRequest[]
+}
+
+export type FiledParentalByRole = 'employee' | 'leader'
+
+export type FiledParentalRequest = {
+  leaveType: 'Maternity Leave' | 'Paternity Leave'
+  /** ISO date */
+  dateFiled: string
+  /** Display range, e.g. "Aug 17–Nov 29, 2026" */
+  leavePeriod: string
+  reason: string
+  attachmentFileName: string | null
+  attachmentNote: string | null
+  /** Who submitted the leave request */
+  filedByRole: FiledParentalByRole
+  /** Name of the person who filed (employee or leader) */
+  filedByName: string
 }
 
 export const EMPLOYMENT_STATUS_LABELS: Record<EmploymentStatus, string> = {
@@ -75,8 +93,6 @@ const ANNUAL_SL_TO_ADD = 15
 const NEWLY_REG_RATE = 1.25
 const NEWLY_REG_EL = 5
 const NEWLY_REG_PTB = 180
-const PARENTAL_ML_DAYS = 105
-const PARENTAL_PL_DAYS = 7
 
 /** Mutable seed — adjustments mutate balances in place. */
 const EMPLOYEES: LeaveBalanceEmployee[] = [
@@ -91,7 +107,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2020-03-01',
     regularizationDate: '2020-09-01',
     yearsOfServiceLabel: '6 yrs',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-employee-2',
@@ -104,7 +120,18 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2021-06-15',
     regularizationDate: '2021-12-15',
     yearsOfServiceLabel: '5 yrs',
-    filedParentalLeaveTypes: ['Paternity Leave'],
+    filedParentalRequests: [
+      {
+        leaveType: 'Paternity Leave',
+        dateFiled: '2026-07-08',
+        leavePeriod: 'Jul 20–28, 2026',
+        reason: 'Birth of child — bonding leave',
+        attachmentFileName: 'Paternity_Form.pdf',
+        attachmentNote: null,
+        filedByRole: 'leader',
+        filedByName: 'Jordan Approver',
+      },
+    ],
   },
   {
     id: 'user-employee-3',
@@ -117,7 +144,18 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2019-01-10',
     regularizationDate: '2019-07-10',
     yearsOfServiceLabel: '7 yrs',
-    filedParentalLeaveTypes: ['Maternity Leave'],
+    filedParentalRequests: [
+      {
+        leaveType: 'Maternity Leave',
+        dateFiled: '2026-05-12',
+        leavePeriod: 'Aug 17–Nov 29, 2026',
+        reason: 'Maternity leave',
+        attachmentFileName: 'Maternity_docs.pdf',
+        attachmentNote: null,
+        filedByRole: 'employee',
+        filedByName: 'Taylor Cruz',
+      },
+    ],
   },
   {
     id: 'user-cecile',
@@ -130,7 +168,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2018-04-02',
     regularizationDate: '2018-10-02',
     yearsOfServiceLabel: '8 yrs',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-melissa',
@@ -143,7 +181,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2026-02-01',
     regularizationDate: null,
     yearsOfServiceLabel: '< 1 yr',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-sally',
@@ -156,7 +194,18 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2017-08-20',
     regularizationDate: '2018-02-20',
     yearsOfServiceLabel: '8 yrs',
-    filedParentalLeaveTypes: ['Maternity Leave'],
+    filedParentalRequests: [
+      {
+        leaveType: 'Maternity Leave',
+        dateFiled: '2026-06-02',
+        leavePeriod: 'Sep 1–Dec 14, 2026',
+        reason: 'Maternity leave — expected delivery September 2026',
+        attachmentFileName: 'Maternity_medical_certificate.pdf',
+        attachmentNote: null,
+        filedByRole: 'employee',
+        filedByName: 'Sally Bautista',
+      },
+    ],
   },
   {
     id: 'user-emman',
@@ -169,7 +218,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2022-01-05',
     regularizationDate: '2022-07-05',
     yearsOfServiceLabel: '4 yrs',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-paul',
@@ -182,7 +231,18 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2023-05-12',
     regularizationDate: '2023-11-12',
     yearsOfServiceLabel: '3 yrs',
-    filedParentalLeaveTypes: ['Paternity Leave'],
+    filedParentalRequests: [
+      {
+        leaveType: 'Paternity Leave',
+        dateFiled: '2026-07-15',
+        leavePeriod: 'Aug 3–11, 2026',
+        reason: 'Paternity leave for newborn',
+        attachmentFileName: 'Birth_certificate.jpg',
+        attachmentNote: null,
+        filedByRole: 'leader',
+        filedByName: 'Approver 2',
+      },
+    ],
   },
   {
     id: 'user-newly-reg-1',
@@ -195,7 +255,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2026-01-06',
     regularizationDate: '2026-07-06',
     yearsOfServiceLabel: '6 mos',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-newly-reg-2',
@@ -208,7 +268,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2026-01-13',
     regularizationDate: '2026-07-13',
     yearsOfServiceLabel: '6 mos',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-newly-reg-3',
@@ -221,7 +281,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2026-01-20',
     regularizationDate: '2026-07-20',
     yearsOfServiceLabel: '6 mos',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-contract-1',
@@ -234,7 +294,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2026-03-03',
     regularizationDate: null,
     yearsOfServiceLabel: '< 1 yr',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
   {
     id: 'user-contract-2',
@@ -247,7 +307,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     dateHired: '2025-11-01',
     regularizationDate: null,
     yearsOfServiceLabel: '< 1 yr',
-    filedParentalLeaveTypes: [],
+    filedParentalRequests: [],
   },
 ]
 
@@ -260,7 +320,9 @@ function cloneEmployee(employee: LeaveBalanceEmployee): LeaveBalanceEmployee {
   return {
     ...employee,
     balances: { ...employee.balances },
-    filedParentalLeaveTypes: [...employee.filedParentalLeaveTypes],
+    filedParentalRequests: employee.filedParentalRequests.map((r) => ({
+      ...r,
+    })),
   }
 }
 
@@ -637,6 +699,13 @@ export type ParentalCandidate = {
   balanceKey: 'ml' | 'pl'
   entitlement: number
   currentBalance: number | null
+  dateFiled: string
+  leavePeriod: string
+  reason: string
+  attachmentFileName: string | null
+  attachmentNote: string | null
+  filedByRole: FiledParentalByRole
+  filedByName: string
 }
 
 export type ParentalDistributionDraft = {
@@ -654,20 +723,37 @@ export function parentalCandidateKey(
   return `${employeeId}::${leaveType}`
 }
 
+export function formatParentalFiledByLabel(candidate: {
+  filedByRole: FiledParentalByRole
+  filedByName: string
+  employee: { name: string }
+}): string {
+  if (candidate.filedByRole === 'leader') {
+    return `Leader (${candidate.filedByName}) on behalf of ${candidate.employee.name}`
+  }
+  return `Employee (${candidate.filedByName})`
+}
+
 export function getParentalDistributionCandidates(): ParentalCandidate[] {
   if (!MOCK_DATA_ENABLED) return []
   const rows: ParentalCandidate[] = []
   for (const employee of EMPLOYEES) {
-    for (const leaveType of employee.filedParentalLeaveTypes) {
-      const balanceKey = leaveType === 'Maternity Leave' ? 'ml' : 'pl'
-      const entitlement =
-        leaveType === 'Maternity Leave' ? PARENTAL_ML_DAYS : PARENTAL_PL_DAYS
+    for (const filing of employee.filedParentalRequests) {
+      const balanceKey = filing.leaveType === 'Maternity Leave' ? 'ml' : 'pl'
+      const entitlement = parentalEntitlementDays(filing.leaveType)
       rows.push({
         employee: cloneEmployee(employee),
-        leaveType,
+        leaveType: filing.leaveType,
         balanceKey,
         entitlement,
         currentBalance: employee.balances[balanceKey],
+        dateFiled: filing.dateFiled,
+        leavePeriod: filing.leavePeriod,
+        reason: filing.reason,
+        attachmentFileName: filing.attachmentFileName,
+        attachmentNote: filing.attachmentNote,
+        filedByRole: filing.filedByRole,
+        filedByName: filing.filedByName,
       })
     }
   }

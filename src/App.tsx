@@ -20,6 +20,8 @@ import { AnnualDistributionEmployeesPage } from './pages/admin/AnnualDistributio
 import { AnnualDistributionReviewPage } from './pages/admin/AnnualDistributionReviewPage'
 import { NewlyRegularizedEmployeesPage } from './pages/admin/NewlyRegularizedEmployeesPage'
 import { NewlyRegularizedReviewPage } from './pages/admin/NewlyRegularizedReviewPage'
+import { ParentalDistributionEmployeesPage } from './pages/admin/ParentalDistributionEmployeesPage'
+import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributionReviewPage'
 
 /**
  * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
@@ -100,11 +102,11 @@ function App() {
         />
         <Route
           path="admin/leave-balances/distributions/parental/employees"
-          element={<PagePlaceholder title="Parental — Select Employees" />}
+          element={<ParentalDistributionEmployeesPage />}
         />
         <Route
           path="admin/leave-balances/distributions/parental/review"
-          element={<PagePlaceholder title="Parental — Review Distribution" />}
+          element={<ParentalDistributionReviewPage />}
         />
         <Route
           path="admin/leave-balances/distributions/contractual/employees"

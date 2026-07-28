@@ -1,3 +1,5 @@
+import { isNonWorkingHoliday } from '../mocks/workCalendar'
+
 const MONTH_INDEX: Record<string, number> = {
   jan: 0,
   january: 0,
@@ -24,6 +26,15 @@ const MONTH_INDEX: Record<string, number> = {
   dec: 11,
   december: 11,
 }
+
+/** Maternity Leave entitlement — consecutive calendar days (weekends & holidays included). */
+export const MATERNITY_ENTITLEMENT_CALENDAR_DAYS = 105
+
+/** Paternity Leave entitlement — working days only (weekends & non-working holidays excluded). */
+export const PATERNITY_ENTITLEMENT_WORKING_DAYS = 7
+
+export const MATERNITY_LEAVE_TYPE = 'Maternity Leave'
+export const PATERNITY_LEAVE_TYPE = 'Paternity Leave'
 
 function toISODate(year: number, monthIndex: number, day: number): string {
   const m = String(monthIndex + 1).padStart(2, '0')
@@ -126,6 +137,22 @@ export function isWeekday(date: Date): boolean {
   return day !== 0 && day !== 6
 }
 
+/** Weekday that is not a configured non-working holiday. */
+export function isWorkingDay(date: Date): boolean {
+  if (!isWeekday(date)) return false
+  return !isNonWorkingHoliday(toLocalISODate(date))
+}
+
+export function isWorkingDayISO(iso: string): boolean {
+  const date = parseLocalISO(iso)
+  return date ? isWorkingDay(date) : false
+}
+
+/** Maternity uses consecutive calendar days; all other types use working days. */
+export function usesCalendarDayCounting(leaveType: string): boolean {
+  return leaveType === MATERNITY_LEAVE_TYPE
+}
+
 /** Move to the nearest weekday in the given direction (skips Sat/Sun). */
 export function snapToWeekday(
   iso: string,
@@ -138,6 +165,35 @@ export function snapToWeekday(
     date.setDate(date.getDate() + step)
   }
   return toLocalISODate(date)
+}
+
+/** Move to the nearest working day (skips weekends + non-working holidays). */
+export function snapToWorkingDay(
+  iso: string,
+  direction: 'forward' | 'backward' = 'forward',
+): string {
+  const date = parseLocalISO(iso)
+  if (!date) return iso
+  const step = direction === 'forward' ? 1 : -1
+  while (!isWorkingDay(date)) {
+    date.setDate(date.getDate() + step)
+  }
+  return toLocalISODate(date)
+}
+
+/** Inclusive calendar-day count (weekends and holidays included). */
+export function countCalendarDays(startISO: string, endISO: string): number {
+  const start = parseLocalISO(startISO)
+  const end = parseLocalISO(endISO)
+  if (!start || !end || end < start) return 0
+
+  let count = 0
+  const cursor = new Date(start)
+  while (cursor <= end) {
+    count += 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return count
 }
 
 /** Inclusive weekday count between ISO dates (local). Weekends excluded. */
@@ -153,6 +209,55 @@ export function countWeekdays(startISO: string, endISO: string): number {
     cursor.setDate(cursor.getDate() + 1)
   }
   return count
+}
+
+/**
+ * Inclusive working-day count (weekends + configured non-working holidays excluded).
+ * Used for Paternity Leave and other working-day leave types.
+ */
+export function countWorkingDays(startISO: string, endISO: string): number {
+  const start = parseLocalISO(startISO)
+  const end = parseLocalISO(endISO)
+  if (!start || !end || end < start) return 0
+
+  let count = 0
+  const cursor = new Date(start)
+  while (cursor <= end) {
+    if (isWorkingDay(cursor)) count += 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return count
+}
+
+/** Duration count for a leave type using the correct day basis. */
+export function countLeaveDurationDays(
+  leaveType: string,
+  startISO: string,
+  endISO: string,
+): number {
+  if (usesCalendarDayCounting(leaveType)) {
+    return countCalendarDays(startISO, endISO)
+  }
+  return countWorkingDays(startISO, endISO)
+}
+
+export function parentalEntitlementDays(
+  leaveType: 'Maternity Leave' | 'Paternity Leave' | string,
+): number {
+  if (leaveType === MATERNITY_LEAVE_TYPE) {
+    return MATERNITY_ENTITLEMENT_CALENDAR_DAYS
+  }
+  if (leaveType === PATERNITY_LEAVE_TYPE) {
+    return PATERNITY_ENTITLEMENT_WORKING_DAYS
+  }
+  return 0
+}
+
+export function formatParentalEntitlementLabel(
+  leaveType: 'Maternity Leave' | 'Paternity Leave' | string,
+  days = parentalEntitlementDays(leaveType),
+): string {
+  return `${days} days`
 }
 
 export function formatDurationLabel(days: number, dayType: DayType): string {

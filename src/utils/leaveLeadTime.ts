@@ -3,7 +3,10 @@ import { toLocalISODate } from './leaveDates'
 
 export type LeaveLeadTimeInput = {
   dayType: DayType
-  /** Consecutive weekday count for full-day leave */
+  /**
+   * Full-day duration using the leave type’s day basis
+   * (calendar days for Maternity; working days otherwise).
+   */
   weekdayDuration: number
   startDateISO: string
   /** Filing date in ISO (YYYY-MM-DD), typically today on submit */
@@ -12,13 +15,13 @@ export type LeaveLeadTimeInput = {
 
 export type LeaveLeadTimeResult = {
   ok: boolean
-  /** True when duration is 3+ full weekdays (show advance-filing notice). */
+  /** True when duration is 3+ full days under the leave type’s counting rules. */
   isLongLeave: boolean
   message: string | null
 }
 
 export const LEAVE_LEAD_TIME_MESSAGE =
-  'Leave requests of 3 or more consecutive weekdays must be filed at least 1 month before the leave start date.'
+  'Leave requests of 3 or more consecutive days must be filed at least 1 month before the leave start date.'
 
 /** Calendar-month add on a local ISO date (handles month-end overflow). */
 export function addCalendarMonths(iso: string, months: number): string {
@@ -33,8 +36,9 @@ export function addCalendarMonths(iso: string, months: number): string {
 }
 
 /**
- * Full-day leave of 3+ consecutive weekdays requires filing at least
- * 1 calendar month before the leave start date.
+ * Full-day leave of 3+ consecutive days (calendar for Maternity,
+ * working days otherwise) requires filing at least 1 calendar month
+ * before the leave start date.
  */
 export function validateLeaveLeadTime(
   input: LeaveLeadTimeInput,

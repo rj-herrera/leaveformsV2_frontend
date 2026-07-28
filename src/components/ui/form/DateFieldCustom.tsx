@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
-import { isWeekday } from '../../../utils/leaveDates'
+import { isWorkingDay } from '../../../utils/leaveDates'
 import {
   fieldControlClassName,
   fieldControlDisabledClassName,
@@ -24,7 +24,7 @@ type DateFieldCustomProps = {
   id?: string
   hint?: string
   className?: string
-  /** When true, Saturday and Sunday cannot be selected */
+  /** When true, only working days can be selected (excludes weekends and non-working holidays). */
   weekdaysOnly?: boolean
   min?: string
   max?: string
@@ -249,11 +249,11 @@ export function DateFieldCustom({
                   ? sameDay(cellDate, selected)
                   : false
                 const isToday = sameDay(cellDate, today)
-                const isWeekend = !isWeekday(cellDate)
+                const isNonWorking = !isWorkingDay(cellDate)
                 const beforeMin = minDate ? cellDate < minDate : false
                 const afterMax = maxDate ? cellDate > maxDate : false
                 const isDisabled =
-                  (weekdaysOnly && isWeekend) || beforeMin || afterMax
+                  (weekdaysOnly && isNonWorking) || beforeMin || afterMax
 
                 return (
                   <button

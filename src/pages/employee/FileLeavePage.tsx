@@ -15,9 +15,10 @@ import {
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
 import {
-  countWeekdays,
+  countLeaveDurationDays,
   formatDurationLabel,
   todayISO,
+  usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
@@ -81,31 +82,34 @@ export function FileLeavePage() {
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
 
-  const weekdayDuration = useMemo(() => {
+  const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
     if (dayType !== 'full') return 0
-    return countWeekdays(startDate, endDate)
-  }, [dayType, startDate, endDate])
+    return countLeaveDurationDays(leaveType, startDate, endDate)
+  }, [dayType, startDate, endDate, leaveType])
 
   const durationLabel = useMemo(() => {
     if (!dayType || (!startDate && !endDate)) return '0 day(s)'
     if (dayType === 'half_am' || dayType === 'half_pm') {
       return formatDurationLabel(0.5, dayType)
     }
-    return formatDurationLabel(weekdayDuration, 'full')
-  }, [dayType, startDate, endDate, weekdayDuration])
+    return formatDurationLabel(leaveDuration, 'full')
+  }, [dayType, startDate, endDate, leaveDuration])
 
   const leadTimeValidation = useMemo(
     () =>
       validateLeaveLeadTime({
         dayType: dayType === '' ? 'full' : dayType,
-        weekdayDuration: dayType === 'full' ? weekdayDuration : 0,
+        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
         startDateISO: startDate,
         filedOnISO: todayISO(),
       }),
-    [dayType, weekdayDuration, startDate],
+    [dayType, leaveDuration, startDate],
   )
+
+  const workingDaysOnly =
+    leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
   const leaveTypeMissing = leaveType === ''
   const dayTypeMissing = dayType === ''
@@ -220,7 +224,7 @@ export function FileLeavePage() {
                 label="Start Date"
                 value={startDate}
                 onChange={handleStartDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 disabled={!startDateEnabled}
                 max={endDate || undefined}
               />
@@ -228,7 +232,7 @@ export function FileLeavePage() {
                 label="End Date"
                 value={endDate}
                 onChange={handleEndDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 disabled={!endDateEnabled}
                 min={startDate || undefined}
               />

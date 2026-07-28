@@ -22,9 +22,10 @@ import {
   submitProxyLeaveRequest,
 } from '../../mocks/teamMembers'
 import {
-  countWeekdays,
+  countLeaveDurationDays,
   formatDurationLabel,
   todayISO,
+  usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
@@ -125,26 +126,26 @@ export function FileLeaveForMemberPage() {
     [employeeId, leaveType],
   )
 
-  const weekdayDuration = useMemo(() => {
+  const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
     if (dayType !== 'full') return 0
-    return countWeekdays(startDate, endDate)
-  }, [dayType, startDate, endDate])
+    return countLeaveDurationDays(leaveType, startDate, endDate)
+  }, [dayType, startDate, endDate, leaveType])
 
   const durationDays = useMemo(() => {
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
-    if (dayType === 'full') return weekdayDuration
+    if (dayType === 'full') return leaveDuration
     return 0
-  }, [dayType, weekdayDuration])
+  }, [dayType, leaveDuration])
 
   const durationLabel = useMemo(() => {
     if (!dayType || (!startDate && !endDate)) return '0 day(s)'
     if (dayType === 'half_am' || dayType === 'half_pm') {
       return formatDurationLabel(0.5, dayType)
     }
-    return formatDurationLabel(weekdayDuration, 'full')
-  }, [dayType, startDate, endDate, weekdayDuration])
+    return formatDurationLabel(leaveDuration, 'full')
+  }, [dayType, startDate, endDate, leaveDuration])
 
   const mayBeLwop =
     leaveType !== '' &&
@@ -156,12 +157,15 @@ export function FileLeaveForMemberPage() {
     () =>
       validateLeaveLeadTime({
         dayType: dayType === '' ? 'full' : dayType,
-        weekdayDuration: dayType === 'full' ? weekdayDuration : 0,
+        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
         startDateISO: startDate,
         filedOnISO: todayISO(),
       }),
-    [dayType, weekdayDuration, startDate],
+    [dayType, leaveDuration, startDate],
   )
+
+  const workingDaysOnly =
+    leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
   const employeeMissing = employeeId === ''
   const leaveTypeMissing = leaveType === ''
@@ -330,7 +334,7 @@ export function FileLeaveForMemberPage() {
                 label="Start Date"
                 value={startDate}
                 onChange={handleStartDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 disabled={!startDateEnabled}
                 max={endDate || undefined}
               />
@@ -338,7 +342,7 @@ export function FileLeaveForMemberPage() {
                 label="End Date"
                 value={endDate}
                 onChange={handleEndDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 disabled={!endDateEnabled}
                 min={startDate || undefined}
               />

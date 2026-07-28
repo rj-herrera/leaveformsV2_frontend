@@ -25,7 +25,8 @@ const OPTIONS: Array<{
   {
     value: 'parental',
     title: 'Maternity / Paternity Leave',
-    description: 'Apply ML/PL entitlements for employees with filed requests.',
+    description:
+      'Apply ML (105 calendar days) / PL (7 working days) entitlements for filed requests.',
   },
   {
     value: 'contractual',

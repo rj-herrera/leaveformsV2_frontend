@@ -17,12 +17,13 @@ import {
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
-  countWeekdays,
+  countLeaveDurationDays,
   formatDurationLabel,
   inferDayTypeFromDuration,
   parseLeavePeriodToDates,
-  snapToWeekday,
+  snapToWorkingDay,
   todayISO,
+  usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
@@ -68,8 +69,11 @@ export function EditLeaveRequestPage() {
       detail.leavePeriod,
       detail.filedOnDate,
     )
-    const start = snapToWeekday(parsed.start, 'forward')
-    let end = snapToWeekday(parsed.end, 'backward')
+    if (usesCalendarDayCounting(detail.leaveType)) {
+      return { start: parsed.start, end: parsed.end }
+    }
+    const start = snapToWorkingDay(parsed.start, 'forward')
+    let end = snapToWorkingDay(parsed.end, 'backward')
     if (end < start) {
       end = start
     }
@@ -88,26 +92,28 @@ export function EditLeaveRequestPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
 
-  const weekdayDuration = useMemo(() => {
+  const leaveDuration = useMemo(() => {
     if (dayType !== 'full') return 0.5
-    return countWeekdays(startDate, endDate)
-  }, [dayType, startDate, endDate])
+    return countLeaveDurationDays(leaveType, startDate, endDate)
+  }, [dayType, startDate, endDate, leaveType])
 
   const durationLabel = useMemo(
-    () => formatDurationLabel(weekdayDuration, dayType),
-    [weekdayDuration, dayType],
+    () => formatDurationLabel(leaveDuration, dayType),
+    [leaveDuration, dayType],
   )
 
   const leadTimeValidation = useMemo(
     () =>
       validateLeaveLeadTime({
         dayType,
-        weekdayDuration: dayType === 'full' ? weekdayDuration : 0,
+        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
         startDateISO: startDate,
         filedOnISO: todayISO(),
       }),
-    [dayType, weekdayDuration, startDate],
+    [dayType, leaveDuration, startDate],
   )
+
+  const workingDaysOnly = !usesCalendarDayCounting(leaveType)
 
   if (showSkeleton) {
     return <DetailPageSkeleton />
@@ -225,14 +231,14 @@ export function EditLeaveRequestPage() {
                 label="Start Date"
                 value={startDate}
                 onChange={handleStartDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 max={endDate || undefined}
               />
               <DateFieldCustom
                 label="End Date"
                 value={endDate}
                 onChange={handleEndDateChange}
-                weekdaysOnly
+                weekdaysOnly={workingDaysOnly}
                 min={startDate || undefined}
               />
               <TextField
