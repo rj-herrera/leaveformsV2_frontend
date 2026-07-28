@@ -22,6 +22,8 @@ import { NewlyRegularizedEmployeesPage } from './pages/admin/NewlyRegularizedEmp
 import { NewlyRegularizedReviewPage } from './pages/admin/NewlyRegularizedReviewPage'
 import { ParentalDistributionEmployeesPage } from './pages/admin/ParentalDistributionEmployeesPage'
 import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributionReviewPage'
+import { ContractualDistributionAssignPage } from './pages/admin/ContractualDistributionAssignPage'
+import { ContractualDistributionReviewPage } from './pages/admin/ContractualDistributionReviewPage'
 
 /**
  * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
@@ -110,13 +112,20 @@ function App() {
         />
         <Route
           path="admin/leave-balances/distributions/contractual/employees"
-          element={<PagePlaceholder title="Contractual — Select Employees" />}
+          element={
+            <Navigate
+              to="/admin/leave-balances/distributions/contractual/assign"
+              replace
+            />
+          }
+        />
+        <Route
+          path="admin/leave-balances/distributions/contractual/assign"
+          element={<ContractualDistributionAssignPage />}
         />
         <Route
           path="admin/leave-balances/distributions/contractual/review"
-          element={
-            <PagePlaceholder title="Contractual — Review Distribution" />
-          }
+          element={<ContractualDistributionReviewPage />}
         />
         <Route
           path="admin/logs"

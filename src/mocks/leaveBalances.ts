@@ -876,10 +876,12 @@ export function clearContractualDistributionDraft(): void {
 
 export type ContractualReviewRow = {
   employee: LeaveBalanceEmployee
-  leaveTypeKey: LeaveBalanceKey
-  before: number
-  toAdd: number
-  after: number
+  vlBefore: number
+  vlToAdd: number
+  vlAfter: number
+  slBefore: number
+  slToAdd: number
+  slAfter: number
 }
 
 export function getContractualReviewRows(
@@ -895,16 +897,24 @@ export function getContractualReviewRows(
     const employee = EMPLOYEES.find((e) => e.id === employeeId)
     if (!employee) continue
     const assignments = draft.assignmentsByEmployeeId[employeeId] ?? []
-    for (const assignment of assignments) {
-      const before = employee.balances[assignment.leaveTypeKey] ?? 0
-      rows.push({
-        employee: cloneEmployee(employee),
-        leaveTypeKey: assignment.leaveTypeKey,
-        before,
-        toAdd: assignment.amount,
-        after: before + assignment.amount,
-      })
-    }
+    if (assignments.length === 0) continue
+
+    const vlToAdd =
+      assignments.find((a) => a.leaveTypeKey === 'vl')?.amount ?? 0
+    const slToAdd =
+      assignments.find((a) => a.leaveTypeKey === 'sl')?.amount ?? 0
+    const vlBefore = employee.balances.vl ?? 0
+    const slBefore = employee.balances.sl ?? 0
+
+    rows.push({
+      employee: cloneEmployee(employee),
+      vlBefore,
+      vlToAdd,
+      vlAfter: vlBefore + vlToAdd,
+      slBefore,
+      slToAdd,
+      slAfter: slBefore + slToAdd,
+    })
   }
   return rows
 }
@@ -916,16 +926,57 @@ export function applyContractualDistribution(
     groupFilter: 'ALL',
     effectiveDate: '',
   },
+  options: { remarks: string; performedBy: string } = {
+    remarks: '',
+    performedBy: 'Admin',
+  },
 ): void {
+  const occurredAt = new Date().toISOString()
+
   for (const employeeId of draft.selectedEmployeeIds) {
     const employee = EMPLOYEES.find((e) => e.id === employeeId)
     if (!employee) continue
     const assignments = draft.assignmentsByEmployeeId[employeeId] ?? []
     for (const assignment of assignments) {
+      if (assignment.amount <= 0) continue
+      if (assignment.leaveTypeKey !== 'vl' && assignment.leaveTypeKey !== 'sl') {
+        continue
+      }
       const before = employee.balances[assignment.leaveTypeKey] ?? 0
-      employee.balances[assignment.leaveTypeKey] = before + assignment.amount
+      const after = before + assignment.amount
+      employee.balances[assignment.leaveTypeKey] = after
+
+      const short = LEAVE_BALANCE_SHORT[assignment.leaveTypeKey]
+      const label = LEAVE_BALANCE_LABELS[assignment.leaveTypeKey]
+
+      appendActivityLogEntry({
+        occurredAt,
+        activity: 'Contractual leave credits distributed',
+        leaveType: label,
+        balanceImpact: `+${formatBalanceValue(assignment.amount)} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
+        performedBy: options.performedBy,
+        remarks: options.remarks || null,
+      })
+
+      appendAdminLogEntry({
+        eventType: 'CONTRACTUAL_DISTRIBUTION',
+        occurredAt,
+        actorName: options.performedBy,
+        targetEmployeeId: employee.id,
+        targetEmployeeName: employee.name,
+        leaveType: label,
+        direction: 'add',
+        amount: assignment.amount,
+        before,
+        after,
+        effectiveDate: draft.effectiveDate,
+        reasonCategory: 'contractual_grant',
+        reason: options.remarks,
+        ticketRef: null,
+      })
     }
   }
+
   clearContractualDistributionDraft()
 }
 
