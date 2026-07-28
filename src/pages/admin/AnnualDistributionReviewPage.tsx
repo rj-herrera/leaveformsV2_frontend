@@ -64,11 +64,6 @@ export function AnnualDistributionReviewPage() {
     return <Navigate to={distributionEmployeesPath('annual')} replace />
   }
 
-  const scopeLabel =
-    draft.groupFilter === 'ALL' || !draft.groupFilter
-      ? 'All Groups'
-      : draft.groupFilter
-
   function handleConfirmApply() {
     applyAnnualDistribution(draft!.selectedEmployeeIds)
     setConfirmOpen(false)

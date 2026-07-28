@@ -192,9 +192,9 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     groupLabel: 'SYS',
     employmentStatus: 'regular',
     balances: { vl: 0, sl: 0, el: null, ml: null, pl: null, ptb: null },
-    dateHired: '2025-08-01',
-    regularizationDate: '2026-02-01',
-    yearsOfServiceLabel: '< 1 yr',
+    dateHired: '2026-01-06',
+    regularizationDate: '2026-07-06',
+    yearsOfServiceLabel: '6 mos',
     filedParentalLeaveTypes: [],
   },
   {
@@ -204,10 +204,23 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     department: 'IT',
     groupLabel: 'IT',
     employmentStatus: 'regular',
-    balances: { vl: 1.25, sl: 1.25, el: null, ml: null, pl: null, ptb: null },
-    dateHired: '2025-06-15',
-    regularizationDate: '2025-12-15',
-    yearsOfServiceLabel: '< 1 yr',
+    balances: { vl: 0, sl: 0, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2026-01-13',
+    regularizationDate: '2026-07-13',
+    yearsOfServiceLabel: '6 mos',
+    filedParentalLeaveTypes: [],
+  },
+  {
+    id: 'user-newly-reg-3',
+    name: 'Aya Villanueva',
+    employeeNumber: '822',
+    department: 'Project',
+    groupLabel: 'PIP',
+    employmentStatus: 'regular',
+    balances: { vl: 0, sl: 0, el: null, ml: null, pl: null, ptb: null },
+    dateHired: '2026-01-20',
+    regularizationDate: '2026-07-20',
+    yearsOfServiceLabel: '6 mos',
     filedParentalLeaveTypes: [],
   },
   {
@@ -218,7 +231,7 @@ const EMPLOYEES: LeaveBalanceEmployee[] = [
     groupLabel: 'PIP',
     employmentStatus: 'contractual',
     balances: { vl: 2, sl: 2, el: null, ml: null, pl: null, ptb: null },
-    dateHired: '2026-01-15',
+    dateHired: '2026-03-03',
     regularizationDate: null,
     yearsOfServiceLabel: '< 1 yr',
     filedParentalLeaveTypes: [],
@@ -433,6 +446,73 @@ function monthsBetween(startIso: string, endIso: string): number {
   return Math.max(0, months)
 }
 
+function toIsoDate(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** Local calendar date as YYYY-MM-DD. */
+export function todayIsoDate(): string {
+  return toIsoDate(new Date())
+}
+
+/** Regularization date = Date Hired + 6 calendar months. */
+export function computeRegularizationDate(dateHired: string): string | null {
+  const date = new Date(`${dateHired}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return null
+  date.setMonth(date.getMonth() + 6)
+  return toIsoDate(date)
+}
+
+/** Calendar months + leftover days between two ISO dates (end exclusive of borrow logic). */
+export function formatMonthsAndDays(startIso: string, endIso: string): string {
+  const start = new Date(`${startIso}T00:00:00`)
+  const end = new Date(`${endIso}T00:00:00`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    return '—'
+  }
+
+  let months =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth())
+  let days = end.getDate() - start.getDate()
+
+  if (days < 0) {
+    months -= 1
+    const prevMonthLastDay = new Date(end.getFullYear(), end.getMonth(), 0).getDate()
+    days += prevMonthLastDay
+  }
+
+  months = Math.max(0, months)
+  const monthPart = months === 1 ? '1 month' : `${months} months`
+  const dayPart = days === 1 ? '1 day' : `${days} days`
+  return `${monthPart}, ${dayPart}`
+}
+
+/** Months/days from regularization date through Dec 31 of that year. */
+export function formatProratedMonthsAndDays(
+  regularizationIso: string | null,
+): string {
+  if (!regularizationIso) return '—'
+  const start = new Date(`${regularizationIso}T00:00:00`)
+  if (Number.isNaN(start.getTime())) return '—'
+  const endIso = `${start.getFullYear()}-12-31`
+  return formatMonthsAndDays(regularizationIso, endIso)
+}
+
+export function formatDisplayDate(iso: string | null): string {
+  if (!iso) return '—'
+  const date = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 /** Months from regularization date through December of that year (inclusive). */
 function proratedMonthsThroughDecember(regularizationIso: string): number {
   const date = new Date(regularizationIso)
@@ -441,22 +521,26 @@ function proratedMonthsThroughDecember(regularizationIso: string): number {
 }
 
 export function getNewlyRegularizedCandidates(
-  asOfIso = '2026-07-28',
+  asOfIso = todayIsoDate(),
 ): NewlyRegularizedCandidate[] {
   if (!MOCK_DATA_ENABLED) return []
   return EMPLOYEES.map((employee) => {
+    const regularizationDate = computeRegularizationDate(employee.dateHired)
     const monthsSinceHired = monthsBetween(employee.dateHired, asOfIso)
     const eligible =
       employee.employmentStatus === 'regular' &&
-      employee.regularizationDate != null &&
+      regularizationDate != null &&
       monthsSinceHired >= 6 &&
       (employee.balances.vl ?? 0) < 5
-    const monthsProrated = employee.regularizationDate
-      ? proratedMonthsThroughDecember(employee.regularizationDate)
+    const monthsProrated = regularizationDate
+      ? proratedMonthsThroughDecember(regularizationDate)
       : 0
     const credit = Math.round(monthsProrated * NEWLY_REG_RATE * 2) / 2
     return {
-      employee: cloneEmployee(employee),
+      employee: {
+        ...cloneEmployee(employee),
+        regularizationDate,
+      },
       eligible,
       monthsSinceHired,
       monthsProrated,

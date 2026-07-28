@@ -18,6 +18,8 @@ import { AdminLeaveRequestViewPage } from './pages/admin/AdminLeaveRequestViewPa
 import { AdminLeaveValidatePage } from './pages/admin/AdminLeaveValidatePage'
 import { AnnualDistributionEmployeesPage } from './pages/admin/AnnualDistributionEmployeesPage'
 import { AnnualDistributionReviewPage } from './pages/admin/AnnualDistributionReviewPage'
+import { NewlyRegularizedEmployeesPage } from './pages/admin/NewlyRegularizedEmployeesPage'
+import { NewlyRegularizedReviewPage } from './pages/admin/NewlyRegularizedReviewPage'
 
 /**
  * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
@@ -90,15 +92,11 @@ function App() {
         />
         <Route
           path="admin/leave-balances/distributions/newly-regularized/employees"
-          element={
-            <PagePlaceholder title="Newly Regularized — Select Employees" />
-          }
+          element={<NewlyRegularizedEmployeesPage />}
         />
         <Route
           path="admin/leave-balances/distributions/newly-regularized/review"
-          element={
-            <PagePlaceholder title="Newly Regularized — Review Distribution" />
-          }
+          element={<NewlyRegularizedReviewPage />}
         />
         <Route
           path="admin/leave-balances/distributions/parental/employees"
