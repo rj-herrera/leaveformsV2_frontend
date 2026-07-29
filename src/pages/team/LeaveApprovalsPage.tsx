@@ -190,7 +190,7 @@ export function LeaveApprovalsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
@@ -200,12 +200,14 @@ export function LeaveApprovalsPage() {
                 value={groupFilter}
                 onChange={setGroupFilter}
                 options={groupOptions}
+                selectHeight="h-[2.125rem]"
               />
               <FilterSelect
                 label="Filter by leave type"
                 value={leaveTypeFilter}
                 onChange={setLeaveTypeFilter}
                 options={leaveTypeOptions}
+                selectHeight="h-[2.125rem]"
               />
 
               {tab === 'all' ? (
@@ -214,6 +216,7 @@ export function LeaveApprovalsPage() {
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={STATUS_FILTER_OPTIONS}
+                  selectHeight="h-[2.125rem]"
                 />
               ) : null}
             </div>

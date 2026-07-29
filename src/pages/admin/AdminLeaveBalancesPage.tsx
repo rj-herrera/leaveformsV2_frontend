@@ -8,10 +8,10 @@ import {
   SelectDistributionModal,
   type DistributionType,
 } from '../../components/admin/SelectDistributionModal'
+import { Button } from '../../components/ui/Button'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
@@ -148,13 +148,9 @@ export function AdminLeaveBalancesPage() {
         <div className="flex min-w-0 flex-wrap items-center gap-3">
           <h1 className="text-h1 text-text-black">Leave Balances</h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setDistributeOpen(true)}
-          className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
-        >
+        <Button variant="primary" onClick={() => setDistributeOpen(true)}>
           Distribute Leave Credits
-        </button>
+        </Button>
       </div>
 
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
@@ -171,7 +167,7 @@ export function AdminLeaveBalancesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
@@ -181,18 +177,21 @@ export function AdminLeaveBalancesPage() {
                 value={departmentFilter}
                 onChange={setDepartmentFilter}
                 options={departmentOptions}
+                selectHeight="h-[2.125rem]"
               />
               <FilterSelect
                 label="Filter by group"
                 value={groupFilter}
                 onChange={setGroupFilter}
                 options={groupOptions}
+                selectHeight="h-[2.125rem]"
               />
               <FilterSelect
                 label="Filter by employment status"
                 value={employmentStatusFilter}
                 onChange={setEmploymentStatusFilter}
                 options={EMPLOYMENT_STATUS_OPTIONS}
+                selectHeight="h-[2.125rem]"
               />
             </div>
           </div>
@@ -307,14 +306,14 @@ export function AdminLeaveBalancesPage() {
                       </td>
                     ))}
                     <td className="px-5 text-center">
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         title={ADJUST_TOOLTIP}
                         onClick={() => setAdjustEmployeeId(row.id)}
-                        className={TABLE_ACTION_BUTTON_CLASS}
                       >
                         Adjust
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))

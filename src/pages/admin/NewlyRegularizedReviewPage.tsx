@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -222,13 +223,13 @@ export function NewlyRegularizedReviewPage() {
         >
           Back
         </Link>
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={() => setConfirmOpen(true)}
-          className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
         >
           Confirm
-        </button>
+        </Button>
       </div>
 
       <ConfirmReasonModal

@@ -107,7 +107,7 @@ export function UpcomingApprovedLeavesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
@@ -116,12 +116,14 @@ export function UpcomingApprovedLeavesPage() {
               value={leaveTypeFilter}
               onChange={setLeaveTypeFilter}
               options={leaveTypeOptions}
+              selectHeight="h-[2.125rem]"
             />
             <FilterSelect
               label="Filter by group"
               value={groupFilter}
               onChange={setGroupFilter}
               options={groupOptions}
+              selectHeight="h-[2.125rem]"
             />
           </div>
         </div>

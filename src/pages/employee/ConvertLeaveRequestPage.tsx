@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { FileField } from '../../components/ui/form/FileField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
@@ -154,19 +155,12 @@ export function ConvertLeaveRequestPage() {
         </section>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(detailsPath)}
-            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-          >
+          <Button type="button" onClick={() => navigate(detailsPath)}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
-          >
+          </Button>
+          <Button type="submit" variant="primary">
             Confirm
-          </button>
+          </Button>
         </div>
       </form>
 

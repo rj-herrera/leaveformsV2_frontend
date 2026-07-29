@@ -9,11 +9,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   canSendApproverReminder,
@@ -199,13 +199,13 @@ export function AdminLeaveRequestViewPage() {
               </p>
               <p className="text-small text-text-gray">Attachment</p>
             </div>
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={() => openPreview(detail.attachmentFileName!)}
-              className={TABLE_ACTION_BUTTON_CLASS}
             >
               View
-            </button>
+            </Button>
           </div>
         ) : (
           <p className="mt-2 text-body text-text-gray italic">
@@ -274,14 +274,14 @@ export function AdminLeaveRequestViewPage() {
                       {approver.remarks ?? '—'}
                     </td>
                     <td className="px-5 py-3.5 text-center">
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
                         disabled={!canRemind}
                         onClick={() => setReminderTarget(approver)}
-                        className={TABLE_ACTION_BUTTON_CLASS}
                       >
                         Send Reminder
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 )

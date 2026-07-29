@@ -11,9 +11,9 @@ import {
   XCircle,
 } from 'lucide-react'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -137,7 +137,7 @@ export function LeaveRequestDetailsPage() {
               Edit Request
             </Link>
           ) : (
-            <button
+            <Button
               type="button"
               disabled
               title={
@@ -145,22 +145,20 @@ export function LeaveRequestDetailsPage() {
                   ? 'Editing is not available during leave conversion'
                   : 'Editing is disabled after an approver has taken action'
               }
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-gray opacity-50"
             >
               <Pencil className="size-4" aria-hidden="true" />
               Edit Request
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
             type="button"
             disabled={!canCancel}
             onClick={() => setCancelOpen(true)}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="size-4" aria-hidden="true" />
             Cancel Request
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -212,15 +210,15 @@ export function LeaveRequestDetailsPage() {
                     {detail.conversion.conversionAttachment ?? '—'}
                   </span>
                   {detail.conversion.conversionAttachment && (
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={() =>
                         openPreview(detail.conversion!.conversionAttachment!)
                       }
-                      className={TABLE_ACTION_BUTTON_CLASS}
                     >
                       View
-                    </button>
+                    </Button>
                   )}
                 </dd>
               </div>
@@ -301,13 +299,13 @@ export function LeaveRequestDetailsPage() {
               <span className="text-body font-semibold text-text-black">
                 {detail.attachmentFileName}
               </span>
-              <button
+              <Button
                 type="button"
+                size="sm"
                 onClick={() => openPreview(detail.attachmentFileName!)}
-                className={TABLE_ACTION_BUTTON_CLASS}
               >
                 View
-              </button>
+              </Button>
             </div>
           ) : (
             <p className="text-body text-text-gray mt-3 italic">

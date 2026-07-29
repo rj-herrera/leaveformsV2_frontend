@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Search, Send } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
@@ -232,15 +233,15 @@ export function AdminLeaveRequestsPage() {
               {formatReminderSentLabel(lastReminderSent)}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="primary"
             disabled={reminderSentToday || showSkeleton}
             onClick={() => setReminderConfirmOpen(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-status-pending-conversion px-4 py-2 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 bg-status-pending-conversion hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >
             <Send className="size-4" aria-hidden="true" />
             Send Reminder to All
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -258,7 +259,7 @@ export function AdminLeaveRequestsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
@@ -269,6 +270,7 @@ export function AdminLeaveRequestsPage() {
                   value={groupFilter}
                   onChange={setGroupFilter}
                   options={groupOptions}
+                  selectHeight="h-[2.125rem]"
                 />
               ) : null}
               <FilterSelect
@@ -276,6 +278,7 @@ export function AdminLeaveRequestsPage() {
                 value={leaveTypeFilter}
                 onChange={setLeaveTypeFilter}
                 options={leaveTypeOptions}
+                selectHeight="h-[2.125rem]"
               />
               {tab === 'all' ? (
                 <FilterSelect
@@ -283,6 +286,7 @@ export function AdminLeaveRequestsPage() {
                   value={statusFilter}
                   onChange={setStatusFilter}
                   options={STATUS_FILTER_OPTIONS}
+                  selectHeight="h-[2.125rem]"
                 />
               ) : null}
             </div>

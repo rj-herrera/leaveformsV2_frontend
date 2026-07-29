@@ -8,11 +8,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
@@ -189,13 +189,13 @@ export function AdminLeaveValidatePage() {
                   </dd>
                 </div>
                 {conversion.conversionAttachment ? (
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => openPreview(conversion.conversionAttachment!)}
-                    className={TABLE_ACTION_BUTTON_CLASS}
                   >
                     View
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </dl>
@@ -264,20 +264,12 @@ export function AdminLeaveValidatePage() {
 
       {canAct ? (
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setRejectOpen(true)}
-            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-          >
+          <Button type="button" onClick={() => setRejectOpen(true)}>
             Reject
-          </button>
-          <button
-            type="button"
-            onClick={() => setApproveOpen(true)}
-            className="rounded-md border border-border bg-surface-muted px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-background"
-          >
+          </Button>
+          <Button type="button" onClick={() => setApproveOpen(true)}>
             Approve
-          </button>
+          </Button>
         </div>
       ) : null}
 

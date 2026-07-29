@@ -13,6 +13,16 @@ import {
 } from 'lucide-react'
 import { leaveBalancesLandingPath } from '../utils/distributionPaths'
 
+export type NavChildItem = {
+  label: string
+  to: string
+  /**
+   * Extra path patterns (react-router matchPath) that keep this item active.
+   * The `to` path is always matched as well.
+   */
+  matchPaths?: string[]
+}
+
 export type NavItem = {
   label: string
   to: string
@@ -22,6 +32,8 @@ export type NavItem = {
    * The `to` path is always matched as well.
    */
   matchPaths?: string[]
+  /** When set, parent is expandable only (not its own page). */
+  children?: NavChildItem[]
 }
 
 export type NavSection = {
@@ -105,6 +117,21 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Leave Reports',
         to: '/admin/reports',
         icon: BarChart3,
+        matchPaths: ['/admin/reports/*'],
+        children: [
+          {
+            label: 'Monthly Attendance Report',
+            to: '/admin/reports/monthly-attendance',
+          },
+          {
+            label: 'Leave Monetization Candidates',
+            to: '/admin/reports/leave-monetization-candidates',
+          },
+          {
+            label: 'Employees with LWOP',
+            to: '/admin/reports/employees-with-lwop',
+          },
+        ],
       },
     ],
   },

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -354,14 +355,14 @@ export function ContractualDistributionAssignPage() {
         >
           Back
         </Link>
-        <button
+        <Button
           type="button"
+          variant="primary"
           disabled={!canContinue}
           onClick={handleContinue}
-          className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Continue
-        </button>
+        </Button>
       </div>
     </div>
   )

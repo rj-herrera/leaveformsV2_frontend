@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
 import { EmploymentStatusPill } from '../../components/admin/EmploymentStatusPill'
+import { Button } from '../../components/ui/Button'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -166,7 +167,7 @@ export function AnnualDistributionEmployeesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
@@ -176,6 +177,7 @@ export function AnnualDistributionEmployeesPage() {
                 value={groupFilter}
                 onChange={setGroupFilter}
                 options={groupOptions}
+                selectHeight="h-[2.125rem]"
               />
             </div>
           </div>
@@ -278,14 +280,9 @@ export function AnnualDistributionEmployeesPage() {
         >
           Back
         </Link>
-        <button
-          type="button"
-          disabled={!canContinue}
-          onClick={handleContinue}
-          className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button variant="primary" disabled={!canContinue} onClick={handleContinue}>
           Continue
-        </button>
+        </Button>
       </div>
     </div>
   )

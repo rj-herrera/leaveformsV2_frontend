@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, Search } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { FilterSelect } from '../../components/ui/FilterSelect'
-import { fieldShellClassName } from '../../components/ui/form/fieldStyles'
+import { MonthYearPickerField } from '../../components/ui/form/MonthYearPickerField'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import {
@@ -17,17 +17,15 @@ import {
   getAdminLogEntries,
 } from '../../mocks/adminLog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
-import {
-  formatMonthYearLabel,
-  getMonthSelectOptions,
-  parseMonthValue,
-} from '../../utils/teamCalendarGrid'
 
 type LeaveTypeFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
 type DateSort = 'desc' | 'asc'
 
-const ALL_MONTHS = 'ALL'
+/** Shared height for all filter bar controls so they align visually. */
+const FILTER_H = 'h-[2.125rem]'
+
+
 
 export function AdminAdministrativeLogPage() {
   const location = useLocation()
@@ -133,7 +131,7 @@ export function AdminAdministrativeLogPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search employee name or number"
-                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className={`w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20 ${FILTER_H}`}
               />
             </label>
 
@@ -144,6 +142,7 @@ export function AdminAdministrativeLogPage() {
                 onChange={setGroupFilter}
                 options={groupOptions}
                 fitContent
+                selectHeight={FILTER_H}
               />
               <FilterSelect
                 label="Filter by leave type"
@@ -151,10 +150,16 @@ export function AdminAdministrativeLogPage() {
                 onChange={setLeaveTypeFilter}
                 options={leaveTypeOptions}
                 fitContent
+                selectHeight={FILTER_H}
               />
-              <MonthYearFilter
+              <MonthYearPickerField
+                label="Filter by month and year"
                 value={monthYear}
                 onChange={setMonthYear}
+                emptyLabel="All Months"
+                allowClear
+                showLabel={false}
+                controlHeight={FILTER_H}
               />
             </div>
           </div>
@@ -273,107 +278,6 @@ export function AdminAdministrativeLogPage() {
           onPageChange={setCurrentPage}
         />
       </section>
-    </div>
-  )
-}
-
-function MonthYearFilter({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  const monthOptions = useMemo(() => getMonthSelectOptions(new Date()), [])
-
-  const selectedLabel = useMemo(() => {
-    if (!value) return 'All Months'
-    const parsed = parseMonthValue(value)
-    if (!parsed) return 'All Months'
-    return formatMonthYearLabel(parsed.year, parsed.monthIndex)
-  }, [value])
-
-  useEffect(() => {
-    if (!open) return
-
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node
-      if (menuRef.current && !menuRef.current.contains(target)) {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', onPointerDown)
-    return () => document.removeEventListener('mousedown', onPointerDown)
-  }, [open])
-
-  function handleSelect(next: string) {
-    onChange(next === ALL_MONTHS ? '' : next)
-    setOpen(false)
-  }
-
-  return (
-    <div className="relative w-auto shrink-0" ref={menuRef}>
-      <div className={fieldShellClassName}>
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-label="Filter by month and year"
-          className="inline-flex items-center gap-2 rounded-md border border-border bg-surface py-1.5 pr-3 pl-3 text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
-        >
-          <span>{selectedLabel}</span>
-          <ChevronDown
-            className="size-4 shrink-0 text-text-gray"
-            aria-hidden="true"
-          />
-        </button>
-      </div>
-
-      {open ? (
-        <ul
-          role="listbox"
-          className="absolute top-full right-0 z-20 mt-1 max-h-60 min-w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-sm"
-        >
-          <li>
-            <button
-              type="button"
-              role="option"
-              aria-selected={!value}
-              onClick={() => handleSelect(ALL_MONTHS)}
-              className={`w-full px-3 py-1.5 text-left text-body transition-colors hover:bg-surface-muted ${
-                !value ? 'font-medium text-primary' : 'text-text-black'
-              }`}
-            >
-              All Months
-            </button>
-          </li>
-          {monthOptions.map((option) => {
-            const selected = option.value === value
-            return (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => handleSelect(option.value)}
-                  className={`w-full whitespace-nowrap px-3 py-1.5 text-left text-body transition-colors hover:bg-surface-muted ${
-                    selected
-                      ? 'font-medium text-primary'
-                      : 'text-text-black'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
     </div>
   )
 }

@@ -9,11 +9,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   getApprovalProgressLabel,
@@ -212,13 +212,13 @@ export function LeaveRequestReviewPage() {
             <span className="text-body font-semibold text-text-black">
               {detail.attachmentFileName}
             </span>
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={() => openPreview(detail.attachmentFileName!)}
-              className={TABLE_ACTION_BUTTON_CLASS}
             >
               View
-            </button>
+            </Button>
           </div>
         ) : (
           <p className="mt-2 text-body text-text-gray italic">
@@ -297,20 +297,16 @@ export function LeaveRequestReviewPage() {
 
       {isReviewMode ? (
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setRejectOpen(true)}
-            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-          >
+          <Button type="button" onClick={() => setRejectOpen(true)}>
             Reject
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
             onClick={() => setApproveOpen(true)}
-            className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
           >
             Approve
-          </button>
+          </Button>
         </div>
       ) : null}
 

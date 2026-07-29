@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TriangleAlert } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
 import { FileField } from '../../components/ui/form/FileField'
@@ -323,20 +324,16 @@ export function FileLeavePage() {
         </section>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-          >
+          <Button type="button" onClick={handleClear}>
             Clear
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
+            variant="primary"
             disabled={!leadTimeValidation.ok}
-            className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Submit Request
-          </button>
+          </Button>
         </div>
       </form>
 

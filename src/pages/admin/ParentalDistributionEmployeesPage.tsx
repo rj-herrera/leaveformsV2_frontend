@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Search } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
@@ -292,14 +292,14 @@ export function ParentalDistributionEmployeesPage() {
         >
           Back
         </Link>
-        <button
+        <Button
           type="button"
+          variant="primary"
           disabled={!canContinue}
           onClick={handleContinue}
-          className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Continue
-        </button>
+        </Button>
       </div>
 
       <ParentalRequestDetailsModal
@@ -359,13 +359,9 @@ function CandidateRow({
         {leavePeriod}
       </td>
       <td className="px-3 text-center">
-        <button
-          type="button"
-          onClick={onViewDetails}
-          className={TABLE_ACTION_BUTTON_CLASS}
-        >
+        <Button type="button" size="sm" onClick={onViewDetails}>
           View Details
-        </button>
+        </Button>
       </td>
     </tr>
   )
@@ -389,13 +385,9 @@ function ParentalRequestDetailsModal({
       title="Attachment"
       maxWidthClass="max-w-3xl"
       footer={
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
+        <Button type="button" onClick={onClose}>
           Close
-        </button>
+        </Button>
       }
     >
       {candidate ? (

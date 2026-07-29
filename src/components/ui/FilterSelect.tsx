@@ -14,6 +14,8 @@ type FilterSelectProps<T extends string> = {
   className?: string
   /** Size the control to its option text instead of a fixed min width */
   fitContent?: boolean
+  /** Optional Tailwind height class applied to the <select>, e.g. "h-[2.375rem]" */
+  selectHeight?: string
 }
 
 export function FilterSelect<T extends string>({
@@ -23,6 +25,7 @@ export function FilterSelect<T extends string>({
   options,
   className = '',
   fitContent = false,
+  selectHeight,
 }: FilterSelectProps<T>) {
   const selectWidthClass = fitContent
     ? 'w-auto min-w-0'
@@ -38,7 +41,7 @@ export function FilterSelect<T extends string>({
           value={value}
           onChange={(e) => onChange(e.target.value as T)}
           aria-label={label}
-          className={`box-border appearance-none rounded-md border border-border bg-surface py-1.5 pr-9 pl-3 text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 ${selectWidthClass}`}
+          className={`box-border appearance-none rounded-md border border-border bg-surface py-1.5 pr-9 pl-3 text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 ${selectWidthClass} ${selectHeight ?? ''}`}
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
