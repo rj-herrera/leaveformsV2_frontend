@@ -19,7 +19,10 @@ import {
   parentalCandidateKey,
 } from '../../mocks/leaveBalances'
 import { formatParentalEntitlementLabel } from '../../utils/leaveDates'
-import { distributionEmployeesPath } from '../../utils/distributionPaths'
+import {
+  distributionEmployeesPath,
+  leaveBalancesLandingPath,
+} from '../../utils/distributionPaths'
 
 function formatEffectiveDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`)
@@ -70,7 +73,7 @@ export function ParentalDistributionReviewPage() {
 
   function handleSuccessClose() {
     setSuccessOpen(false)
-    navigate('/admin/leave-balances')
+    navigate(leaveBalancesLandingPath())
   }
 
   return (

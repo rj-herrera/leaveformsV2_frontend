@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { useAuth } from '../../auth/AuthContext'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -14,7 +15,7 @@ import {
 import { usePagination } from '../../hooks/usePagination'
 import {
   formatActivityTimestamp,
-  getActivityLogEntries,
+  getActivityLogEntriesForEmployee,
   matchesActivityLeaveType,
 } from '../../mocks/activityLog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -23,6 +24,7 @@ type LeaveTypeFilter = 'ALL' | string
 type TimestampSort = 'desc' | 'asc'
 
 export function ActivityLogPage() {
+  const { user } = useAuth()
   const tableAreaRef = useRef<HTMLDivElement>(null)
   const pageSize = usePageSizeFromHeight(tableAreaRef)
   const showSkeleton = shouldShowDataSkeleton()
@@ -30,8 +32,10 @@ export function ActivityLogPage() {
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState<LeaveTypeFilter>('ALL')
   const [timestampSort, setTimestampSort] = useState<TimestampSort>('desc')
-
-  const allEntries = useMemo(() => getActivityLogEntries(), [])
+  const allEntries = useMemo(
+    () => getActivityLogEntriesForEmployee(user.id),
+    [user.id],
+  )
 
   const leaveTypeFilterOptions = useMemo(() => {
     const fromData = Array.from(

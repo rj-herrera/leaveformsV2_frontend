@@ -19,7 +19,10 @@ import {
   getNewlyRegularizedDraft,
   getNewlyRegularizedReviewRows,
 } from '../../mocks/leaveBalances'
-import { distributionEmployeesPath } from '../../utils/distributionPaths'
+import {
+  distributionEmployeesPath,
+  leaveBalancesLandingPath,
+} from '../../utils/distributionPaths'
 
 function formatEffectiveDate(iso: string): string {
   const date = new Date(`${iso}T00:00:00`)
@@ -72,7 +75,7 @@ export function NewlyRegularizedReviewPage() {
 
   function handleSuccessClose() {
     setSuccessOpen(false)
-    navigate('/admin/leave-balances')
+    navigate(leaveBalancesLandingPath())
   }
 
   return (

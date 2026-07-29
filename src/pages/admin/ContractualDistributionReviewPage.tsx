@@ -21,6 +21,7 @@ import {
 } from '../../mocks/leaveBalances'
 import {
   distributionAssignPath,
+  leaveBalancesLandingPath,
 } from '../../utils/distributionPaths'
 
 function formatEffectiveDate(iso: string): string {
@@ -79,7 +80,7 @@ export function ContractualDistributionReviewPage() {
 
   function handleSuccessClose() {
     setSuccessOpen(false)
-    navigate('/admin/leave-balances')
+    navigate(leaveBalancesLandingPath())
   }
 
   return (

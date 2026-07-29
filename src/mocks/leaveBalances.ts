@@ -357,11 +357,13 @@ export function filterLeaveBalanceRows(
     search?: string
     department?: string
     group?: string
+    employmentStatus?: EmploymentStatus | 'ALL'
   },
 ): LeaveBalanceEmployee[] {
   const query = (filters.search ?? '').trim().toLowerCase()
   const department = filters.department ?? 'ALL'
   const group = filters.group ?? 'ALL'
+  const employmentStatus = filters.employmentStatus ?? 'ALL'
 
   return rows.filter((row) => {
     const matchesSearch =
@@ -371,7 +373,14 @@ export function filterLeaveBalanceRows(
     const matchesDepartment =
       department === 'ALL' || row.department === department
     const matchesGroup = group === 'ALL' || row.groupLabel === group
-    return matchesSearch && matchesDepartment && matchesGroup
+    const matchesEmploymentStatus =
+      employmentStatus === 'ALL' || row.employmentStatus === employmentStatus
+    return (
+      matchesSearch &&
+      matchesDepartment &&
+      matchesGroup &&
+      matchesEmploymentStatus
+    )
   })
 }
 
@@ -951,6 +960,7 @@ export function applyContractualDistribution(
 
       appendActivityLogEntry({
         occurredAt,
+        employeeId: employee.id,
         activity: 'Contractual leave credits distributed',
         leaveType: label,
         balanceImpact: `+${formatBalanceValue(assignment.amount)} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
@@ -1011,8 +1021,6 @@ export type BalanceAdjustmentPayload = {
   effectiveDate: string
   reasonCategory: AdjustmentReasonCategory
   reason: string
-  ticketRef?: string | null
-  attachmentFileName?: string | null
   performedBy: string
 }
 
@@ -1087,12 +1095,16 @@ export function applyBalanceAdjustment(
     payload.direction === 'add'
       ? `+${formatBalanceValue(payload.amount)}`
       : `-${formatBalanceValue(payload.amount)}`
+  const reasonCategoryLabel =
+    ADJUSTMENT_REASON_OPTIONS.find((o) => o.value === payload.reasonCategory)
+      ?.label ?? payload.reasonCategory
 
   appendActivityLogEntry({
     occurredAt,
+    employeeId: employee.id,
     activity:
       payload.direction === 'add'
-        ? 'Leave credits adjusted'
+        ? 'Leave credits added'
         : 'Leave credits deducted',
     leaveType: label,
     balanceImpact: `${signed} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
@@ -1112,9 +1124,9 @@ export function applyBalanceAdjustment(
     before,
     after,
     effectiveDate: payload.effectiveDate,
-    reasonCategory: payload.reasonCategory,
+    reasonCategory: reasonCategoryLabel,
     reason: payload.reason,
-    ticketRef: payload.ticketRef ?? null,
+    ticketRef: null,
   })
 
   return recorded

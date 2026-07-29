@@ -1,14 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Search, ArrowDown, ArrowUp } from 'lucide-react'
 import { EmploymentStatusPill } from '../../components/admin/EmploymentStatusPill'
+import { AdjustCreditsModal } from '../../components/admin/AdjustCreditsModal'
 import { LeaveTypeChipHeader } from '../../components/admin/LeaveTypeChipHeader'
 import {
   SelectDistributionModal,
   type DistributionType,
 } from '../../components/admin/SelectDistributionModal'
 import { FilterSelect } from '../../components/ui/FilterSelect'
-import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
@@ -20,18 +20,41 @@ import {
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
+  EMPLOYMENT_STATUS_LABELS,
   LEAVE_BALANCE_KEYS,
+  type EmploymentStatus,
   filterLeaveBalanceRows,
   formatBalanceValue,
   getAdminLeaveBalanceRows,
   getLeaveBalanceDepartments,
+  getLeaveBalanceEmployeeById,
   getLeaveBalanceGroups,
-  type LeaveBalanceEmployee,
 } from '../../mocks/leaveBalances'
 import { distributionEmployeesPath } from '../../utils/distributionPaths'
 
 type DepartmentFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
+type EmploymentStatusFilter = 'ALL' | EmploymentStatus
+type EmployeeNumberSort = 'asc' | 'desc'
+
+function compareEmployeeNumber(a: string, b: string): number {
+  const numA = Number(a)
+  const numB = Number(b)
+  if (Number.isFinite(numA) && Number.isFinite(numB)) {
+    return numA - numB
+  }
+  return a.localeCompare(b)
+}
+
+const EMPLOYMENT_STATUS_OPTIONS: Array<{
+  value: EmploymentStatusFilter
+  label: string
+}> = [
+  { value: 'ALL', label: 'All Employment Statuses' },
+  ...(Object.entries(EMPLOYMENT_STATUS_LABELS) as Array<
+    [EmploymentStatus, string]
+  >).map(([value, label]) => ({ value, label })),
+]
 
 const ADJUST_TOOLTIP =
   'For corrections and exceptions only. Use Distribute Leave Credits for routine grants.'
@@ -49,11 +72,23 @@ export function AdminLeaveBalancesPage() {
   const [departmentFilter, setDepartmentFilter] =
     useState<DepartmentFilter>('ALL')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
+  const [employmentStatusFilter, setEmploymentStatusFilter] =
+    useState<EmploymentStatusFilter>('ALL')
+  const [employeeNumberSort, setEmployeeNumberSort] =
+    useState<EmployeeNumberSort>('asc')
   const [distributeOpen, setDistributeOpen] = useState(false)
-  const [adjustEmployee, setAdjustEmployee] =
-    useState<LeaveBalanceEmployee | null>(null)
+  const [adjustEmployeeId, setAdjustEmployeeId] = useState<string | null>(null)
+  const [listVersion, setListVersion] = useState(0)
 
-  const allRows = useMemo(() => getAdminLeaveBalanceRows(), [])
+  const allRows = useMemo(() => {
+    void listVersion
+    return getAdminLeaveBalanceRows()
+  }, [listVersion])
+
+  const adjustEmployee = useMemo(() => {
+    if (!adjustEmployeeId) return null
+    return getLeaveBalanceEmployeeById(adjustEmployeeId)
+  }, [adjustEmployeeId, listVersion])
 
   const departmentOptions = useMemo(() => {
     return [
@@ -81,13 +116,27 @@ export function AdminLeaveBalancesPage() {
         search,
         department: departmentFilter,
         group: groupFilter,
+        employmentStatus: employmentStatusFilter,
       }),
-    [allRows, search, departmentFilter, groupFilter],
+    [allRows, search, departmentFilter, groupFilter, employmentStatusFilter],
   )
 
-  const filterResetKey = [search, departmentFilter, groupFilter].join('|')
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((a, b) => {
+      const cmp = compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
+      return employeeNumberSort === 'asc' ? cmp : -cmp
+    })
+  }, [filteredRows, employeeNumberSort])
+
+  const filterResetKey = [
+    search,
+    departmentFilter,
+    groupFilter,
+    employmentStatusFilter,
+    employeeNumberSort,
+  ].join('|')
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredRows, pageSize, filterResetKey)
+    usePagination(sortedRows, pageSize, filterResetKey)
 
   function handleDistributeContinue(type: DistributionType) {
     navigate(distributionEmployeesPath(type))
@@ -139,6 +188,12 @@ export function AdminLeaveBalancesPage() {
                 onChange={setGroupFilter}
                 options={groupOptions}
               />
+              <FilterSelect
+                label="Filter by employment status"
+                value={employmentStatusFilter}
+                onChange={setEmploymentStatusFilter}
+                options={EMPLOYMENT_STATUS_OPTIONS}
+              />
             </div>
           </div>
         </div>
@@ -167,7 +222,25 @@ export function AdminLeaveBalancesPage() {
                   Employee Name
                 </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Employee Number
+                  <div className="flex items-center gap-1.5">
+                    <span>Employee Number</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEmployeeNumberSort((sort) =>
+                          sort === 'asc' ? 'desc' : 'asc',
+                        )
+                      }
+                      className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
+                      aria-label={`Sort employee number ${employeeNumberSort === 'asc' ? 'descending' : 'ascending'}`}
+                    >
+                      {employeeNumberSort === 'asc' ? (
+                        <ArrowUp className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <ArrowDown className="size-3.5" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   Group
@@ -237,7 +310,7 @@ export function AdminLeaveBalancesPage() {
                       <button
                         type="button"
                         title={ADJUST_TOOLTIP}
-                        onClick={() => setAdjustEmployee(row)}
+                        onClick={() => setAdjustEmployeeId(row.id)}
                         className={TABLE_ACTION_BUTTON_CLASS}
                       >
                         Adjust
@@ -253,7 +326,7 @@ export function AdminLeaveBalancesPage() {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={filteredRows.length}
+          totalItems={sortedRows.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
         />
@@ -265,29 +338,12 @@ export function AdminLeaveBalancesPage() {
         onContinue={handleDistributeContinue}
       />
 
-      <Modal
-        open={adjustEmployee != null}
-        onClose={() => setAdjustEmployee(null)}
-        title="Adjust leave credits"
-        footer={
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => setAdjustEmployee(null)}
-              className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90"
-            >
-              Close
-            </button>
-          </div>
-        }
-      >
-        <p className="text-body text-text-black">
-          Adjust for{' '}
-          <span className="font-semibold">{adjustEmployee?.name}</span> (
-          {adjustEmployee?.employeeNumber}) will be available in a later update.
-        </p>
-        <p className="mt-2 text-small text-text-gray">{ADJUST_TOOLTIP}</p>
-      </Modal>
+      <AdjustCreditsModal
+        open={adjustEmployeeId != null}
+        employee={adjustEmployee}
+        onClose={() => setAdjustEmployeeId(null)}
+        onSuccess={() => setListVersion((v) => v + 1)}
+      />
     </div>
   )
 }

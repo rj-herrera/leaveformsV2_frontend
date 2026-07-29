@@ -24,6 +24,10 @@ import { ParentalDistributionEmployeesPage } from './pages/admin/ParentalDistrib
 import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributionReviewPage'
 import { ContractualDistributionAssignPage } from './pages/admin/ContractualDistributionAssignPage'
 import { ContractualDistributionReviewPage } from './pages/admin/ContractualDistributionReviewPage'
+import {
+  distributionAssignPath,
+  leaveBalancesLandingPath,
+} from './utils/distributionPaths'
 
 /**
  * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
@@ -113,10 +117,7 @@ function App() {
         <Route
           path="admin/leave-balances/distributions/contractual/employees"
           element={
-            <Navigate
-              to="/admin/leave-balances/distributions/contractual/assign"
-              replace
-            />
+            <Navigate to={distributionAssignPath('contractual')} replace />
           }
         />
         <Route
@@ -126,6 +127,10 @@ function App() {
         <Route
           path="admin/leave-balances/distributions/contractual/review"
           element={<ContractualDistributionReviewPage />}
+        />
+        <Route
+          path="admin/leave-balances/distributions/*"
+          element={<Navigate to={leaveBalancesLandingPath()} replace />}
         />
         <Route
           path="admin/logs"

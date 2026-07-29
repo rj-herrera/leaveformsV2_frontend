@@ -19,7 +19,10 @@ import {
   setAnnualDistributionDraft,
   type AnnualCandidate,
 } from '../../mocks/leaveBalances'
-import { distributionReviewPath } from '../../utils/distributionPaths'
+import {
+  distributionReviewPath,
+  leaveBalancesLandingPath,
+} from '../../utils/distributionPaths'
 
 type GroupFilter = 'ALL' | string
 
@@ -138,7 +141,7 @@ export function AnnualDistributionEmployeesPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <Link
-        to="/admin/leave-balances"
+        to={leaveBalancesLandingPath()}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -270,7 +273,7 @@ export function AnnualDistributionEmployeesPage() {
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         <Link
-          to="/admin/leave-balances"
+          to={leaveBalancesLandingPath()}
           className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
         >
           Back

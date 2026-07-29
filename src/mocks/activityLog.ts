@@ -5,6 +5,8 @@ import { MOCK_DATA_ENABLED } from './config'
 
 export type ActivityLogEntry = {
   id: string
+  /** Target employee for this activity — used to scope the employee Activity Log */
+  employeeId?: string
   occurredAt: string
   activity: string
   leaveType: string
@@ -17,6 +19,7 @@ export type ActivityLogEntry = {
 export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   {
     id: 'act-1',
+    employeeId: 'user-employee',
     occurredAt: '2026-07-01T09:15:00',
     activity: 'Leave request submitted',
     leaveType: 'Vacation Leave',
@@ -26,6 +29,7 @@ export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   },
   {
     id: 'act-2',
+    employeeId: 'user-employee',
     occurredAt: '2026-07-08T11:05:00',
     activity: 'Leave request approved',
     leaveType: 'Vacation Leave',
@@ -35,6 +39,7 @@ export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   },
   {
     id: 'act-3',
+    employeeId: 'user-employee',
     occurredAt: '2026-06-20T10:15:00',
     activity: 'Leave request approved',
     leaveType: 'Sick Leave',
@@ -44,6 +49,7 @@ export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   },
   {
     id: 'act-4',
+    employeeId: 'user-employee',
     occurredAt: '2026-06-20T09:00:00',
     activity: 'Leave request submitted',
     leaveType: 'Sick Leave',
@@ -53,6 +59,7 @@ export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   },
   {
     id: 'act-5',
+    employeeId: 'user-employee',
     occurredAt: '2026-06-16T10:00:00',
     activity: 'Leave request approved',
     leaveType: 'Vacation Leave',
@@ -62,6 +69,7 @@ export const MOCK_ACTIVITY_LOG: ActivityLogEntry[] = [
   },
   {
     id: 'act-6',
+    employeeId: 'user-employee',
     occurredAt: '2026-06-15T08:30:00',
     activity: 'Leave request submitted',
     leaveType: 'Vacation Leave',
@@ -78,11 +86,20 @@ export function getActivityLogEntries(): ActivityLogEntry[] {
   )
 }
 
+export function getActivityLogEntriesForEmployee(
+  employeeId: string,
+): ActivityLogEntry[] {
+  return getActivityLogEntries().filter(
+    (entry) => entry.employeeId === employeeId,
+  )
+}
+
 export function appendActivityLogEntry(
   entry: Omit<ActivityLogEntry, 'id'> & { id?: string },
 ): ActivityLogEntry {
   const full: ActivityLogEntry = {
     id: entry.id ?? `act-${Date.now()}-${MOCK_ACTIVITY_LOG.length + 1}`,
+    employeeId: entry.employeeId,
     occurredAt: entry.occurredAt,
     activity: entry.activity,
     leaveType: entry.leaveType,

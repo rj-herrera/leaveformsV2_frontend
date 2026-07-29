@@ -20,6 +20,7 @@ import {
 } from '../../mocks/leaveBalances'
 import {
   distributionEmployeesPath,
+  leaveBalancesLandingPath,
 } from '../../utils/distributionPaths'
 
 function formatEffectiveDate(iso: string): string {
@@ -72,7 +73,7 @@ export function AnnualDistributionReviewPage() {
 
   function handleSuccessClose() {
     setSuccessOpen(false)
-    navigate('/admin/leave-balances')
+    navigate(leaveBalancesLandingPath())
   }
 
   return (

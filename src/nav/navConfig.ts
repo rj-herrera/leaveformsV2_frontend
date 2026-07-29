@@ -11,6 +11,7 @@ import {
   UserPlus,
   Wallet,
 } from 'lucide-react'
+import { leaveBalancesLandingPath } from '../utils/distributionPaths'
 
 export type NavItem = {
   label: string
@@ -90,7 +91,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         label: 'Leave Balances',
-        to: '/admin/leave-balances',
+        to: leaveBalancesLandingPath(),
         icon: Wallet,
         matchPaths: ['/admin/leave-balances/*'],
       },
