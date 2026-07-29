@@ -24,6 +24,7 @@ import { ParentalDistributionEmployeesPage } from './pages/admin/ParentalDistrib
 import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributionReviewPage'
 import { ContractualDistributionAssignPage } from './pages/admin/ContractualDistributionAssignPage'
 import { ContractualDistributionReviewPage } from './pages/admin/ContractualDistributionReviewPage'
+import { AdminAdministrativeLogPage } from './pages/admin/AdminAdministrativeLogPage'
 import {
   distributionAssignPath,
   leaveBalancesLandingPath,
@@ -134,11 +135,11 @@ function App() {
         />
         <Route
           path="admin/logs"
-          element={<PagePlaceholder title="Administrative Log" />}
+          element={<AdminAdministrativeLogPage />}
         />
         <Route
           path="admin/logs/:logId"
-          element={<PagePlaceholder title="Administrative Log Details" />}
+          element={<Navigate to="/admin/logs" replace />}
         />
         <Route
           path="admin/reports"

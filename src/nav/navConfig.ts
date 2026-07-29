@@ -99,7 +99,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Administrative Log',
         to: '/admin/logs',
         icon: Scale,
-        matchPaths: ['/admin/logs/:logId'],
+        matchPaths: ['/admin/logs/*'],
       },
       {
         label: 'Leave Reports',

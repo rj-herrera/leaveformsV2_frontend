@@ -958,30 +958,36 @@ export function applyContractualDistribution(
       const short = LEAVE_BALANCE_SHORT[assignment.leaveTypeKey]
       const label = LEAVE_BALANCE_LABELS[assignment.leaveTypeKey]
 
+      const balanceImpact = `+${formatBalanceValue(assignment.amount)} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`
+
       appendActivityLogEntry({
         occurredAt,
         employeeId: employee.id,
         activity: 'Contractual leave credits distributed',
         leaveType: label,
-        balanceImpact: `+${formatBalanceValue(assignment.amount)} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
+        balanceImpact,
         performedBy: options.performedBy,
         remarks: options.remarks || null,
       })
 
       appendAdminLogEntry({
         eventType: 'CONTRACTUAL_DISTRIBUTION',
+        activity: 'Leave Credit Distributed',
         occurredAt,
         actorName: options.performedBy,
         targetEmployeeId: employee.id,
         targetEmployeeName: employee.name,
+        employeeNumber: employee.employeeNumber,
+        groupLabel: employee.groupLabel,
         leaveType: label,
+        balanceImpact,
+        remarks: options.remarks || null,
         direction: 'add',
         amount: assignment.amount,
         before,
         after,
         effectiveDate: draft.effectiveDate,
         reasonCategory: 'contractual_grant',
-        reason: options.remarks,
         ticketRef: null,
       })
     }
@@ -1099,33 +1105,40 @@ export function applyBalanceAdjustment(
     ADJUSTMENT_REASON_OPTIONS.find((o) => o.value === payload.reasonCategory)
       ?.label ?? payload.reasonCategory
 
+  const balanceImpact = `${signed} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`
+  const activity =
+    payload.direction === 'add'
+      ? 'Leave credits added'
+      : 'Leave credits deducted'
+
   appendActivityLogEntry({
     occurredAt,
     employeeId: employee.id,
-    activity:
-      payload.direction === 'add'
-        ? 'Leave credits added'
-        : 'Leave credits deducted',
+    activity,
     leaveType: label,
-    balanceImpact: `${signed} ${short} (${formatBalanceValue(before)} → ${formatBalanceValue(after)})`,
+    balanceImpact,
     performedBy: payload.performedBy,
     remarks: payload.reason,
   })
 
   appendAdminLogEntry({
     eventType: 'BALANCE_ADJUSTMENT',
+    activity,
     occurredAt,
     actorName: payload.performedBy,
     targetEmployeeId: employee.id,
     targetEmployeeName: employee.name,
+    employeeNumber: employee.employeeNumber,
+    groupLabel: employee.groupLabel,
     leaveType: label,
+    balanceImpact,
+    remarks: payload.reason,
     direction: payload.direction,
     amount: payload.amount,
     before,
     after,
     effectiveDate: payload.effectiveDate,
     reasonCategory: reasonCategoryLabel,
-    reason: payload.reason,
     ticketRef: null,
   })
 

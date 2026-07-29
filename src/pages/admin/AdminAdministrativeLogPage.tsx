@@ -1,0 +1,379 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowDown, ArrowUp, ChevronDown, Search } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { FilterSelect } from '../../components/ui/FilterSelect'
+import { fieldShellClassName } from '../../components/ui/form/fieldStyles'
+import { Pagination } from '../../components/ui/Pagination'
+import { TableBodySkeleton } from '../../components/ui/Skeleton'
+import {
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+  usePageSizeFromHeight,
+} from '../../hooks/usePageSizeFromHeight'
+import { usePagination } from '../../hooks/usePagination'
+import { formatActivityTimestamp } from '../../mocks/activityLog'
+import {
+  filterAdminLogEntries,
+  getAdminLogEntries,
+} from '../../mocks/adminLog'
+import { shouldShowDataSkeleton } from '../../mocks/config'
+import {
+  formatMonthYearLabel,
+  getMonthSelectOptions,
+  parseMonthValue,
+} from '../../utils/teamCalendarGrid'
+
+type LeaveTypeFilter = 'ALL' | string
+type GroupFilter = 'ALL' | string
+type DateSort = 'desc' | 'asc'
+
+const ALL_MONTHS = 'ALL'
+
+export function AdminAdministrativeLogPage() {
+  const location = useLocation()
+  const tableAreaRef = useRef<HTMLDivElement>(null)
+  const pageSize = usePageSizeFromHeight(
+    tableAreaRef,
+    APPROVALS_TABLE_ROW_HEIGHT,
+  )
+  const showSkeleton = shouldShowDataSkeleton()
+
+  const [search, setSearch] = useState('')
+  const [leaveTypeFilter, setLeaveTypeFilter] =
+    useState<LeaveTypeFilter>('ALL')
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
+  const [monthYear, setMonthYear] = useState('')
+  const [dateSort, setDateSort] = useState<DateSort>('desc')
+
+  /** Re-read mock store whenever this route is entered (e.g. after adjust). */
+  const allEntries = useMemo(
+    () => getAdminLogEntries(),
+    [location.key],
+  )
+
+  const leaveTypeOptions = useMemo(
+    () => [
+      { value: 'ALL' as const, label: 'All Leave Types' },
+      ...Array.from(
+        new Set(
+          allEntries
+            .map((row) => row.leaveType)
+            .filter((type): type is string => Boolean(type)),
+        ),
+      )
+        .sort((a, b) => a.localeCompare(b))
+        .map((leaveType) => ({
+          value: leaveType,
+          label: leaveType,
+        })),
+    ],
+    [allEntries],
+  )
+
+  const groupOptions = useMemo(
+    () => [
+      { value: 'ALL' as const, label: 'All Groups' },
+      ...Array.from(
+        new Set(
+          allEntries
+            .map((row) => row.groupLabel)
+            .filter((group): group is string => Boolean(group)),
+        ),
+      )
+        .sort((a, b) => a.localeCompare(b))
+        .map((group) => ({
+          value: group,
+          label: group,
+        })),
+    ],
+    [allEntries],
+  )
+
+  const filteredEntries = useMemo(() => {
+    const filtered = filterAdminLogEntries(allEntries, {
+      search,
+      leaveType: leaveTypeFilter,
+      group: groupFilter,
+      monthYear,
+    })
+
+    return [...filtered].sort((a, b) =>
+      dateSort === 'desc'
+        ? b.occurredAt.localeCompare(a.occurredAt)
+        : a.occurredAt.localeCompare(b.occurredAt),
+    )
+  }, [allEntries, search, leaveTypeFilter, groupFilter, monthYear, dateSort])
+
+  const filterResetKey = [
+    search,
+    leaveTypeFilter,
+    groupFilter,
+    monthYear,
+    dateSort,
+  ].join('|')
+
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
+    usePagination(filteredEntries, pageSize, filterResetKey)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <h1 className="shrink-0 text-h1 text-text-black">Administrative Log</h1>
+
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="relative block min-w-0 w-full flex-1">
+              <span className="sr-only">Search employee name or number</span>
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search employee name or number"
+                className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+              />
+            </label>
+
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <FilterSelect
+                label="Filter by group"
+                value={groupFilter}
+                onChange={setGroupFilter}
+                options={groupOptions}
+                fitContent
+              />
+              <FilterSelect
+                label="Filter by leave type"
+                value={leaveTypeFilter}
+                onChange={setLeaveTypeFilter}
+                options={leaveTypeOptions}
+                fitContent
+              />
+              <MonthYearFilter
+                value={monthYear}
+                onChange={setMonthYear}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          ref={tableAreaRef}
+          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
+        >
+          <table className="w-full min-w-[900px] table-fixed text-left">
+            <colgroup>
+              <col className="w-[18%]" />
+              <col className="w-[26%]" />
+              <col className="w-[20%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
+            </colgroup>
+            <thead>
+              <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  <div className="flex items-center gap-1.5">
+                    <span>Date</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDateSort((sort) =>
+                          sort === 'desc' ? 'asc' : 'desc',
+                        )
+                      }
+                      className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
+                      aria-label={`Sort date ${dateSort === 'desc' ? 'ascending' : 'descending'}`}
+                    >
+                      {dateSort === 'desc' ? (
+                        <ArrowDown className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <ArrowUp className="size-3.5" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Activity
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Leave Type
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Performed By
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Employee
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {showSkeleton ? (
+                <TableBodySkeleton
+                  rows={pageSize}
+                  cols={5}
+                  rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                />
+              ) : paginatedItems.length === 0 ? (
+                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
+                  <td
+                    colSpan={5}
+                    className="px-5 text-center text-body text-text-gray"
+                  >
+                    No logs match the selected filters.
+                  </td>
+                </tr>
+              ) : (
+                paginatedItems.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
+                  >
+                    <td className="whitespace-nowrap px-5 text-body text-text-black">
+                      {formatActivityTimestamp(entry.occurredAt)}
+                    </td>
+                    <td
+                      className="truncate px-5 text-body text-text-black"
+                      title={entry.activity}
+                    >
+                      {entry.activity}
+                    </td>
+                    <td
+                      className="truncate px-5 text-body text-text-black"
+                      title={entry.leaveType ?? undefined}
+                    >
+                      {entry.leaveType ?? '—'}
+                    </td>
+                    <td
+                      className="truncate px-5 text-body text-text-black"
+                      title={entry.actorName}
+                    >
+                      {entry.actorName}
+                    </td>
+                    <td
+                      className="truncate px-5 text-body text-text-black"
+                      title={entry.targetEmployeeName}
+                    >
+                      {entry.targetEmployeeName}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredEntries.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
+      </section>
+    </div>
+  )
+}
+
+function MonthYearFilter({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const monthOptions = useMemo(() => getMonthSelectOptions(new Date()), [])
+
+  const selectedLabel = useMemo(() => {
+    if (!value) return 'All Months'
+    const parsed = parseMonthValue(value)
+    if (!parsed) return 'All Months'
+    return formatMonthYearLabel(parsed.year, parsed.monthIndex)
+  }, [value])
+
+  useEffect(() => {
+    if (!open) return
+
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [open])
+
+  function handleSelect(next: string) {
+    onChange(next === ALL_MONTHS ? '' : next)
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative w-auto shrink-0" ref={menuRef}>
+      <div className={fieldShellClassName}>
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="Filter by month and year"
+          className="inline-flex items-center gap-2 rounded-md border border-border bg-surface py-1.5 pr-3 pl-3 text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+        >
+          <span>{selectedLabel}</span>
+          <ChevronDown
+            className="size-4 shrink-0 text-text-gray"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+
+      {open ? (
+        <ul
+          role="listbox"
+          className="absolute top-full right-0 z-20 mt-1 max-h-60 min-w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-md"
+        >
+          <li>
+            <button
+              type="button"
+              role="option"
+              aria-selected={!value}
+              onClick={() => handleSelect(ALL_MONTHS)}
+              className={`w-full px-3 py-1.5 text-left text-body transition-colors hover:bg-surface-muted ${
+                !value ? 'font-medium text-primary' : 'text-text-black'
+              }`}
+            >
+              All Months
+            </button>
+          </li>
+          {monthOptions.map((option) => {
+            const selected = option.value === value
+            return (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => handleSelect(option.value)}
+                  className={`w-full whitespace-nowrap px-3 py-1.5 text-left text-body transition-colors hover:bg-surface-muted ${
+                    selected
+                      ? 'font-medium text-primary'
+                      : 'text-text-black'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
