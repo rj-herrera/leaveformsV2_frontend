@@ -38,7 +38,7 @@ export function TableBodySkeleton({
 
 export function BalanceCardSkeleton() {
   return (
-    <article className="flex flex-col rounded-lg border border-black/10 bg-white p-5">
+    <article className="flex flex-col rounded-lg border border-border bg-white p-5">
       <div className="flex items-center gap-2.5">
         <Skeleton className="size-9 rounded-full" />
         <Skeleton className="h-4 w-28" />
@@ -47,7 +47,7 @@ export function BalanceCardSkeleton() {
         <Skeleton className="h-8 w-16" />
         <Skeleton className="h-3 w-24" />
       </div>
-      <div className="mt-4 border-t border-black/10 pt-4">
+      <div className="mt-4 border-t border-border pt-4">
         <div className="flex items-center justify-between gap-2">
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-4 w-12" />

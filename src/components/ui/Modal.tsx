@@ -51,7 +51,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg ${maxWidthClass}`}
+        className={`relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-lg border border-border bg-surface ${maxWidthClass}`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
           <h2 id="modal-title" className="text-h2 text-text-black">

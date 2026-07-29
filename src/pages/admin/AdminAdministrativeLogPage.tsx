@@ -337,7 +337,7 @@ function MonthYearFilter({
       {open ? (
         <ul
           role="listbox"
-          className="absolute top-full right-0 z-20 mt-1 max-h-60 min-w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-md"
+          className="absolute top-full right-0 z-20 mt-1 max-h-60 min-w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-sm"
         >
           <li>
             <button

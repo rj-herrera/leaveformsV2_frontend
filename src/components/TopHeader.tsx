@@ -4,7 +4,7 @@ export function TopHeader() {
   const { user } = useAuth()
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-black/10 bg-white px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white px-6">
       <div>
         <p className="text-[17.5px] text-text-gray">
           Hello, <span className="font-semibold text-primary">{user.name}</span>

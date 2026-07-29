@@ -199,7 +199,7 @@ export function DateFieldCustom({
             role="dialog"
             aria-label={`Choose ${label}`}
             style={{ top: position.top, left: position.left }}
-            className="fixed z-50 w-[280px] rounded-lg border border-border bg-surface p-3 shadow-md"
+            className="fixed z-50 w-[280px] rounded-lg border border-border bg-surface p-3 shadow-sm"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <button

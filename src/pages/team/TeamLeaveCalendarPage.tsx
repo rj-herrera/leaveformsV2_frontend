@@ -219,7 +219,7 @@ export function TeamLeaveCalendarPage() {
                     {monthMenuOpen ? (
                       <ul
                         role="listbox"
-                        className="absolute top-full left-1/2 z-20 mt-1 max-h-60 w-44 -translate-x-1/2 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-md"
+                        className="absolute top-full left-1/2 z-20 mt-1 max-h-60 w-44 -translate-x-1/2 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-sm"
                       >
                         {monthOptions.map((option) => {
                           const selected = option.value === viewMonth

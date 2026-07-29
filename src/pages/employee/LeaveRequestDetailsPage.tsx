@@ -326,7 +326,7 @@ export function LeaveRequestDetailsPage() {
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[640px] text-left">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-surface-muted text-small text-text-gray shadow-[inset_0_-1px_0_0_var(--color-border)]">
+              <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Approver</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Purpose</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Status</th>

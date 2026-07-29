@@ -156,7 +156,7 @@ export function DashboardPage() {
           </>
         ) : (
           <>
-        <article className="flex flex-col rounded-lg border border-black/10 bg-white p-5">
+        <article className="flex flex-col rounded-lg border border-border bg-white p-5">
           <div className="flex items-center gap-2.5">
             <LeaveTypeIconBadge
               icon={VACATION_LEAVE_THEME.icon}
@@ -172,7 +172,7 @@ export function DashboardPage() {
             </p>
             <p className="text-small text-text-gray mt-1.5">days available</p>
           </div>
-          <div className="mt-4 border-t border-black/10 pt-4">
+          <div className="mt-4 border-t border-border pt-4">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-small font-semibold text-text-black">
@@ -189,7 +189,7 @@ export function DashboardPage() {
           </div>
         </article>
 
-        <article className="flex flex-col rounded-lg border border-black/10 bg-white p-5">
+        <article className="flex flex-col rounded-lg border border-border bg-white p-5">
           <div className="flex items-center gap-2.5">
             <LeaveTypeIconBadge
               icon={SICK_LEAVE_THEME.icon}
@@ -207,7 +207,7 @@ export function DashboardPage() {
           </div>
         </article>
 
-        <article className="relative flex flex-col rounded-lg border border-black/10 bg-white p-5">
+        <article className="relative flex flex-col rounded-lg border border-border bg-white p-5">
           <button
             type="button"
             className="flex w-full items-center justify-between gap-2 text-left"
@@ -236,7 +236,7 @@ export function DashboardPage() {
           {isLeaveTypeOpen && (
             <ul
               role="listbox"
-              className="absolute top-14 right-5 left-5 z-10 overflow-hidden rounded-md border border-black/10 bg-white shadow-md"
+              className="absolute top-14 right-5 left-5 z-10 overflow-hidden rounded-md border border-border bg-white shadow-sm"
             >
               {leaveTypeOptions.map((option) => (
                 <li key={option.id}>
@@ -275,8 +275,8 @@ export function DashboardPage() {
       </section>
 
       {/* My Leave Requests */}
-      <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-black/10 bg-white">
-        <div className="flex shrink-0 flex-col gap-3 border-b border-black/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <section className="flex min-h-0 flex-1 flex-col rounded-lg border border-border bg-white">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-h2 text-text-black">My Leave Requests</h2>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <FilterSelect
@@ -308,7 +308,7 @@ export function DashboardPage() {
               <col className="w-[10%]" />
             </colgroup>
             <thead>
-              <tr className="h-11 bg-surface-muted border-b border-black/10 text-small text-text-gray">
+              <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   <div className="flex items-center gap-1.5">
