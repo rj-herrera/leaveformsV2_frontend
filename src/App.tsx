@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { PagePlaceholder } from './components/PagePlaceholder'
 import { AppLayout } from './layouts/AppLayout'
 import { ActivityLogPage } from './pages/employee/ActivityLogPage'
 import { ConvertLeaveRequestPage } from './pages/employee/ConvertLeaveRequestPage'
@@ -25,6 +24,7 @@ import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributi
 import { ContractualDistributionAssignPage } from './pages/admin/ContractualDistributionAssignPage'
 import { ContractualDistributionReviewPage } from './pages/admin/ContractualDistributionReviewPage'
 import { AdminAdministrativeLogPage } from './pages/admin/AdminAdministrativeLogPage'
+import { EmployeesWithLwopPage } from './pages/admin/EmployeesWithLwopPage'
 import { LeaveMonetizationCandidatesPage } from './pages/admin/LeaveMonetizationCandidatesPage'
 import { MonthlyAttendanceReportPage } from './pages/admin/MonthlyAttendanceReportPage'
 import {
@@ -32,10 +32,6 @@ import {
   leaveBalancesLandingPath,
 } from './utils/distributionPaths'
 
-/**
- * TODO(REMOVE): PagePlaceholder usages below are temporary route shells.
- * Replace each with a real page under pages/team or pages/admin, then delete PagePlaceholder.tsx.
- */
 function App() {
   return (
     <Routes>
@@ -159,7 +155,7 @@ function App() {
         />
         <Route
           path="admin/reports/employees-with-lwop"
-          element={<PagePlaceholder title="Employees with LWOP" />}
+          element={<EmployeesWithLwopPage />}
         />
       </Route>
     </Routes>
