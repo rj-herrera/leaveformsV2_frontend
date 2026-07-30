@@ -15,7 +15,6 @@ import {
   buildEmployeesWithLwopReport,
   filterEmployeesWithLwop,
   getLwopGroups,
-  sumLwopSummaries,
   type EmployeesWithLwopReport,
   type LwopEmployeeSummary,
 } from '../../mocks/employeesWithLwop'
@@ -103,11 +102,6 @@ export function EmployeesWithLwopPage() {
   const filterResetKey = `${search}|${groupFilter}|${sortKey}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
     usePagination(sortedSummaries, pageSize, filterResetKey)
-
-  const filteredTotals = useMemo(
-    () => sumLwopSummaries(filteredSummaries),
-    [filteredSummaries],
-  )
 
   function handleYearChange(nextYear: number | null) {
     setYear(nextYear)
@@ -250,95 +244,84 @@ export function EmployeesWithLwopPage() {
         </div>
 
         {report ? (
-          <>
-            <div className="shrink-0 border-b border-border px-5 py-4">
-              <dl className="flex flex-wrap gap-x-6 gap-y-2 text-small text-text-gray">
-                <InfoItem
-                  label="Reporting Period"
-                  value={report.reportingPeriodLabel}
-                />
-                <InfoItem
-                  label="Date Generated"
-                  value={formatGeneratedAt(report.generatedAt)}
-                />
-              </dl>
-            </div>
-
-            <div ref={tableAreaRef} className="min-h-0 flex-1 overflow-auto">
-              <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-left">
-                <thead className="sticky top-0 z-20">
-                  <tr className="bg-surface-muted text-small text-text-gray">
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      <SortableHeader
-                        label="Employee No."
-                        active={sortKey === 'employeeNumber'}
-                        direction={sortDir}
-                        onToggle={() => toggleSort('employeeNumber')}
-                      />
-                    </th>
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      Employee Name
-                    </th>
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      Group
-                    </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
-                      <SortableHeader
-                        label="Total LWOP Days"
-                        active={sortKey === 'totalLwopDays'}
-                        direction={sortDir}
-                        onToggle={() => toggleSort('totalLwopDays')}
-                        align="center"
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedItems.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={SUMMARY_COL_COUNT}
-                        className="px-5 py-10 text-center text-body text-text-gray"
-                      >
-                        No employees with LWOP match the current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedItems.map((row) => (
-                      <EmployeeRow key={row.employeeId} row={row} />
-                    ))
-                  )}
-                </tbody>
-                <tfoot className="sticky bottom-0 z-20">
-                  <tr className="bg-surface-muted font-semibold">
-                    <td
-                      colSpan={3}
-                      className="border-t border-border bg-surface-muted px-4 py-2.5 text-body text-text-black"
-                    >
-                      Total
-                    </td>
-                    <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
-                      {formatDays(filteredTotals.totalLwopDays)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-            />
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center px-5 text-center text-body text-text-gray">
-            Select a year, then click Generate Report to view employees with
-            LWOP. Group is optional.
+          <div className="shrink-0 border-b border-border px-5 py-4">
+            <dl className="flex flex-wrap gap-x-6 gap-y-2 text-small text-text-gray">
+              <InfoItem
+                label="Reporting Period"
+                value={report.reportingPeriodLabel}
+              />
+              <InfoItem
+                label="Date Generated"
+                value={formatGeneratedAt(report.generatedAt)}
+              />
+            </dl>
           </div>
-        )}
+        ) : null}
+
+        <div ref={tableAreaRef} className="min-h-0 flex-1 overflow-auto">
+          {report ? (
+            <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-left">
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-surface-muted text-small text-text-gray">
+                  <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    <SortableHeader
+                      label="Employee No."
+                      active={sortKey === 'employeeNumber'}
+                      direction={sortDir}
+                      onToggle={() => toggleSort('employeeNumber')}
+                    />
+                  </th>
+                  <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee Name
+                  </th>
+                  <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    Group
+                  </th>
+                  <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <SortableHeader
+                      label="Total LWOP Days"
+                      active={sortKey === 'totalLwopDays'}
+                      direction={sortDir}
+                      onToggle={() => toggleSort('totalLwopDays')}
+                      align="center"
+                    />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={SUMMARY_COL_COUNT}
+                      className="px-5 py-10 text-center text-body text-text-gray"
+                    >
+                      No employees with LWOP match the current filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((row) => (
+                    <EmployeeRow key={row.employeeId} row={row} />
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex h-full items-center justify-center px-5 text-center text-body text-text-gray">
+              Select a year, then click Generate Report to view employees with
+              LWOP. Group is optional.
+            </div>
+          )}
+        </div>
+
+        {report ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
     </div>
   )

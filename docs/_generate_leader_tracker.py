@@ -12,7 +12,7 @@ OUT = Path(__file__).with_name("FRONTEND_LEADER_TRACKER.xlsx")
 
 # Development commitment: start 21 Jul → finish by end of August
 PROJECT_START = date(2026, 7, 21)
-TODAY = date(2026, 7, 29)  # last code sync date
+TODAY = date(2026, 7, 30)  # last code sync date
 DEV_END = date(2026, 8, 31)  # development only
 # Testing & documentation start after development (dates beyond start are TBD)
 POST_DEV_START = date(2026, 9, 1)
@@ -23,9 +23,10 @@ SECTION_FILL = {
     "3. Employee Features": "DDEBF7",
     "4. Approver / Team Features": "BDD7EE",
     "5. Admin Features": "E2D5F1",
-    "6. Backend Integration (TBD)": "F4CCCC",
-    "7. Testing (after development)": "C6EFCE",
-    "8. Documentation (after development)": "D9EAD3",
+    "6. UI Polish & Cleanup": "EAD1DC",
+    "7. Backend Integration (TBD)": "F4CCCC",
+    "8. Testing (after development)": "C6EFCE",
+    "9. Documentation (after development)": "D9EAD3",
 }
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
@@ -101,17 +102,25 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         "2. Core App Shell",
         "Create reusable screen parts (buttons, forms, tables, status labels)",
         date(2026, 7, 22),
-        date(2026, 7, 29),
+        date(2026, 7, 30),
         "Completed",
-        "Built: StatusBadge, FilterSelect, Pagination, Button, Modal, ConfirmReasonModal, AttachmentPreviewModal, SuccessDialog, Skeleton, form fields, MonthYearPickerField, EmployeeMultiSelect, tableStyles, admin-specific components.",
+        "Built: StatusBadge, FilterSelect, Pagination, Button, Modal, ConfirmReasonModal, AttachmentPreviewModal, SuccessDialog, Skeleton, form fields, MonthYearPickerField, YearPickerField, EmployeeMultiSelect, tableStyles, admin-specific components.",
+    ),
+    (
+        "2. Core App Shell",
+        "Collapsible sidebar menu with saved user preference",
+        date(2026, 7, 29),
+        date(2026, 7, 30),
+        "Completed",
+        "Sidebar collapses to icon-only mode with flyout submenus, tooltips, and localStorage preference. Top header toggle wired in AppLayout.",
     ),
     (
         "2. Core App Shell",
         "Replace temporary placeholder pages with real screens",
         date(2026, 7, 22),
-        date(2026, 7, 29),
+        date(2026, 7, 30),
         "Completed",
-        "All employee, approver/team, and admin routes now have real page components. No PagePlaceholder routes remain (only 2 minor sub-reports still placeholders).",
+        "All employee, approver/team, and admin routes now have real page components. PagePlaceholder is no longer used in routing.",
     ),
     # --- 3. Employee Features ---
     (
@@ -254,11 +263,27 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
     ),
     (
         "5. Admin Features",
-        "Leave reports for management review",
+        "Monthly Attendance Report",
         date(2026, 7, 29),
         date(2026, 7, 29),
-        "In Progress",
-        "Monthly Attendance Report page built. Leave Monetization Candidates and Employees with LWOP sub-reports are still placeholders.",
+        "Completed",
+        "Report page with month/cut-off filters, employee multi-select, group filter, calendar grid, legend, print, and download. Uses mock data.",
+    ),
+    (
+        "5. Admin Features",
+        "Leave Monetization Candidates report",
+        date(2026, 7, 30),
+        date(2026, 7, 30),
+        "Completed",
+        "Report page with year filter, eligibility filters, sortable table, summary totals, print, and download. Uses mock data.",
+    ),
+    (
+        "5. Admin Features",
+        "Employees with LWOP report",
+        date(2026, 7, 30),
+        date(2026, 7, 30),
+        "Completed",
+        "Report page with year and group filters, sortable LWOP summary table, print, and download. Uses mock data.",
     ),
     (
         "5. Admin Features",
@@ -268,9 +293,34 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         "Completed",
         "Emergency, PTB, Maternity/Paternity handled in employee/team filing and in admin screens. Monthly attendance report covers all leave categories including LWOP.",
     ),
-    # --- 6. Backend Integration (dates TBD) ---
+    # --- 6. UI Polish & Cleanup ---
     (
-        "6. Backend Integration (TBD)",
+        "6. UI Polish & Cleanup",
+        "Review and clean up global CSS (colors, fonts, spacing, typography)",
+        date(2026, 7, 30),
+        date(2026, 8, 8),
+        "In Progress",
+        "Currently in progress — checking index.css theme tokens, base styles, and consistency with Tailwind usage across screens.",
+    ),
+    (
+        "6. UI Polish & Cleanup",
+        "Check and fix app shell layout (sidebar, top header, main content area)",
+        date(2026, 7, 30),
+        date(2026, 8, 8),
+        "In Progress",
+        "Currently in progress — reviewing AppLayout, collapsible sidebar, header alignment, and page padding/overflow behavior.",
+    ),
+    (
+        "6. UI Polish & Cleanup",
+        "Standardize screen layouts (tables, filter bars, forms, and reports)",
+        date(2026, 7, 30),
+        date(2026, 8, 15),
+        "In Progress",
+        "Currently in progress — aligning filter control heights, table spacing, button placement, and responsive layout on list/form/report pages.",
+    ),
+    # --- 7. Backend Integration (dates TBD) ---
+    (
+        "7. Backend Integration (TBD)",
         "Connect frontend to backend API (base connection and shared data types)",
         date(2026, 7, 23),
         None,
@@ -278,7 +328,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_BACKEND,
     ),
     (
-        "6. Backend Integration (TBD)",
+        "7. Backend Integration (TBD)",
         "Use portal cookies / session to identify the user (no separate login page)",
         date(2026, 7, 23),
         None,
@@ -286,7 +336,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_BACKEND + " Agreed with backend: cookies/session — no login screen.",
     ),
     (
-        "6. Backend Integration (TBD)",
+        "7. Backend Integration (TBD)",
         "Connect employee leave screens to live API (file, history, cancel, edit)",
         None,
         None,
@@ -294,7 +344,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_BACKEND,
     ),
     (
-        "6. Backend Integration (TBD)",
+        "7. Backend Integration (TBD)",
         "Connect approver / team screens to live API (inbox, approve, reject)",
         None,
         None,
@@ -302,7 +352,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_BACKEND,
     ),
     (
-        "6. Backend Integration (TBD)",
+        "7. Backend Integration (TBD)",
         "Connect admin screens to live API (balances, conversion, reports)",
         None,
         None,
@@ -310,16 +360,16 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_BACKEND,
     ),
     (
-        "6. Backend Integration (TBD)",
+        "7. Backend Integration (TBD)",
         "Joint frontend–backend smoke check once APIs are available",
         None,
         None,
         "Not Started",
         NOTE_BACKEND,
     ),
-    # --- 7. Testing (after development) ---
+    # --- 8. Testing (after development) ---
     (
-        "7. Testing (after development)",
+        "8. Testing (after development)",
         "Employee flow testing (file, edit, cancel, view history)",
         POST_DEV_START,
         None,
@@ -327,7 +377,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "7. Testing (after development)",
+        "8. Testing (after development)",
         "Approver flow testing (approve, reject, team views)",
         POST_DEV_START,
         None,
@@ -335,7 +385,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "7. Testing (after development)",
+        "8. Testing (after development)",
         "Admin flow testing (balances, conversion, reports)",
         POST_DEV_START,
         None,
@@ -343,7 +393,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "7. Testing (after development)",
+        "8. Testing (after development)",
         "Mobile / responsive check on common screens",
         POST_DEV_START,
         None,
@@ -351,16 +401,16 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "7. Testing (after development)",
+        "8. Testing (after development)",
         "Fix issues found during testing",
         POST_DEV_START,
         None,
         "Not Started",
         NOTE_POST_DEV,
     ),
-    # --- 8. Documentation (after development) ---
+    # --- 9. Documentation (after development) ---
     (
-        "8. Documentation (after development)",
+        "9. Documentation (after development)",
         "Finalize frontend guide for the team (FRONTEND.md)",
         POST_DEV_START,
         None,
@@ -368,7 +418,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "8. Documentation (after development)",
+        "9. Documentation (after development)",
         "Prepare short demo / walkthrough notes for stakeholders",
         POST_DEV_START,
         None,
@@ -376,7 +426,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         NOTE_POST_DEV,
     ),
     (
-        "8. Documentation (after development)",
+        "9. Documentation (after development)",
         "Handover checklist (how to run, deploy, and who owns what)",
         POST_DEV_START,
         None,
@@ -391,7 +441,7 @@ PHASES = [
         "Phase 1 — Foundation (development)",
         date(2026, 7, 21),
         date(2026, 7, 30),
-        "Project setup, layout, menus, reusable UI.",
+        "Project setup, layout, collapsible sidebar, menus, reusable UI.",
     ),
     (
         "Phase 2 — Employee features (development)",
@@ -409,10 +459,16 @@ PHASES = [
         "Phase 4 — Admin features (development)",
         date(2026, 8, 18),
         date(2026, 8, 28),
-        "Admin requests, conversion review, balances, logs, and reports.",
+        "Admin requests, conversion review, balances, logs, and all three reports (UI complete ahead of schedule).",
     ),
     (
-        "Phase 5 — Development complete (commitment)",
+        "Phase 5 — UI polish & cleanup (development)",
+        date(2026, 7, 30),
+        date(2026, 8, 15),
+        "CSS review, layout checks, and consistent spacing across screens.",
+    ),
+    (
+        "Phase 6 — Development complete (commitment)",
         date(2026, 8, 28),
         date(2026, 8, 31),
         "Frontend development screens targeted complete. End of August = development only.",
@@ -597,8 +653,7 @@ def main() -> None:
 
     dash["A4"] = (
         f"Last aligned to codebase: {TODAY.isoformat()} — "
-        "all employee, approver/team, and admin screens now have real UI with mock data; "
-        "2 minor report sub-pages still placeholders; "
+        "all screens built with mock data; currently polishing CSS and layouts (section 6); "
         "cookie/session and live API not wired yet."
     )
     dash["A4"].font = Font(name="Calibri", size=11, italic=True, color="595959")
@@ -674,11 +729,11 @@ def main() -> None:
                 cell.alignment = Alignment(horizontal="center")
 
     sec_end = 9 + len(sections)
-    # Dev-only % = average of progress for sections 1-5 (rows 10-14)
-    dash.cell(sec_end + 2, 1, "Development progress (sections 1–5 only)").font = Font(
+    # Dev-only % = average of progress for sections 1-6 (rows 10-15)
+    dash.cell(sec_end + 2, 1, "Development progress (sections 1–6 only)").font = Font(
         bold=True, color="1F4E79"
     )
-    dash.cell(sec_end + 2, 2, f"=IF(SUM(B10:B14)=0,0,SUMPRODUCT(B10:B14,G10:G14)/SUM(B10:B14))")
+    dash.cell(sec_end + 2, 2, f"=IF(SUM(B10:B15)=0,0,SUMPRODUCT(B10:B15,G10:G15)/SUM(B10:B15))")
     dash.cell(sec_end + 2, 2).number_format = "0%"
     dash.cell(sec_end + 2, 2).font = Font(size=16, bold=True, color="1F4E79")
     dash.cell(sec_end + 2, 2).fill = FILL_OVERALL
@@ -786,8 +841,10 @@ def main() -> None:
         ("Reusable UI + employee screens underway", date(2026, 7, 31), "2–3"),
         ("Employee filing & history usable (UI)", date(2026, 8, 13), "3. Employee Features"),
         ("Approver approve/reject usable (UI)", date(2026, 8, 18), "4. Approver / Team"),
-        ("Admin screens usable (UI)", date(2026, 8, 28), "5. Admin Features"),
-        ("Development complete (August commitment)", date(2026, 8, 31), "Sections 1–5"),
+        ("Admin screens usable (UI) — done early", date(2026, 7, 30), "5. Admin Features"),
+        ("Admin screens target (original plan)", date(2026, 8, 28), "5. Admin Features"),
+        ("UI polish & layout cleanup underway", date(2026, 7, 30), "6. UI Polish & Cleanup"),
+        ("Development complete (August commitment)", date(2026, 8, 31), "Sections 1–6"),
     ]
     for i, (name, target, related) in enumerate(milestones):
         row = m_row + 2 + i
@@ -819,9 +876,9 @@ def main() -> None:
 
     weeks = [
         (date(2026, 7, 24), "Kickoff: layout/menus; align cookie/session & API approach with backend"),
-        (date(2026, 7, 31), "Reusable UI started; employee screens beginning"),
-        (date(2026, 8, 7), "Employee dashboard and file-leave UI in progress"),
-        (date(2026, 8, 14), "Employee UI largely complete; approver screens started"),
+        (date(2026, 7, 31), "Reusable UI done; employee + approver + admin screens largely complete (ahead of plan)"),
+        (date(2026, 8, 7), "CSS and layout cleanup in progress across screens"),
+        (date(2026, 8, 14), "Layout polish wrapping up; ready for backend hookup when APIs are available"),
         (date(2026, 8, 21), "Approver UI in place; admin screens underway"),
         (date(2026, 8, 28), "Admin UI in progress / wrapping up"),
         (date(2026, 8, 31), "Target: frontend DEVELOPMENT complete (not testing/docs)"),
@@ -844,7 +901,7 @@ def main() -> None:
         "Backend Integration is listed with TBD dates — teams work separately for now.",
         "",
         "For leaders / managers",
-        "1. Dashboard — overall % and section progress (also see Development progress for sections 1–5).",
+        "1. Dashboard — overall % and section progress (also see Development progress for sections 1–6).",
         "2. Tentative Schedule — development phases through August; backend/testing/docs called out as TBD/after.",
         "3. Progress Tracker — update Status here.",
         "",

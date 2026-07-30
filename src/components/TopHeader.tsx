@@ -1,17 +1,34 @@
+import { Menu } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
-export function TopHeader() {
+type TopHeaderProps = {
+  sidebarCollapsed: boolean
+  onToggleSidebar: () => void
+}
+
+export function TopHeader({
+  sidebarCollapsed,
+  onToggleSidebar,
+}: TopHeaderProps) {
   const { user } = useAuth()
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white px-6">
-      <div>
-        <p className="text-[17.5px] text-text-gray">
-          Hello, <span className="font-semibold text-primary">{user.name}</span>
-        </p>
-      </div>
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white pl-4 pr-6">
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        className="inline-flex size-9 items-center justify-center rounded-md text-text-gray transition-colors hover:bg-background hover:text-text-black"
+        aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {sidebarCollapsed ? (
+          <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
+        )}
+      </button>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <button
           type="button"
           className="relative rounded-md p-2 text-text-gray hover:bg-background hover:text-text-black"
@@ -20,6 +37,14 @@ export function TopHeader() {
           <BellIcon />
           <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary" />
         </button>
+        <div
+          className="h-6 w-px bg-border"
+          role="separator"
+          aria-hidden="true"
+        />
+        <p className="text-[17.5px] text-text-gray">
+          Hello, <span className="font-semibold text-primary">{user.name}</span>
+        </p>
       </div>
     </header>
   )

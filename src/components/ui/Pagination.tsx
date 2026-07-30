@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from './Button'
 
 type PaginationProps = {
   currentPage: number
@@ -28,31 +29,31 @@ export function Pagination({
       </p>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-body font-medium text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="size-9.5 p-0"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage <= 1}
           aria-label="Previous page"
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
-          Prev
-        </button>
+        </Button>
 
         <span className="text-small text-text-gray px-1">
           Page {currentPage} of {totalPages}
         </span>
 
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-body font-medium text-text-black transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="size-9.5 p-0"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage >= totalPages}
           aria-label="Next page"
         >
-          Next
           <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
+        </Button>
       </div>
     </div>
   )

@@ -12,6 +12,10 @@
  */
 import type { UserRole } from '../auth/AuthContext'
 import type { LeaveRequestStatus } from '../constants/leaveStatus'
+import {
+  hasFiledParentalLeaveRequest,
+  isParentalLeaveType,
+} from './leaveBalances'
 import { MOCK_DATA_ENABLED } from './config'
 
 export type LeaveRequestSummary = {
@@ -522,6 +526,23 @@ function withConversionOverlay(
 export function getLeaveRequestsForRole(role: UserRole): LeaveRequestSummary[] {
   if (!MOCK_DATA_ENABLED) return []
   return ROLE_LEAVE_REQUESTS[role].map(withConversionOverlay)
+}
+
+/**
+ * Maternity / Paternity credits are visible only after a matching leave request
+ * exists (filed parental record or any org leave request of that type).
+ */
+export function canViewParentalLeaveCredits(
+  employeeId: string,
+  leaveType: string,
+): boolean {
+  if (!employeeId || !isParentalLeaveType(leaveType)) return true
+  if (hasFiledParentalLeaveRequest(employeeId, leaveType)) return true
+  if (!MOCK_DATA_ENABLED) return false
+  return ALL_ORG_REQUESTS.some(
+    (request) =>
+      request.requesterId === employeeId && request.leaveType === leaveType,
+  )
 }
 
 export function getApproverInboxRequests(): LeaveRequestSummary[] {

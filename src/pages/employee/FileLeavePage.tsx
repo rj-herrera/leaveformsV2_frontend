@@ -74,6 +74,7 @@ export function FileLeavePage() {
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
@@ -126,6 +127,7 @@ export function FileLeavePage() {
     !endMissing &&
     !reasonMissing &&
     !attachmentMissing &&
+    !attachmentUploading &&
     leadTimeValidation.ok
 
   function handleLeaveTypeChange(value: string) {
@@ -135,6 +137,7 @@ export function FileLeavePage() {
     setEndDate(EMPTY_FORM.endDate)
     if (!isAttachmentRequired(value)) {
       setAttachment(null)
+      setAttachmentUploading(false)
     }
   }
 
@@ -151,6 +154,7 @@ export function FileLeavePage() {
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
     setAttachment(null)
+    setAttachmentUploading(false)
     setTriedSubmit(false)
   }
 
@@ -296,6 +300,7 @@ export function FileLeavePage() {
                   label="Supporting attachment"
                   fileName={attachment?.name ?? null}
                   onChange={setAttachment}
+                  onUploadingChange={setAttachmentUploading}
                   accept="image/*,.pdf"
                   required
                   className="sm:col-span-2"
@@ -330,7 +335,10 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok}
+            disabled={!leadTimeValidation.ok || attachmentUploading}
+            title={
+              attachmentUploading ? 'Wait for the attachment upload to finish.' : undefined
+            }
           >
             Submit Request
           </Button>
