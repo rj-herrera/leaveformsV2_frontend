@@ -12,7 +12,7 @@ OUT = Path(__file__).with_name("FRONTEND_LEADER_TRACKER.xlsx")
 
 # Development commitment: start 21 Jul → finish by end of August
 PROJECT_START = date(2026, 7, 21)
-TODAY = date(2026, 7, 23)  # last code sync date
+TODAY = date(2026, 7, 29)  # last code sync date
 DEV_END = date(2026, 8, 31)  # development only
 # Testing & documentation start after development (dates beyond start are TBD)
 POST_DEV_START = date(2026, 9, 1)
@@ -101,17 +101,17 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         "2. Core App Shell",
         "Create reusable screen parts (buttons, forms, tables, status labels)",
         date(2026, 7, 22),
-        date(2026, 7, 30),
-        "In Progress",
-        "Done so far: StatusBadge, FilterSelect, Pagination, LeaveTypeIconBadge, Modal, ConfirmReasonModal, AttachmentPreviewModal, and form fields. Full shared button/table kit still pending.",
+        date(2026, 7, 29),
+        "Completed",
+        "Built: StatusBadge, FilterSelect, Pagination, Button, Modal, ConfirmReasonModal, AttachmentPreviewModal, SuccessDialog, Skeleton, form fields, MonthYearPickerField, EmployeeMultiSelect, tableStyles, admin-specific components.",
     ),
     (
         "2. Core App Shell",
         "Replace temporary placeholder pages with real screens",
         date(2026, 7, 22),
-        date(2026, 8, 28),
-        "In Progress",
-        "Real pages now cover employee + key approver/team flows. Team calendar/upcoming and all admin routes still use PagePlaceholder.",
+        date(2026, 7, 29),
+        "Completed",
+        "All employee, approver/team, and admin routes now have real page components. No PagePlaceholder routes remain (only 2 minor sub-reports still placeholders).",
     ),
     # --- 3. Employee Features ---
     (
@@ -214,59 +214,59 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
     (
         "4. Approver / Team Features",
         "Team leave calendar and upcoming approved leaves",
-        date(2026, 8, 18),
-        date(2026, 8, 21),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "Completed",
+        "Team Leave Calendar page (month/week views, filters, leave chips) and Upcoming Approved Leaves page are both built with mock data.",
     ),
     # --- 5. Admin Features ---
     (
         "5. Admin Features",
         "Admin view of leave requests and request details",
-        date(2026, 8, 18),
-        date(2026, 8, 21),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "Completed",
+        "Admin Leave Requests list (pending/all tabs, filters, search, reminders) and detail/view/validate pages are all built with mock data.",
     ),
     (
         "5. Admin Features",
         "Review vacation-to-sick leave conversion requests",
-        date(2026, 8, 20),
-        date(2026, 8, 25),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "Completed",
+        "Conversion review is handled via Admin Leave Validate page; conversion state visible on request detail/view pages.",
     ),
     (
         "5. Admin Features",
         "Manage leave balances and credit distribution",
-        date(2026, 8, 20),
-        date(2026, 8, 26),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "Completed",
+        "Admin Leave Balances page with filters, adjust-credits modal, and full distribution flows (annual, newly-regularized, parental, contractual) are built with mock data.",
     ),
     (
         "5. Admin Features",
         "Administrative logs",
-        date(2026, 8, 25),
-        date(2026, 8, 27),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "Completed",
+        "Admin Administrative Log page with search, filters, month-year picker, sorting, and pagination is built with mock data.",
     ),
     (
         "5. Admin Features",
         "Leave reports for management review",
-        date(2026, 8, 25),
-        date(2026, 8, 28),
-        "Not Started",
-        "",
+        date(2026, 7, 29),
+        date(2026, 7, 29),
+        "In Progress",
+        "Monthly Attendance Report page built. Leave Monetization Candidates and Employees with LWOP sub-reports are still placeholders.",
     ),
     (
         "5. Admin Features",
         "Support other leave types (emergency, maternity, etc.) in the screens",
         date(2026, 7, 22),
-        date(2026, 8, 28),
-        "In Progress",
-        "Employee and team filing screens support Emergency, PTB, and Maternity/Paternity options with attachment rules. Admin screens for these types are still not built.",
+        date(2026, 7, 29),
+        "Completed",
+        "Emergency, PTB, Maternity/Paternity handled in employee/team filing and in admin screens. Monthly attendance report covers all leave categories including LWOP.",
     ),
     # --- 6. Backend Integration (dates TBD) ---
     (
@@ -597,9 +597,9 @@ def main() -> None:
 
     dash["A4"] = (
         f"Last aligned to codebase: {TODAY.isoformat()} — "
-        "employee and approver/team UIs are largely built with mock data; "
-        "team calendar/upcoming and admin routes are still placeholders; "
-        "cookie/session and live API are not wired yet."
+        "all employee, approver/team, and admin screens now have real UI with mock data; "
+        "2 minor report sub-pages still placeholders; "
+        "cookie/session and live API not wired yet."
     )
     dash["A4"].font = Font(name="Calibri", size=11, italic=True, color="595959")
     dash.merge_cells("A4:G4")

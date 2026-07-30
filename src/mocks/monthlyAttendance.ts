@@ -76,8 +76,8 @@ export const ATTENDANCE_CUT_OFF_OPTIONS: {
   label: string
 }[] = [
   { value: 'monthly', label: 'Monthly' },
-  { value: 'first-half', label: 'First Half (1–15)' },
-  { value: 'second-half', label: 'Second Half (16–End of Month)' },
+  { value: 'first-half', label: 'First Half'},
+  { value: 'second-half', label: 'Second Half' },
 ]
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const

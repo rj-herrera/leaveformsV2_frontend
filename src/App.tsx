@@ -25,6 +25,7 @@ import { ParentalDistributionReviewPage } from './pages/admin/ParentalDistributi
 import { ContractualDistributionAssignPage } from './pages/admin/ContractualDistributionAssignPage'
 import { ContractualDistributionReviewPage } from './pages/admin/ContractualDistributionReviewPage'
 import { AdminAdministrativeLogPage } from './pages/admin/AdminAdministrativeLogPage'
+import { LeaveMonetizationCandidatesPage } from './pages/admin/LeaveMonetizationCandidatesPage'
 import { MonthlyAttendanceReportPage } from './pages/admin/MonthlyAttendanceReportPage'
 import {
   distributionAssignPath,
@@ -154,9 +155,7 @@ function App() {
         />
         <Route
           path="admin/reports/leave-monetization-candidates"
-          element={
-            <PagePlaceholder title="Leave Monetization Candidates" />
-          }
+          element={<LeaveMonetizationCandidatesPage />}
         />
         <Route
           path="admin/reports/employees-with-lwop"
