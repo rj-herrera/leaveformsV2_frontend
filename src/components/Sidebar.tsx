@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { matchPath, NavLink, useLocation } from 'react-router-dom'
+import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth, type UserRole } from '../auth/AuthContext'
+import { Button } from './ui/Button'
 import { NAV_SECTIONS, type NavChildItem, type NavItem } from '../nav/navConfig'
 
 function canAccessSection(
@@ -129,11 +130,17 @@ function NavItemLink({ item }: { item: NavItem }) {
 }
 
 export function Sidebar() {
-  const { user, mockPersona, setMockPersona } = useAuth()
+  const { user, mockPersona, setMockPersona, signOut } = useAuth()
+  const navigate = useNavigate()
 
   const visibleSections = NAV_SECTIONS.filter((section) =>
     canAccessSection(section.requires, user.roles),
   )
+
+  function handleLogout() {
+    signOut()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <aside className="flex h-svh w-64 shrink-0 flex-col border-r border-white/15 bg-primary">
@@ -182,6 +189,17 @@ export function Sidebar() {
             </option>
           </select>
         </label>
+        <div className="mt-3 px-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full border-white/25 bg-white/10 text-white hover:bg-white/20"
+            onClick={handleLogout}
+          >
+            Log out
+          </Button>
+        </div>
       </div>
     </aside>
   )

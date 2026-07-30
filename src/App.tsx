@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { RequireAuth } from './auth/RequireAuth'
 import { AppLayout } from './layouts/AppLayout'
+import { EmployeeIdEntryPage } from './pages/auth/EmployeeIdEntryPage'
 import { ActivityLogPage } from './pages/employee/ActivityLogPage'
 import { ConvertLeaveRequestPage } from './pages/employee/ConvertLeaveRequestPage'
 import { DashboardPage } from './pages/employee/DashboardPage'
@@ -35,128 +37,132 @@ import {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<EmployeeIdEntryPage />} />
 
-        {/* Employee — src/pages/employee */}
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="my-leave/file" element={<FileLeavePage />} />
-        <Route path="my-leave/activity-log" element={<ActivityLogPage />} />
-        <Route
-          path="my-leave/requests/:leaveRequestId"
-          element={<LeaveRequestDetailsPage />}
-        />
-        <Route
-          path="my-leave/requests/:leaveRequestId/edit"
-          element={<EditLeaveRequestPage />}
-        />
-        <Route
-          path="my-leave/requests/:leaveRequestId/convert"
-          element={<ConvertLeaveRequestPage />}
-        />
+      <Route element={<RequireAuth />}>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
 
-        {/* Approver / Team — src/pages/team */}
-        <Route path="team/leave-approvals" element={<LeaveApprovalsPage />} />
-        <Route
-          path="team/leave-approvals/:leaveRequestId"
-          element={<LeaveRequestReviewPage />}
-        />
-        <Route path="team/file-leave" element={<FileLeaveForMemberPage />} />
-        <Route path="team/leave-calendar" element={<TeamLeaveCalendarPage />} />
-        <Route
-          path="team/leave-calendar/upcoming"
-          element={<UpcomingApprovedLeavesPage />}
-        />
-        <Route
-          path="team/leave-requests/:leaveRequestId"
-          element={<LeaveRequestReviewPage />}
-        />
+          {/* Employee — src/pages/employee */}
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="my-leave/file" element={<FileLeavePage />} />
+          <Route path="my-leave/activity-log" element={<ActivityLogPage />} />
+          <Route
+            path="my-leave/requests/:leaveRequestId"
+            element={<LeaveRequestDetailsPage />}
+          />
+          <Route
+            path="my-leave/requests/:leaveRequestId/edit"
+            element={<EditLeaveRequestPage />}
+          />
+          <Route
+            path="my-leave/requests/:leaveRequestId/convert"
+            element={<ConvertLeaveRequestPage />}
+          />
 
-        {/* Admin — src/pages/admin */}
-        <Route
-          path="admin/leave-requests"
-          element={<AdminLeaveRequestsPage />}
-        />
-        <Route
-          path="admin/leave-requests/:leaveRequestId/validate"
-          element={<AdminLeaveValidatePage />}
-        />
-        <Route
-          path="admin/leave-requests/:leaveRequestId"
-          element={<AdminLeaveRequestViewPage />}
-        />
-        <Route
-          path="admin/leave-balances"
-          element={<AdminLeaveBalancesPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/annual/employees"
-          element={<AnnualDistributionEmployeesPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/annual/review"
-          element={<AnnualDistributionReviewPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/newly-regularized/employees"
-          element={<NewlyRegularizedEmployeesPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/newly-regularized/review"
-          element={<NewlyRegularizedReviewPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/parental/employees"
-          element={<ParentalDistributionEmployeesPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/parental/review"
-          element={<ParentalDistributionReviewPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/contractual/employees"
-          element={
-            <Navigate to={distributionAssignPath('contractual')} replace />
-          }
-        />
-        <Route
-          path="admin/leave-balances/distributions/contractual/assign"
-          element={<ContractualDistributionAssignPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/contractual/review"
-          element={<ContractualDistributionReviewPage />}
-        />
-        <Route
-          path="admin/leave-balances/distributions/*"
-          element={<Navigate to={leaveBalancesLandingPath()} replace />}
-        />
-        <Route
-          path="admin/logs"
-          element={<AdminAdministrativeLogPage />}
-        />
-        <Route
-          path="admin/logs/:logId"
-          element={<Navigate to="/admin/logs" replace />}
-        />
-        <Route
-          path="admin/reports"
-          element={
-            <Navigate to="/admin/reports/monthly-attendance" replace />
-          }
-        />
-        <Route
-          path="admin/reports/monthly-attendance"
-          element={<MonthlyAttendanceReportPage />}
-        />
-        <Route
-          path="admin/reports/leave-monetization-candidates"
-          element={<LeaveMonetizationCandidatesPage />}
-        />
-        <Route
-          path="admin/reports/employees-with-lwop"
-          element={<EmployeesWithLwopPage />}
-        />
+          {/* Approver / Team — src/pages/team */}
+          <Route path="team/leave-approvals" element={<LeaveApprovalsPage />} />
+          <Route
+            path="team/leave-approvals/:leaveRequestId"
+            element={<LeaveRequestReviewPage />}
+          />
+          <Route path="team/file-leave" element={<FileLeaveForMemberPage />} />
+          <Route
+            path="team/leave-calendar"
+            element={<TeamLeaveCalendarPage />}
+          />
+          <Route
+            path="team/leave-calendar/upcoming"
+            element={<UpcomingApprovedLeavesPage />}
+          />
+          <Route
+            path="team/leave-requests/:leaveRequestId"
+            element={<LeaveRequestReviewPage />}
+          />
+
+          {/* Admin — src/pages/admin */}
+          <Route
+            path="admin/leave-requests"
+            element={<AdminLeaveRequestsPage />}
+          />
+          <Route
+            path="admin/leave-requests/:leaveRequestId/validate"
+            element={<AdminLeaveValidatePage />}
+          />
+          <Route
+            path="admin/leave-requests/:leaveRequestId"
+            element={<AdminLeaveRequestViewPage />}
+          />
+          <Route
+            path="admin/leave-balances"
+            element={<AdminLeaveBalancesPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/annual/employees"
+            element={<AnnualDistributionEmployeesPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/annual/review"
+            element={<AnnualDistributionReviewPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/newly-regularized/employees"
+            element={<NewlyRegularizedEmployeesPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/newly-regularized/review"
+            element={<NewlyRegularizedReviewPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/parental/employees"
+            element={<ParentalDistributionEmployeesPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/parental/review"
+            element={<ParentalDistributionReviewPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/contractual/employees"
+            element={
+              <Navigate to={distributionAssignPath('contractual')} replace />
+            }
+          />
+          <Route
+            path="admin/leave-balances/distributions/contractual/assign"
+            element={<ContractualDistributionAssignPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/contractual/review"
+            element={<ContractualDistributionReviewPage />}
+          />
+          <Route
+            path="admin/leave-balances/distributions/*"
+            element={<Navigate to={leaveBalancesLandingPath()} replace />}
+          />
+          <Route path="admin/logs" element={<AdminAdministrativeLogPage />} />
+          <Route
+            path="admin/logs/:logId"
+            element={<Navigate to="/admin/logs" replace />}
+          />
+          <Route
+            path="admin/reports"
+            element={
+              <Navigate to="/admin/reports/monthly-attendance" replace />
+            }
+          />
+          <Route
+            path="admin/reports/monthly-attendance"
+            element={<MonthlyAttendanceReportPage />}
+          />
+          <Route
+            path="admin/reports/leave-monetization-candidates"
+            element={<LeaveMonetizationCandidatesPage />}
+          />
+          <Route
+            path="admin/reports/employees-with-lwop"
+            element={<EmployeesWithLwopPage />}
+          />
+        </Route>
       </Route>
     </Routes>
   )
