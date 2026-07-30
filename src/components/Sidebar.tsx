@@ -138,7 +138,18 @@ export function Sidebar() {
   return (
     <aside className="flex h-svh w-64 shrink-0 flex-col border-r border-white/15 bg-primary">
       <div className="shrink-0 border-b border-white/15 px-5 py-3.5">
-        <p className="text-h2 tracking-[0.125rem] text-white uppercase">
+        <p className="text-h2 flex items-center gap-2.5 tracking-[0.125rem] text-white uppercase">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            fill="currentColor"
+            viewBox="2 2 20 20"
+            className="size-6 shrink-0"
+            aria-hidden="true"
+          >
+            <path d="M21 3h-7c-.77 0-1.47.3-2 .78-.53-.48-1.23-.78-2-.78H3c-.55 0-1 .45-1 1v15c0 .55.45 1 1 1h5.76c.53 0 1.04.21 1.41.59l1.12 1.12s.02.01.03.02c.09.08.18.15.29.2.12.05.25.08.38.08s.26-.03.38-.08c.11-.05.21-.12.29-.2 0 0 .02-.01.03-.02l1.12-1.12c.37-.37.89-.59 1.41-.59h5.76c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1Zm-1 15h-4.76c-.8 0-1.58.25-2.24.69V6c0-.55.45-1 1-1h6z" />
+          </svg>
           Leave Forms
         </p>
       </div>

@@ -16,6 +16,11 @@ import {
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
 import {
+  PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
+  isParentalLeaveType,
+} from '../../mocks/leaveBalances'
+import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
+import {
   getRemainingLeaveDays,
   getRemainingLeaveLabel,
   getTeamMemberById,
@@ -66,6 +71,7 @@ export function FileLeaveForMemberPage() {
   const [endDate, setEndDate] = useState(EMPTY_LEAVE.endDate)
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
@@ -122,10 +128,16 @@ export function FileLeaveForMemberPage() {
     [employeeId, leaveType],
   )
 
-  const remainingLabel = useMemo(
-    () => getRemainingLeaveLabel(employeeId, leaveType),
-    [employeeId, leaveType],
-  )
+  const parentalCreditsLocked =
+    employeeId !== '' &&
+    isParentalLeaveType(leaveType) &&
+    !canViewParentalLeaveCredits(employeeId, leaveType)
+
+  const remainingLabel = useMemo(() => {
+    if (!leaveType) return '0 day(s)'
+    if (parentalCreditsLocked) return 'Unavailable'
+    return getRemainingLeaveLabel(employeeId, leaveType)
+  }, [employeeId, leaveType, parentalCreditsLocked])
 
   const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
@@ -149,6 +161,7 @@ export function FileLeaveForMemberPage() {
   }, [dayType, startDate, endDate, leaveDuration])
 
   const mayBeLwop =
+    !parentalCreditsLocked &&
     leaveType !== '' &&
     durationDays > 0 &&
     remainingDays >= 0 &&
@@ -184,6 +197,7 @@ export function FileLeaveForMemberPage() {
     !endMissing &&
     !reasonMissing &&
     !attachmentMissing &&
+    !attachmentUploading &&
     leadTimeValidation.ok
 
   function resetLeaveFields() {
@@ -193,6 +207,7 @@ export function FileLeaveForMemberPage() {
     setEndDate(EMPTY_LEAVE.endDate)
     setReason(EMPTY_LEAVE.reason)
     setAttachment(null)
+    setAttachmentUploading(false)
   }
 
   function handleEmployeeChange(value: string) {
@@ -207,6 +222,7 @@ export function FileLeaveForMemberPage() {
     setEndDate(EMPTY_LEAVE.endDate)
     if (!isAttachmentRequired(value)) {
       setAttachment(null)
+      setAttachmentUploading(false)
     }
   }
 
@@ -347,6 +363,19 @@ export function FileLeaveForMemberPage() {
                 disabled={!endDateEnabled}
                 min={startDate || undefined}
               />
+              {parentalCreditsLocked ? (
+                <div
+                  className="rounded-md border border-status-pending/50 bg-status-pending/10 px-3 py-2.5 sm:col-span-2"
+                  role="status"
+                >
+                  <p className="text-small font-semibold text-text-black">
+                    Credits not available yet
+                  </p>
+                  <p className="mt-1 text-small text-text-black">
+                    {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
+                  </p>
+                </div>
+              ) : null}
               {mayBeLwop ? (
                 <div
                   className="rounded-md border border-status-pending/50 bg-status-pending/10 px-3 py-2.5 sm:col-span-2"
@@ -415,6 +444,7 @@ export function FileLeaveForMemberPage() {
                   label="Supporting attachment"
                   fileName={attachment?.name ?? null}
                   onChange={setAttachment}
+                  onUploadingChange={setAttachmentUploading}
                   accept="image/*,.pdf"
                   required
                   className="sm:col-span-2"
@@ -451,7 +481,12 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok}
+            disabled={!leadTimeValidation.ok || attachmentUploading}
+            title={
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : undefined
+            }
           >
             Submit Request
           </Button>

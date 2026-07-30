@@ -28,7 +28,13 @@ import {
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
-import { getLeaveRequestsForRole } from '../../mocks/leaveRequests'
+import {
+  PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
+} from '../../mocks/leaveBalances'
+import {
+  canViewParentalLeaveCredits,
+  getLeaveRequestsForRole,
+} from '../../mocks/leaveRequests'
 
 type LeaveTypeFilter = 'ALL' | string
 type FiledOnSort = 'desc' | 'asc'
@@ -107,10 +113,15 @@ export function DashboardPage() {
     ? leaveTypeOptions.find((option) => option.id === selectedLeaveType)
     : undefined
 
+  const canViewSelectedParentalCredits =
+    selectedLeaveType !== 'parental' ||
+    canViewParentalLeaveCredits(user.id, parentalLabel)
+
   const selectedAvailableDays = (() => {
     if (!selectedLeaveType) return null
     if (selectedLeaveType === 'emergency') return MOCK_OTHER_BALANCES.emergency
     if (selectedLeaveType === 'ptb') return MOCK_OTHER_BALANCES.ptb
+    if (!canViewSelectedParentalCredits) return null
     return user.gender === 'female'
       ? MOCK_OTHER_BALANCES.maternity
       : MOCK_OTHER_BALANCES.paternity
@@ -167,10 +178,10 @@ export function DashboardPage() {
             </h2>
           </div>
           <div className="mt-5 text-center">
-            <p className="text-[2rem] leading-none font-bold text-text-black">
+            <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
               {MOCK_VL_AVAILABLE}
             </p>
-            <p className="text-small text-text-gray mt-1.5">days available</p>
+            <p className="text-body text-text-gray mt-1.5">days available</p>
           </div>
           <div className="mt-4 border-t border-border pt-4">
             <div className="flex items-start justify-between gap-2">
@@ -200,10 +211,10 @@ export function DashboardPage() {
             </h2>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-[2rem] leading-none font-bold text-text-black">
+            <p className="text-[2.5rem] leading-none font-bold text-text-black">
               {MOCK_SL_AVAILABLE}
             </p>
-            <p className="text-small text-text-gray mt-1.5">days available</p>
+            <p className="text-body text-text-gray mt-1.5">days available</p>
           </div>
         </article>
 
@@ -264,10 +275,19 @@ export function DashboardPage() {
           )}
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-[2rem] leading-none font-bold text-text-black">
-              {selectedAvailableDays ?? '—'}
-            </p>
-            <p className="text-small text-text-gray mt-1.5">days available</p>
+            {selectedLeaveType === 'parental' &&
+            !canViewSelectedParentalCredits ? (
+              <p className="px-2 text-small text-text-gray">
+                {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
+              </p>
+            ) : (
+              <>
+                <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
+                  {selectedAvailableDays ?? '—'}
+                </p>
+                <p className="text-body text-text-gray mt-1.5">days available</p>
+              </>
+            )}
           </div>
         </article>
           </>

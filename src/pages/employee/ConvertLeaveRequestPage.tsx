@@ -21,6 +21,7 @@ export function ConvertLeaveRequestPage() {
 
   const [conversionReason, setConversionReason] = useState('')
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
@@ -80,12 +81,13 @@ export function ConvertLeaveRequestPage() {
 
   const reasonMissing = conversionReason.trim().length === 0
   const attachmentMissing = !attachment
-  const canSubmit = !reasonMissing && !attachmentMissing
+  const canSubmit =
+    !reasonMissing && !attachmentMissing && !attachmentUploading
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
-    if (!canSubmit || !attachment) return
+    if (!canSubmit || !attachment || attachmentUploading) return
     setConfirmOpen(true)
   }
 
@@ -142,6 +144,7 @@ export function ConvertLeaveRequestPage() {
               label="Supporting attachment (medical certificate)"
               fileName={attachment?.name ?? null}
               onChange={setAttachment}
+              onUploadingChange={setAttachmentUploading}
               accept="image/*,.pdf"
               required
               hint="Required. Upload a medical certificate or other supporting document."
@@ -158,7 +161,16 @@ export function ConvertLeaveRequestPage() {
           <Button type="button" onClick={() => navigate(detailsPath)}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={attachmentUploading}
+            title={
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : undefined
+            }
+          >
             Confirm
           </Button>
         </div>

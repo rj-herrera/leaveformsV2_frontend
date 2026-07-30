@@ -4,7 +4,11 @@
 import { MOCK_DATA_ENABLED } from './config'
 import { appendActivityLogEntry } from './activityLog'
 import { appendAdminLogEntry } from './adminLog'
-import { parentalEntitlementDays } from '../utils/leaveDates'
+import {
+  MATERNITY_LEAVE_TYPE,
+  PATERNITY_LEAVE_TYPE,
+  parentalEntitlementDays,
+} from '../utils/leaveDates'
 
 export type EmploymentStatus = 'regular' | 'probationary' | 'contractual'
 
@@ -731,6 +735,32 @@ export function parentalCandidateKey(
 ): string {
   return `${employeeId}::${leaveType}`
 }
+
+export function isParentalLeaveType(leaveType: string): boolean {
+  return (
+    leaveType === MATERNITY_LEAVE_TYPE || leaveType === PATERNITY_LEAVE_TYPE
+  )
+}
+
+/**
+ * Maternity / Paternity credits are granted only after a corresponding leave
+ * request has been filed. Used to gate “available credits” displays.
+ */
+export function hasFiledParentalLeaveRequest(
+  employeeId: string,
+  leaveType: string,
+): boolean {
+  if (!employeeId || !isParentalLeaveType(leaveType)) return false
+  const employee = EMPLOYEES.find((row) => row.id === employeeId)
+  if (!employee) return false
+  return employee.filedParentalRequests.some(
+    (filing) => filing.leaveType === leaveType,
+  )
+}
+
+export const PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE =
+  'Submit a leave request first before credits can be viewed or applied.'
+
 
 export function formatParentalFiledByLabel(candidate: {
   filedByRole: FiledParentalByRole
