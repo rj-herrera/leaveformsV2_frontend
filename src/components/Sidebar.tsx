@@ -67,7 +67,7 @@ function ChildLinks({
   const { pathname } = useLocation()
 
   return (
-    <ul className="flex flex-col gap-0.5">
+    <ul className="flex flex-col gap-1.5">
       {items.map((child) => {
         const childActive = isChildActive(pathname, child)
         return (
@@ -471,7 +471,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   return (
     <aside
       className={[
-        'flex h-svh shrink-0 flex-col border-r border-white/15 bg-primary transition-[width] duration-200 ease-out',
+        'flex h-svh shrink-0 flex-col border-r border-white/15 bg-primary transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-20 overflow-visible' : 'w-64',
       ].join(' ')}
     >
