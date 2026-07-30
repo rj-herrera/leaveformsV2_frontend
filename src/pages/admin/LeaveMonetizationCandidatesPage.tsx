@@ -24,12 +24,6 @@ import {
   type MonetizationReport,
 } from '../../mocks/monetizationCandidates'
 
-type SortKey =
-  | 'employeeName'
-  | 'groupLabel'
-  | 'vlExcess'
-  | 'slExcess'
-  | 'totalEligibleDays'
 type SortDir = 'asc' | 'desc'
 
 const DEFAULT_YEAR = new Date().getFullYear()
@@ -49,25 +43,13 @@ function formatGeneratedAt(date: Date): string {
   })
 }
 
-function compareCandidates(
-  a: MonetizationCandidate,
-  b: MonetizationCandidate,
-  key: SortKey,
-  dir: SortDir,
-): number {
-  const factor = dir === 'asc' ? 1 : -1
-  switch (key) {
-    case 'employeeName':
-      return factor * a.employeeName.localeCompare(b.employeeName)
-    case 'groupLabel':
-      return factor * a.groupLabel.localeCompare(b.groupLabel)
-    case 'vlExcess':
-      return factor * (a.vlExcess - b.vlExcess)
-    case 'slExcess':
-      return factor * (a.slExcess - b.slExcess)
-    case 'totalEligibleDays':
-      return factor * (a.totalEligibleDays - b.totalEligibleDays)
+function compareEmployeeNumber(a: string, b: string): number {
+  const numA = Number(a)
+  const numB = Number(b)
+  if (Number.isFinite(numA) && Number.isFinite(numB)) {
+    return numA - numB
   }
+  return a.localeCompare(b)
 }
 
 export function LeaveMonetizationCandidatesPage() {
@@ -84,8 +66,7 @@ export function LeaveMonetizationCandidatesPage() {
   const [report, setReport] = useState<MonetizationReport | null>(null)
   const [actionNotice, setActionNotice] = useState('')
   const [formError, setFormError] = useState('')
-  const [sortKey, setSortKey] = useState<SortKey>('totalEligibleDays')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const availability = useMemo(
     () =>
@@ -116,11 +97,14 @@ export function LeaveMonetizationCandidatesPage() {
 
   const sortedCandidates = useMemo(() => {
     const next = [...filteredCandidates]
-    next.sort((a, b) => compareCandidates(a, b, sortKey, sortDir))
+    next.sort((a, b) => {
+      const cmp = compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
+      return sortDir === 'asc' ? cmp : -cmp
+    })
     return next
-  }, [filteredCandidates, sortKey, sortDir])
+  }, [filteredCandidates, sortDir])
 
-  const filterResetKey = `${search}|${eligibilityType}|${sortKey}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
+  const filterResetKey = `${search}|${eligibilityType}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
     usePagination(sortedCandidates, pageSize, filterResetKey)
 
@@ -136,13 +120,8 @@ export function LeaveMonetizationCandidatesPage() {
     setActionNotice('')
   }
 
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))
-      return
-    }
-    setSortKey(key)
-    setSortDir(key === 'employeeName' || key === 'groupLabel' ? 'asc' : 'desc')
+  function handleToggleEmployeeNumberSort() {
+    setSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'))
   }
 
   function handleGenerate() {
@@ -169,8 +148,7 @@ export function LeaveMonetizationCandidatesPage() {
 
     setFormError('')
     setReport(next)
-    setSortKey('totalEligibleDays')
-    setSortDir('desc')
+    setSortDir('asc')
   }
 
   function handleReset() {
@@ -180,8 +158,7 @@ export function LeaveMonetizationCandidatesPage() {
     setReport(null)
     setFormError('')
     setActionNotice('')
-    setSortKey('totalEligibleDays')
-    setSortDir('desc')
+    setSortDir('asc')
   }
 
   return (
@@ -340,23 +317,27 @@ export function LeaveMonetizationCandidatesPage() {
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-surface-muted text-small text-text-gray">
                     <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      Employee No.
+                      <div className="flex items-center gap-1.5">
+                        <span>Employee No.</span>
+                        <button
+                          type="button"
+                          onClick={handleToggleEmployeeNumberSort}
+                          className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
+                          aria-label={`Sort employee number ${sortDir === 'asc' ? 'descending' : 'ascending'}`}
+                        >
+                          {sortDir === 'asc' ? (
+                            <ArrowUp className="size-3.5" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="size-3.5" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
                     </th>
                     <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      <SortableHeader
-                        label="Employee Name"
-                        active={sortKey === 'employeeName'}
-                        direction={sortDir}
-                        onToggle={() => handleSort('employeeName')}
-                      />
+                      Employee Name
                     </th>
                     <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
-                      <SortableHeader
-                        label="Group"
-                        active={sortKey === 'groupLabel'}
-                        direction={sortDir}
-                        onToggle={() => handleSort('groupLabel')}
-                      />
+                      Group
                     </th>
                     <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
                       VL Balance
@@ -365,12 +346,7 @@ export function LeaveMonetizationCandidatesPage() {
                       VL Retained
                     </th>
                     <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-vacation">
-                      <SortableHeader
-                        label="VL Excess"
-                        active={sortKey === 'vlExcess'}
-                        direction={sortDir}
-                        onToggle={() => handleSort('vlExcess')}
-                      />
+                      VL Excess
                     </th>
                     <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
                       SL Balance
@@ -379,20 +355,10 @@ export function LeaveMonetizationCandidatesPage() {
                       SL Retained
                     </th>
                     <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-sick">
-                      <SortableHeader
-                        label="SL Excess"
-                        active={sortKey === 'slExcess'}
-                        direction={sortDir}
-                        onToggle={() => handleSort('slExcess')}
-                      />
+                      SL Excess
                     </th>
                     <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
-                      <SortableHeader
-                        label="Total Eligible Days"
-                        active={sortKey === 'totalEligibleDays'}
-                        direction={sortDir}
-                        onToggle={() => handleSort('totalEligibleDays')}
-                      />
+                      Total Eligible Days
                     </th>
                     <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
                       Eligibility Basis
@@ -563,36 +529,6 @@ function InfoItem({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="inline font-semibold text-text-black">{label}: </dt>
       <dd className="inline">{value}</dd>
-    </div>
-  )
-}
-
-function SortableHeader({
-  label,
-  active,
-  direction,
-  onToggle,
-}: {
-  label: string
-  active: boolean
-  direction: SortDir
-  onToggle: () => void
-}) {
-  return (
-    <div className="inline-flex items-center justify-center gap-1.5">
-      <span>{label}</span>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
-        aria-label={`Sort ${label} ${active && direction === 'desc' ? 'ascending' : 'descending'}`}
-      >
-        {active && direction === 'asc' ? (
-          <ArrowUp className="size-3.5" aria-hidden="true" />
-        ) : (
-          <ArrowDown className="size-3.5" aria-hidden="true" />
-        )}
-      </button>
     </div>
   )
 }

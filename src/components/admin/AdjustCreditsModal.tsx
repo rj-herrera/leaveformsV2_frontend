@@ -5,7 +5,7 @@ import { Modal } from '../ui/Modal'
 import { SuccessDialog } from '../ui/SuccessDialog'
 import { SelectField } from '../ui/form/SelectField'
 import { TextField } from '../ui/form/TextField'
-import { fieldLabelClassName } from '../ui/form/fieldStyles'
+import { fieldLabelClassName, fieldShellClassName } from '../ui/form/fieldStyles'
 import {
   ADJUSTMENT_REASON_OPTIONS,
   LEAVE_BALANCE_KEYS,
@@ -267,7 +267,7 @@ export function AdjustCreditsModal({
             </dl>
           </section>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
             <SelectField
               label="Leave type"
               value={leaveTypeKey}
@@ -282,9 +282,6 @@ export function AdjustCreditsModal({
               }
               options={DIRECTION_OPTIONS}
             />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="Credits"
               type="number"
@@ -299,13 +296,15 @@ export function AdjustCreditsModal({
               >
                 Effective date
               </label>
-              <input
-                id="adjust-effective-date"
-                type="date"
-                value={effectiveDate}
-                onChange={(e) => setEffectiveDate(e.target.value)}
-                className="box-border w-full min-h-11 rounded-md border border-border bg-surface px-3 py-2.5 text-body text-text-black outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
+              <div className={fieldShellClassName}>
+                <input
+                  id="adjust-effective-date"
+                  type="date"
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  className="box-border w-full min-h-11 rounded-md border border-border bg-surface px-3 py-2.5 text-body text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
             </div>
           </div>
 

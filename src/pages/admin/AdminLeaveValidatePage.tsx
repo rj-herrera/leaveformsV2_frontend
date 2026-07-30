@@ -127,10 +127,13 @@ export function AdminLeaveValidatePage() {
 
       <article className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
-          <InfoCell label="Employee Name" value={detail.requesterName} />
           <InfoCell
             label="Employee No."
             value={detail.employeeNumber}
+          />
+          <InfoCell
+            label="Employee Name"
+            value={detail.requesterName}
             className="lg:pl-4"
           />
           <InfoCell

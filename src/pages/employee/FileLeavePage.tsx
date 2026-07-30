@@ -193,12 +193,12 @@ export function FileLeavePage() {
         <section className="shrink-0 overflow-visible rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <TextField label="Employee Name" value={user.name} readOnly />
             <TextField
-              label="Employee Number"
+              label="Employee No."
               value={user.employeeNumber}
               readOnly
             />
+            <TextField label="Employee Name" value={user.name} readOnly />
           </div>
         </section>
 

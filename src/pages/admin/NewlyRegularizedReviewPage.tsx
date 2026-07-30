@@ -119,16 +119,20 @@ export function NewlyRegularizedReviewPage() {
         >
           <table className="w-full min-w-[960px] table-fixed text-left">
             <colgroup>
-              <col className="w-[24%]" />
               <col className="w-[12%]" />
-              <col className="w-[20%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
               <col className="w-[11%]" />
               <col className="w-[11%]" />
             </colgroup>
             <thead>
               <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                  Employee No.
+                </th>
                 <th className="px-4 py-3 font-bold uppercase tracking-wide">
                   Employee Name
                 </th>
@@ -138,17 +142,17 @@ export function NewlyRegularizedReviewPage() {
                 <th className="px-4 py-3 font-bold uppercase tracking-wide">
                   Months Prorated
                 </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                <th className="px-3 py-3 text-center text-leave-vacation font-bold uppercase tracking-wide">
                   VL to Add
                 </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                <th className="px-3 py-3 text-center text-leave-sick font-bold uppercase tracking-wide">
                   SL to Add
                 </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  EL to Add
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                <th className="px-3 py-3 text-center text-leave-ptb font-bold uppercase tracking-wide">
                   PTB to Add
+                </th>
+                <th className="px-3 py-3 text-center text-leave-emergency font-bold uppercase tracking-wide">
+                  EL to Add
                 </th>
               </tr>
             </thead>
@@ -156,13 +160,13 @@ export function NewlyRegularizedReviewPage() {
               {showSkeleton ? (
                 <TableBodySkeleton
                   rows={pageSize}
-                  cols={7}
+                  cols={8}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No recipients selected.
@@ -174,6 +178,9 @@ export function NewlyRegularizedReviewPage() {
                     key={row.employee.id}
                     className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
                   >
+                    <td className="px-4 text-body text-text-black">
+                      {row.employee.employeeNumber}
+                    </td>
                     <td
                       className="truncate px-4 text-body text-text-black"
                       title={row.employee.name}
@@ -188,17 +195,17 @@ export function NewlyRegularizedReviewPage() {
                         row.employee.regularizationDate,
                       )}
                     </td>
-                    <td className="px-3 text-center text-body text-text-black">
+                    <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
                       {formatBalanceValue(row.vlToAdd)}
                     </td>
-                    <td className="px-3 text-center text-body text-text-black">
+                    <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
                       {formatBalanceValue(row.slToAdd)}
                     </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.elToAdd)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
+                    <td className="bg-leave-ptb/10 px-3 text-center text-body font-semibold text-leave-ptb">
                       {formatBalanceValue(row.ptbToAdd)}
+                    </td>
+                    <td className="bg-leave-emergency/10 px-3 text-center text-body font-semibold text-leave-emergency">
+                      {formatBalanceValue(row.elToAdd)}
                     </td>
                   </tr>
                 ))

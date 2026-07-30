@@ -171,11 +171,12 @@ export function AdminAdministrativeLogPage() {
         >
           <table className="w-full min-w-[900px] table-fixed text-left">
             <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
               <col className="w-[18%]" />
-              <col className="w-[26%]" />
-              <col className="w-[20%]" />
-              <col className="w-[18%]" />
-              <col className="w-[18%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[16%]" />
             </colgroup>
             <thead>
               <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
@@ -210,7 +211,10 @@ export function AdminAdministrativeLogPage() {
                   Performed By
                 </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Employee
+                  Employee No.
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Employee Name
                 </th>
               </tr>
             </thead>
@@ -218,13 +222,13 @@ export function AdminAdministrativeLogPage() {
               {showSkeleton ? (
                 <TableBodySkeleton
                   rows={pageSize}
-                  cols={5}
+                  cols={6}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No logs match the selected filters.
@@ -256,6 +260,9 @@ export function AdminAdministrativeLogPage() {
                       title={entry.actorName}
                     >
                       {entry.actorName}
+                    </td>
+                    <td className="px-5 text-body text-text-black">
+                      {entry.employeeNumber ?? '—'}
                     </td>
                     <td
                       className="truncate px-5 text-body text-text-black"

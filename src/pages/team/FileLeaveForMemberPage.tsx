@@ -285,17 +285,17 @@ export function FileLeaveForMemberPage() {
         <section className="shrink-0 overflow-visible rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="Employee No."
+              value={selectedMember?.employeeNumber ?? ''}
+              placeholder="Employee No."
+              readOnly
+            />
             <SelectField
               label="Employee Name"
               value={employeeId}
               onChange={handleEmployeeChange}
               options={employeeOptions}
-            />
-            <TextField
-              label="Employee Number"
-              value={selectedMember?.employeeNumber ?? ''}
-              placeholder="Employee No."
-              readOnly
             />
           </div>
           {triedSubmit && employeeMissing ? (

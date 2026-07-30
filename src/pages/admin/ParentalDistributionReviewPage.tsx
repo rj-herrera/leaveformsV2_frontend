@@ -117,13 +117,17 @@ export function ParentalDistributionReviewPage() {
         >
           <table className="w-full min-w-[800px] table-fixed text-left">
             <colgroup>
-              <col className="w-[36%]" />
-              <col className="w-[12%]" />
-              <col className="w-[24%]" />
+              <col className="w-[14%]" />
               <col className="w-[28%]" />
+              <col className="w-[12%]" />
+              <col className="w-[22%]" />
+              <col className="w-[24%]" />
             </colgroup>
             <thead>
               <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                  Employee No.
+                </th>
                 <th className="px-4 py-3 font-bold uppercase tracking-wide">
                   Employee Name
                 </th>
@@ -142,13 +146,13 @@ export function ParentalDistributionReviewPage() {
               {showSkeleton ? (
                 <TableBodySkeleton
                   rows={pageSize}
-                  cols={4}
+                  cols={5}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No recipients selected.
@@ -165,6 +169,9 @@ export function ParentalDistributionReviewPage() {
                       key={parentalCandidateKey(row.employee.id, row.leaveType)}
                       className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
                     >
+                      <td className="px-4 text-body text-text-black">
+                        {row.employee.employeeNumber}
+                      </td>
                       <td
                         className="truncate px-4 text-body text-text-black"
                         title={row.employee.name}

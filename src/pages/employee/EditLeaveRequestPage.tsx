@@ -201,12 +201,12 @@ export function EditLeaveRequestPage() {
         <section className="shrink-0 rounded-lg border border-border bg-surface p-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <TextField label="Name" value={user.name} readOnly />
             <TextField
-              label="Employee Number"
+              label="Employee No."
               value={user.employeeNumber}
               readOnly
             />
+            <TextField label="Name" value={user.name} readOnly />
           </div>
         </section>
 

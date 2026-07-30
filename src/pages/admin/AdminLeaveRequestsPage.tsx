@@ -42,8 +42,17 @@ import {
 
 type LeaveTypeFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
-type SortKey = 'filedOn' | 'period'
+type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
+
+function compareEmployeeNumber(a: string, b: string): number {
+  const numA = Number(a)
+  const numB = Number(b)
+  if (Number.isFinite(numA) && Number.isFinite(numB)) {
+    return numA - numB
+  }
+  return a.localeCompare(b)
+}
 
 const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
   PENDING: 'PENDING',
@@ -136,7 +145,9 @@ export function AdminLeaveRequestsPage() {
       const cmp =
         sortKey === 'filedOn'
           ? a.filedOnDate.localeCompare(b.filedOnDate)
-          : a.period.localeCompare(b.period)
+          : sortKey === 'period'
+            ? a.period.localeCompare(b.period)
+            : compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
       return sortDir === 'asc' ? cmp : -cmp
     })
   }, [
@@ -301,29 +312,39 @@ export function AdminLeaveRequestsPage() {
             <colgroup>
               {tab === 'pending' ? (
                 <>
-                  <col className="w-[16%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[18%]" />
-                  <col className="w-[16%]" />
                   <col className="w-[10%]" />
                   <col className="w-[14%]" />
+                  <col className="w-[10%]" />
                   <col className="w-[16%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[14%]" />
                 </>
               ) : (
                 <>
-                  <col className="w-[14%]" />
-                  <col className="w-[8%]" />
-                  <col className="w-[14%]" />
-                  <col className="w-[14%]" />
                   <col className="w-[9%]" />
-                  <col className="w-[14%]" />
                   <col className="w-[13%]" />
-                  <col className="w-[14%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[12%]" />
                 </>
               )}
             </colgroup>
             <thead>
               <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  <SortableHeader
+                    label="Employee No."
+                    active={sortKey === 'employeeNumber'}
+                    direction={sortDir}
+                    onToggle={() => toggleSort('employeeNumber')}
+                  />
+                </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee Name</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Group</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
@@ -354,13 +375,13 @@ export function AdminLeaveRequestsPage() {
               {showSkeleton ? (
                 <TableBodySkeleton
                   rows={pageSize}
-                  cols={tab === 'pending' ? 7 : 8}
+                  cols={tab === 'pending' ? 8 : 9}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={tab === 'pending' ? 7 : 8}
+                    colSpan={tab === 'pending' ? 8 : 9}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No leave requests match the selected filters.
@@ -501,15 +522,11 @@ function AdminRequestRow({
           : ''
       }`}
     >
-      <td className="px-5">
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate" title={item.requesterName}>
-            {item.requesterName}
-          </span>
-          <span className="truncate text-small text-text-gray">
-            EMP-{item.employeeNumber}
-          </span>
-        </div>
+      <td className="px-5 whitespace-nowrap text-body text-text-black">
+        {item.employeeNumber}
+      </td>
+      <td className="truncate px-5" title={item.requesterName}>
+        {item.requesterName}
       </td>
       <td className="px-5">{item.groupLabel}</td>
       <td className="truncate px-5" title={item.leaveType}>

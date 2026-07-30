@@ -137,8 +137,8 @@ export function LeaveRequestReviewPage() {
         <article className="rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <dl className="mt-3 space-y-2.5">
-            <InfoRow label="Employee Name" value={detail.requesterName} />
             <InfoRow label="Employee No." value={detail.employeeNumber} />
+            <InfoRow label="Employee Name" value={detail.requesterName} />
             <InfoRow label="Department" value={detail.department} />
             <InfoRow label="Group" value={detail.groupLabel} />
           </dl>

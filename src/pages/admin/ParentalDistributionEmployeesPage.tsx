@@ -217,10 +217,10 @@ export function ParentalDistributionEmployeesPage() {
                   />
                 </th>
                 <th className="px-3 py-3 font-bold uppercase tracking-wide">
-                  Employee Name
+                  Employee No.
                 </th>
                 <th className="px-3 py-3 font-bold uppercase tracking-wide">
-                  Employee Number
+                  Employee Name
                 </th>
                 <th className="px-3 py-3 font-bold uppercase tracking-wide">
                   Group
@@ -336,14 +336,14 @@ function CandidateRow({
           className="size-4 accent-primary"
         />
       </td>
+      <td className="px-3 text-body text-text-black">
+        {employee.employeeNumber}
+      </td>
       <td
         className="truncate px-3 text-body text-text-black"
         title={employee.name}
       >
         {employee.name}
-      </td>
-      <td className="px-3 text-body text-text-black">
-        {employee.employeeNumber}
       </td>
       <td className="px-3 text-body text-text-black">{employee.groupLabel}</td>
       <td className="truncate px-3 text-body text-text-black" title={leaveType}>

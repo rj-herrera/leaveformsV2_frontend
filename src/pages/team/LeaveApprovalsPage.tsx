@@ -32,8 +32,17 @@ import {
 
 type LeaveTypeFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
-type SortKey = 'filedOn' | 'period'
+type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
+
+function compareEmployeeNumber(a: string, b: string): number {
+  const numA = Number(a)
+  const numB = Number(b)
+  if (Number.isFinite(numA) && Number.isFinite(numB)) {
+    return numA - numB
+  }
+  return a.localeCompare(b)
+}
 
 export function LeaveApprovalsPage() {
   const { user } = useAuth()
@@ -111,7 +120,9 @@ export function LeaveApprovalsPage() {
       const cmp =
         sortKey === 'filedOn'
           ? a.filedOnDate.localeCompare(b.filedOnDate)
-          : a.period.localeCompare(b.period)
+          : sortKey === 'period'
+            ? a.period.localeCompare(b.period)
+            : compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
       return sortDir === 'asc' ? cmp : -cmp
     })
   }, [
@@ -229,17 +240,26 @@ export function LeaveApprovalsPage() {
         >
           <table className="w-full min-w-[960px] table-fixed text-left">
             <colgroup>
+              <col className="w-[10%]" />
               <col className="w-[14%]" />
               <col className="w-[8%]" />
-              <col className="w-[16%]" />
               <col className="w-[14%]" />
-              <col className="w-[9%]" />
+              <col className="w-[13%]" />
+              <col className="w-[8%]" />
               <col className="w-[11%]" />
-              <col className="w-[16%]" />
               <col className="w-[12%]" />
+              <col className="w-[10%]" />
             </colgroup>
             <thead>
               <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  <SortableHeader
+                    label="Employee No."
+                    active={sortKey === 'employeeNumber'}
+                    direction={sortDir}
+                    onToggle={() => toggleSort('employeeNumber')}
+                  />
+                </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee Name</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Group</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
@@ -270,13 +290,13 @@ export function LeaveApprovalsPage() {
               {showSkeleton ? (
                 <TableBodySkeleton
                   rows={pageSize}
-                  cols={8}
+                  cols={9}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No leave requests match the selected filters.
@@ -418,15 +438,11 @@ function ApprovalRow({
     <tr
       className={`border-b border-border/60 text-body text-text-black last:border-b-0 ${APPROVALS_TABLE_ROW_HEIGHT_CLASS}`}
     >
-      <td className="px-5">
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate" title={item.requesterName}>
-            {item.requesterName}
-          </span>
-          <span className="truncate text-small text-text-gray">
-            EMP NO.: {item.employeeNumber}
-          </span>
-        </div>
+      <td className="px-5 whitespace-nowrap text-body text-text-black">
+        {item.employeeNumber}
+      </td>
+      <td className="truncate px-5" title={item.requesterName}>
+        {item.requesterName}
       </td>
       <td className="px-5">{item.groupLabel}</td>
       <td className="truncate px-5" title={item.leaveType}>

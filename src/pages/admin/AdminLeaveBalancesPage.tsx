@@ -203,8 +203,8 @@ export function AdminLeaveBalancesPage() {
         >
           <table className="w-full min-w-[960px] table-fixed text-left">
             <colgroup>
-              <col className="w-[18%]" />
               <col className="w-[12%]" />
+              <col className="w-[18%]" />
               <col className="w-[8%]" />
               <col className="w-[14%]" />
               <col className="w-[6%]" />
@@ -218,11 +218,8 @@ export function AdminLeaveBalancesPage() {
             <thead>
               <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Employee Name
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   <div className="flex items-center gap-1.5">
-                    <span>Employee Number</span>
+                    <span>Employee No.</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -240,6 +237,9 @@ export function AdminLeaveBalancesPage() {
                       )}
                     </button>
                   </div>
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Employee Name
                 </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   Group
@@ -282,14 +282,14 @@ export function AdminLeaveBalancesPage() {
                     key={row.id}
                     className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
                   >
+                    <td className="px-5 text-body text-text-black">
+                      {row.employeeNumber}
+                    </td>
                     <td
                       className="truncate px-5 text-body text-text-black"
                       title={row.name}
                     >
                       {row.name}
-                    </td>
-                    <td className="px-5 text-body text-text-black">
-                      {row.employeeNumber}
                     </td>
                     <td className="px-5 text-body text-text-black">
                       {row.groupLabel}

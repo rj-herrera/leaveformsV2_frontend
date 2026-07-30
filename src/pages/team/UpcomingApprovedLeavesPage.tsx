@@ -136,7 +136,8 @@ export function UpcomingApprovedLeavesPage() {
             <thead className="sticky top-0 z-10 bg-surface-muted">
               <tr className="h-11 border-b border-border text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Period</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee No.</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee Name</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Duration</th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">Group</th>
@@ -144,11 +145,11 @@ export function UpcomingApprovedLeavesPage() {
             </thead>
             <tbody>
               {showSkeleton ? (
-                <TableBodySkeleton rows={pageSize} cols={5} />
+                <TableBodySkeleton rows={pageSize} cols={6} />
               ) : paginatedItems.length === 0 ? (
                 <tr className={TABLE_ROW_HEIGHT_CLASS}>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-5 text-center text-body text-text-gray"
                   >
                     No upcoming approved leaves match the selected filters.
@@ -171,6 +172,9 @@ export function UpcomingApprovedLeavesPage() {
                   >
                     <td className="px-5 text-body text-text-black">
                       {item.periodLabel}
+                    </td>
+                    <td className="px-5 text-body text-text-black">
+                      {item.employeeNumber}
                     </td>
                     <td className="px-5 text-body text-text-black">
                       {item.employeeName}

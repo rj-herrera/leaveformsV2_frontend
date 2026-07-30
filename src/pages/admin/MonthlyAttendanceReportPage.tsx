@@ -207,7 +207,10 @@ export function MonthlyAttendanceReportPage() {
               <table className="w-max min-w-full border-separate border-spacing-0 text-left">
                 <thead className="sticky top-0 z-20">
                   <tr className="bg-surface-muted text-small text-text-gray">
-                    <th className="sticky left-0 z-30 min-w-[12rem] border-b border-r border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    <th className="sticky left-0 z-30 min-w-[6.5rem] border-b border-r border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                      Employee No.
+                    </th>
+                    <th className="sticky left-[6.5rem] z-30 min-w-[12rem] border-b border-r border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
                       Employee Name
                     </th>
                     {report.dates.map((col) => (
@@ -240,7 +243,13 @@ export function MonthlyAttendanceReportPage() {
                   {report.rows.map((row) => (
                     <tr key={row.employee.id}>
                       <td
-                        className="sticky left-0 z-10 border-b border-r border-border bg-surface px-4 py-2 text-body font-medium text-text-black"
+                        className="sticky left-0 z-10 border-b border-r border-border bg-surface px-4 py-2 text-body text-text-black"
+                        title={row.employee.employeeNumber}
+                      >
+                        {row.employee.employeeNumber}
+                      </td>
+                      <td
+                        className="sticky left-[6.5rem] z-10 border-b border-r border-border bg-surface px-4 py-2 text-body font-medium text-text-black"
                         title={row.employee.name}
                       >
                         <span className="block truncate">{row.employee.name}</span>
@@ -271,7 +280,10 @@ export function MonthlyAttendanceReportPage() {
                 {/* Sticky Total row at the bottom of the scroll area */}
                 <tfoot className="sticky bottom-0 z-20">
                   <tr className="bg-surface-muted font-semibold">
-                    <td className="sticky left-0 z-30 border-t-2 border-r border-border bg-surface-muted px-4 py-2.5 text-body text-text-black">
+                    <td
+                      colSpan={2}
+                      className="sticky left-0 z-30 border-t-2 border-r border-border bg-surface-muted px-4 py-2.5 text-body text-text-black"
+                    >
                       Total
                     </td>
                     {report.dates.map((col) => (
