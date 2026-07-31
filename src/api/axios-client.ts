@@ -7,6 +7,8 @@ import { clearCookie } from '../utils/cookies'
  *
  * Laravel JsonResources wrap payloads as `{ data: T }` (lists may also include
  * `links` / `meta`). Use the `api*Data` / `apiGetList` helpers for those.
+ * Use `apiPostFormData` for multipart uploads (e.g. conversion `med_cert`) —
+ * do not force `Content-Type: application/json`.
  * Plain endpoints like `/me` and `/dev/login` are not wrapped — call
  * `axiosClient` directly for those.
  *
@@ -226,5 +228,25 @@ export async function apiPatchData<T>(
   config?: AxiosRequestConfig,
 ): Promise<T> {
   const { data } = await axiosClient.patch<DataEnvelope<T>>(url, body, config)
+  return unwrapData<T>(data)
+}
+
+/**
+ * POST multipart FormData returning a JsonResource: `{ data: T }` → `T`.
+ * Omits the default JSON Content-Type so the browser sets the multipart boundary.
+ */
+export async function apiPostFormData<T>(
+  url: string,
+  formData: FormData,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const { data } = await axiosClient.post<DataEnvelope<T>>(url, formData, {
+    ...config,
+    headers: {
+      ...config?.headers,
+      // Axios: `false` drops the header so the runtime can set multipart + boundary.
+      'Content-Type': false as unknown as string,
+    },
+  })
   return unwrapData<T>(data)
 }

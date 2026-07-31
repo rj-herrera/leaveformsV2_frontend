@@ -1,0 +1,23 @@
+/** API string enums — aligned with leaveforms-api Leave enums / FRONTEND_API.md */
+
+export type DayType = 'full' | 'half_am' | 'half_pm'
+
+export type LeaveStatus =
+  | 'pending_approval'
+  | 'partially_approved'
+  | 'confirmed'
+  | 'rejected'
+  | 'cancelled'
+  | 'converted_to_sl'
+
+export type ConversionStatus = 'pending_review' | 'approved' | 'rejected'
+
+export type ApproverType =
+  | 'leader'
+  | 'am'
+  | 'dm'
+  | 'sm'
+  | 'admin'
+  | 'president'
+
+export type RequiredApproverType = 'president' | 'admin'
