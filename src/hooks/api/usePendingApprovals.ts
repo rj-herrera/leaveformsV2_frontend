@@ -1,8 +1,8 @@
+import useSWR from 'swr'
 import { listPendingApprovals } from '../../api/approvals'
-import type { LeaveResource } from '../../api/types'
-import { useAsyncResource, type AsyncResourceState } from './useAsyncResource'
+import { swrKeys } from './swrKeys'
 
 /** Page → hook → `api/approvals` for GET /approvals/pending. */
-export function usePendingApprovals(): AsyncResourceState<LeaveResource[]> {
-  return useAsyncResource(() => listPendingApprovals(), [])
+export function usePendingApprovals() {
+  return useSWR(swrKeys.pendingApprovals, listPendingApprovals)
 }
