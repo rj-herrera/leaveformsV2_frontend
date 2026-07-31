@@ -25,7 +25,6 @@ import {
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
-  { value: '', label: 'Select Day Type' },
   { value: 'full', label: 'Whole day' },
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
@@ -53,7 +52,6 @@ export function FileLeavePage() {
   const leaveTypeOptions = useMemo(() => {
     const selectable = getSelectableLeaveThemes(parentalLabel, user.gender)
     return [
-      { value: '', label: 'Select Leave Type' },
       { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
       { value: SICK_LEAVE_THEME.label, label: SICK_LEAVE_THEME.label },
       {
@@ -73,7 +71,7 @@ export function FileLeavePage() {
   const [startDate, setStartDate] = useState(EMPTY_FORM.startDate)
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
-  const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -118,7 +116,7 @@ export function FileLeavePage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = attachmentRequired && !attachment
+  const attachmentMissing = attachmentRequired && attachments.length === 0
 
   const formValid =
     !leaveTypeMissing &&
@@ -136,7 +134,7 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     if (!isAttachmentRequired(value)) {
-      setAttachment(null)
+      setAttachments([])
       setAttachmentUploading(false)
     }
   }
@@ -153,7 +151,7 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
-    setAttachment(null)
+    setAttachments([])
     setAttachmentUploading(false)
     setTriedSubmit(false)
   }
@@ -216,12 +214,14 @@ export function FileLeavePage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
+                placeholder="Select Leave Type"
                 options={leaveTypeOptions}
               />
               <SelectField
                 label="Day Type"
                 value={dayType}
                 onChange={handleDayTypeChange}
+                placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
                 disabled={!dayTypeEnabled}
               />
@@ -298,13 +298,15 @@ export function FileLeavePage() {
               {attachmentRequired ? (
                 <FileField
                   label="Supporting attachment"
-                  fileName={attachment?.name ?? null}
-                  onChange={setAttachment}
+                  files={attachments}
+                  onChange={setAttachments}
                   onUploadingChange={setAttachmentUploading}
                   accept="image/*,.pdf"
                   required
+                  multiple
+                  maxFiles={5}
                   className="sm:col-span-2"
-                  hint="Required for this leave type (e.g. medical certificate or supporting document)."
+                  hint="Required for this leave type (e.g. medical certificate or supporting document). You can attach up to 5 files."
                   error={
                     triedSubmit && attachmentMissing
                       ? 'An attachment is required for this leave type.'
@@ -335,7 +337,7 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || attachmentUploading}
+            disabled={!formValid}
             title={
               attachmentUploading ? 'Wait for the attachment upload to finish.' : undefined
             }

@@ -17,6 +17,7 @@ type SelectFieldProps = {
   value: string
   onChange: (value: string) => void
   options: SelectOption[]
+  placeholder?: string
   readOnly?: boolean
   disabled?: boolean
   name?: string
@@ -29,6 +30,7 @@ export function SelectField({
   value,
   onChange,
   options,
+  placeholder,
   readOnly = false,
   disabled = false,
   name,
@@ -58,6 +60,11 @@ export function SelectField({
           onChange={(e) => onChange(e.target.value)}
           className={`appearance-none pr-9 ${controlClass}`}
         >
+          {placeholder ? (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          ) : null}
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
