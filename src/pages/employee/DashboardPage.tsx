@@ -52,7 +52,7 @@ const MOCK_VL_RESERVED = 3
 const MOCK_SL_AVAILABLE = 14
 
 export function DashboardPage() {
-  const { user, mockPersona } = useAuth()
+  const { user } = useAuth()
   const tableAreaRef = useRef<HTMLDivElement>(null)
   const pageSize = usePageSizeFromHeight(tableAreaRef)
   const showSkeleton = shouldShowDataSkeleton()
@@ -63,19 +63,11 @@ export function DashboardPage() {
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<LeaveTypeFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [filedOnSort, setFiledOnSort] = useState<FiledOnSort>('desc')
-  const [filterPersona, setFilterPersona] = useState(mockPersona)
 
-  // Reset filters when the preview persona changes (avoid setState-in-effect).
-  if (filterPersona !== mockPersona) {
-    setFilterPersona(mockPersona)
-    setLeaveTypeFilter('ALL')
-    setStatusFilter('ALL')
-    setSelectedLeaveType(null)
-  }
-
+  // My Leave dashboard always uses the employee mock set until Phase 2 wires APIs.
   const roleLeaveRequests = useMemo(
-    () => getLeaveRequestsForRole(mockPersona),
-    [mockPersona],
+    () => getLeaveRequestsForRole('employee'),
+    [],
   )
   const parentalLabel =
     user.gender === 'female' ? 'Maternity Leave' : 'Paternity Leave'
@@ -147,7 +139,7 @@ export function DashboardPage() {
     usePagination(
       filteredRequests,
       pageSize,
-      `${mockPersona}-${leaveTypeFilter}-${statusFilter}-${filedOnSort}`,
+      `employee-${leaveTypeFilter}-${statusFilter}-${filedOnSort}`,
     )
 
   function handleSelectLeaveType(type: SelectableLeaveType) {

@@ -2,7 +2,7 @@
  * Auth bootstrap via portal cookie (userID) + GET /api/me.
  *
  * Dev login: POST /api/dev/login with emp_id → frontend sets the cookie.
- * TODO: Replace mockPersona / setMockPersona when real roles come from the API.
+ * Roles come from /api/me `role` (approval_level, is_president, is_admin).
  * TODO: Map gender from /api/me when the backend exposes it.
  */
 import {
@@ -14,7 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ApiError } from '../api/client'
+import { ApiError } from '../api/axios-client'
 import {
   fetchCurrentUser,
   loginWithEmployeeId,
@@ -51,10 +51,6 @@ type AuthContextValue = {
   isBootstrapping: boolean
   signInWithEmployeeNumber: (employeeNumber: string) => Promise<SignInResult>
   signOut: () => void
-  /** TODO(REMOVE): Temporary mock persona switcher for UI previews */
-  setMockPersona: (persona: UserRole) => void
-  /** TODO(REMOVE): Temporary mock persona switcher for UI previews */
-  mockPersona: UserRole
 }
 
 const DEFAULT_COOKIE_NAME = 'userID'
@@ -68,15 +64,16 @@ const FALLBACK_USER: AuthUser = {
   roles: { employee: true, approver: false, admin: false },
 }
 
-function rolesForPersona(persona: UserRole): AuthUser['roles'] {
+function rolesFromMe(me: MeResponse): AuthUser['roles'] {
+  const role = me.role
   return {
     employee: true,
-    approver: persona === 'approver',
-    admin: persona === 'admin',
+    approver: role.approval_level != null || role.is_president,
+    admin: role.is_admin,
   }
 }
 
-function mapMeToAuthUser(me: MeResponse, persona: UserRole): AuthUser {
+function mapMeToAuthUser(me: MeResponse): AuthUser {
   return {
     id: String(me.id),
     name: me.full_name,
@@ -84,7 +81,7 @@ function mapMeToAuthUser(me: MeResponse, persona: UserRole): AuthUser {
     employeeNumber: String(me.id),
     // TODO: use real gender from API when available
     gender: 'female',
-    roles: rolesForPersona(persona),
+    roles: rolesFromMe(me),
   }
 }
 
@@ -93,7 +90,6 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isBootstrapping, setIsBootstrapping] = useState(true)
-  const [mockPersona, setMockPersonaState] = useState<UserRole>('employee')
 
   useEffect(() => {
     let cancelled = false
@@ -111,8 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const me = await fetchCurrentUser()
         if (!cancelled) {
-          setUser(mapMeToAuthUser(me, 'employee'))
-          setMockPersonaState('employee')
+          setUser(mapMeToAuthUser(me))
         }
       } catch {
         clearCookie(DEFAULT_COOKIE_NAME)
@@ -142,8 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCookie(cookieName, login.userID)
 
         const me = await fetchCurrentUser()
-        setUser(mapMeToAuthUser(me, 'employee'))
-        setMockPersonaState('employee')
+        setUser(mapMeToAuthUser(me))
         return { ok: true }
       } catch (error) {
         if (error instanceof ApiError) {
@@ -169,18 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
-  const setMockPersona = useCallback((persona: UserRole) => {
-    setMockPersonaState(persona)
-    setUser((prev) =>
-      prev
-        ? {
-            ...prev,
-            roles: rolesForPersona(persona),
-          }
-        : prev,
-    )
-  }, [])
-
   const value = useMemo(
     () => ({
       user: user ?? FALLBACK_USER,
@@ -188,17 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isBootstrapping,
       signInWithEmployeeNumber,
       signOut,
-      mockPersona,
-      setMockPersona,
     }),
-    [
-      user,
-      isBootstrapping,
-      signInWithEmployeeNumber,
-      signOut,
-      mockPersona,
-      setMockPersona,
-    ],
+    [user, isBootstrapping, signInWithEmployeeNumber, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

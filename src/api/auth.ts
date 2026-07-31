@@ -1,8 +1,15 @@
-import { apiRequest } from './client'
+import { axiosClient } from './axios-client'
 
 export type DevLoginResponse = {
   userID: string
   cookie: string
+}
+
+export type MeRole = {
+  approval_level: number | null
+  is_president: boolean
+  is_admin: boolean
+  pic_groups: string[]
 }
 
 export type MeResponse = {
@@ -19,17 +26,21 @@ export type MeResponse = {
     name: string | null
   } | null
   date_hired: string | null
+  role: MeRole
 }
 
 /** Local-only: resolve emp_id → portal userID hash (frontend sets the cookie). */
-export function loginWithEmployeeId(empId: number): Promise<DevLoginResponse> {
-  return apiRequest<DevLoginResponse>('/api/dev/login', {
-    method: 'POST',
-    body: { emp_id: empId },
+export async function loginWithEmployeeId(
+  empId: number,
+): Promise<DevLoginResponse> {
+  const { data } = await axiosClient.post<DevLoginResponse>('/dev/login', {
+    emp_id: empId,
   })
+  return data
 }
 
 /** Current employee from the portal userID cookie. */
-export function fetchCurrentUser(): Promise<MeResponse> {
-  return apiRequest<MeResponse>('/api/me')
+export async function fetchCurrentUser(): Promise<MeResponse> {
+  const { data } = await axiosClient.get<MeResponse>('/me')
+  return data
 }

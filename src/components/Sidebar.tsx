@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, LogOut, UserRoundCog } from 'lucide-react'
+import { ChevronDown, LogOut } from 'lucide-react'
 import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth, type UserRole } from '../auth/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import { Button } from './ui/Button'
 import { NAV_SECTIONS, type NavChildItem, type NavItem } from '../nav/navConfig'
 
@@ -292,143 +292,6 @@ function NavItemLink({
   )
 }
 
-function RoleSelect({
-  value,
-  onChange,
-}: {
-  value: UserRole
-  onChange: (role: UserRole) => void
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as UserRole)}
-      className="w-full rounded-md border border-white/20 bg-white/10 px-2 py-1.5 text-body text-white"
-      aria-label="Preview role"
-    >
-      <option value="employee" className="text-text-black">
-        Employee
-      </option>
-      <option value="approver" className="text-text-black">
-        Approver
-      </option>
-      <option value="admin" className="text-text-black">
-        Admin
-      </option>
-    </select>
-  )
-}
-
-function DevRolePreview({
-  collapsed,
-  mockPersona,
-  setMockPersona,
-}: {
-  collapsed: boolean
-  mockPersona: UserRole
-  setMockPersona: (role: UserRole) => void
-}) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const closeTimerRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (!collapsed) setOpen(false)
-  }, [collapsed])
-
-  useEffect(() => {
-    return () => {
-      if (closeTimerRef.current != null) {
-        window.clearTimeout(closeTimerRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open])
-
-  function clearCloseTimer() {
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current)
-      closeTimerRef.current = null
-    }
-  }
-
-  if (collapsed) {
-    return (
-      <div
-        ref={rootRef}
-        className="relative flex shrink-0 justify-center border-t border-white/15 p-2"
-        onMouseEnter={() => {
-          clearCloseTimer()
-          setOpen(true)
-        }}
-        onMouseLeave={() => {
-          clearCloseTimer()
-          closeTimerRef.current = window.setTimeout(() => {
-            setOpen(false)
-            closeTimerRef.current = null
-          }, 140)
-        }}
-      >
-        <button
-          type="button"
-          title="Preview role"
-          aria-label="Preview role"
-          aria-expanded={open}
-          onClick={() => setOpen((prev) => !prev)}
-          className={[
-            COLLAPSED_ICON_BUTTON,
-            open
-              ? 'bg-white/20 text-white'
-              : 'text-white/90 hover:bg-white/25',
-          ].join(' ')}
-        >
-          <UserRoundCog className="size-4" strokeWidth={2.5} aria-hidden="true" />
-        </button>
-        {open ? (
-          <FloatingMenuCard title="Dev only" className="bottom-0">
-            <label className="flex flex-col gap-1.5 text-small text-white/70">
-              <span>Preview role</span>
-              <RoleSelect value={mockPersona} onChange={setMockPersona} />
-            </label>
-          </FloatingMenuCard>
-        ) : null}
-      </div>
-    )
-  }
-
-  return (
-    <div className="shrink-0 border-t border-white/15 px-3 py-4">
-      <p className="text-header mb-2 px-2 tracking-[0.125rem] text-white/70 uppercase">
-        Dev only
-      </p>
-      <label className="flex flex-col gap-1.5 px-2 text-small text-white/70">
-        <span>Preview role</span>
-        <RoleSelect value={mockPersona} onChange={setMockPersona} />
-      </label>
-    </div>
-  )
-}
-
 function SectionLabel({
   title,
   collapsed,
@@ -463,7 +326,7 @@ function SectionLabel({
 }
 
 export function Sidebar({ collapsed }: { collapsed: boolean }) {
-  const { user, mockPersona, setMockPersona, signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
   const visibleSections = NAV_SECTIONS.filter((section) =>
@@ -530,13 +393,6 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           </div>
         ))}
       </nav>
-
-      {/* TODO(REMOVE): Dev-only role preview — delete this block when real session roles exist */}
-      <DevRolePreview
-        collapsed={collapsed}
-        mockPersona={mockPersona}
-        setMockPersona={setMockPersona}
-      />
 
       {collapsed ? (
         <div className="flex shrink-0 justify-center border-t border-white/15 p-2">
