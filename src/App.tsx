@@ -30,6 +30,14 @@ import { AdminAdministrativeLogPage } from './pages/admin/AdminAdministrativeLog
 import { EmployeesWithLwopPage } from './pages/admin/EmployeesWithLwopPage'
 import { LeaveMonetizationCandidatesPage } from './pages/admin/LeaveMonetizationCandidatesPage'
 import { MonthlyAttendanceReportPage } from './pages/admin/MonthlyAttendanceReportPage'
+import { AccessDeniedPage } from './pages/errors/AccessDeniedPage'
+import { ConflictPage } from './pages/errors/ConflictPage'
+import { LeaveRequestNotFoundPage } from './pages/errors/LeaveRequestNotFoundPage'
+import { NotFoundPage } from './pages/errors/NotFoundPage'
+import { OfflinePage } from './pages/errors/OfflinePage'
+import { ServiceUnavailablePage } from './pages/errors/ServiceUnavailablePage'
+import { SessionExpiredPage } from './pages/errors/SessionExpiredPage'
+import { SystemErrorPage } from './pages/errors/SystemErrorPage'
 import {
   distributionAssignPath,
   leaveBalancesLandingPath,
@@ -39,6 +47,19 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<EmployeeIdEntryPage />} />
+
+      {/* Error previews — outside AppLayout (no sidebar / auth gate) */}
+      <Route path="/401" element={<SessionExpiredPage />} />
+      <Route path="/403" element={<AccessDeniedPage />} />
+      <Route path="/404" element={<NotFoundPage />} />
+      <Route
+        path="/leave-request-not-found"
+        element={<LeaveRequestNotFoundPage />}
+      />
+      <Route path="/409" element={<ConflictPage />} />
+      <Route path="/500" element={<SystemErrorPage />} />
+      <Route path="/503" element={<ServiceUnavailablePage />} />
+      <Route path="/offline" element={<OfflinePage />} />
 
       <Route element={<RequireAuth />}>
         <Route path="/" element={<AppLayout />}>
@@ -178,6 +199,9 @@ function App() {
           </Route>
         </Route>
       </Route>
+
+      {/* Keep invalid URL visible — do not redirect to /404 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

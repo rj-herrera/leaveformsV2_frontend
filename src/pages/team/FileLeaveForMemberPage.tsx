@@ -37,7 +37,6 @@ import {
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
-  { value: '', label: 'Select Day Type' },
   { value: 'full', label: 'Whole day' },
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
@@ -70,7 +69,7 @@ export function FileLeaveForMemberPage() {
   const [startDate, setStartDate] = useState(EMPTY_LEAVE.startDate)
   const [endDate, setEndDate] = useState(EMPTY_LEAVE.endDate)
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
-  const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -90,7 +89,6 @@ export function FileLeaveForMemberPage() {
     const gender = selectedMember?.gender ?? 'male'
     const selectable = getSelectableLeaveThemes(parentalLabel, gender)
     return [
-      { value: '', label: 'Select Leave Type' },
       { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
       { value: SICK_LEAVE_THEME.label, label: SICK_LEAVE_THEME.label },
       {
@@ -107,7 +105,6 @@ export function FileLeaveForMemberPage() {
 
   const employeeOptions = useMemo(
     () => [
-      { value: '', label: 'Select employee' },
       ...teamMembers.map((member) => ({
         value: member.id,
         label: member.name,
@@ -187,7 +184,7 @@ export function FileLeaveForMemberPage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = attachmentRequired && !attachment
+  const attachmentMissing = attachmentRequired && attachments.length === 0
 
   const formValid =
     !employeeMissing &&
@@ -206,7 +203,7 @@ export function FileLeaveForMemberPage() {
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     setReason(EMPTY_LEAVE.reason)
-    setAttachment(null)
+    setAttachments([])
     setAttachmentUploading(false)
   }
 
@@ -221,7 +218,7 @@ export function FileLeaveForMemberPage() {
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     if (!isAttachmentRequired(value)) {
-      setAttachment(null)
+      setAttachments([])
       setAttachmentUploading(false)
     }
   }
@@ -267,7 +264,10 @@ export function FileLeaveForMemberPage() {
       duration: durationLabel,
       remainingLeave: remainingLabel,
       reason: reason.trim(),
-      attachmentFileName: attachment?.name ?? null,
+      attachmentFileName:
+        attachments.length > 0
+          ? attachments.map((file) => file.name).join(', ')
+          : null,
     })
 
     setConfirmOpen(false)
@@ -311,6 +311,7 @@ export function FileLeaveForMemberPage() {
               label="Employee Name"
               value={employeeId}
               onChange={handleEmployeeChange}
+              placeholder="Select Employee"
               options={employeeOptions}
             />
           </div>
@@ -331,6 +332,7 @@ export function FileLeaveForMemberPage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
+                placeholder="Select Leave Type"
                 options={leaveTypeOptions}
                 disabled={!leaveFieldsEnabled}
               />
@@ -343,6 +345,7 @@ export function FileLeaveForMemberPage() {
                 label="Day Type"
                 value={dayType}
                 onChange={handleDayTypeChange}
+                placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
                 disabled={!dayTypeEnabled}
               />
@@ -442,13 +445,15 @@ export function FileLeaveForMemberPage() {
               {attachmentRequired ? (
                 <FileField
                   label="Supporting attachment"
-                  fileName={attachment?.name ?? null}
-                  onChange={setAttachment}
+                  files={attachments}
+                  onChange={setAttachments}
                   onUploadingChange={setAttachmentUploading}
                   accept="image/*,.pdf"
                   required
+                  multiple
+                  maxFiles={5}
                   className="sm:col-span-2"
-                  hint="Required for this leave type (e.g. medical certificate or supporting document)."
+                  hint="Required for this leave type (e.g. medical certificate or supporting document). You can attach up to 5 files."
                   error={
                     triedSubmit && attachmentMissing
                       ? 'An attachment is required for this leave type.'
@@ -481,7 +486,7 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || attachmentUploading}
+            disabled={!formValid}
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'

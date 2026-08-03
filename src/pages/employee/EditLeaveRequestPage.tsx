@@ -220,12 +220,14 @@ export function EditLeaveRequestPage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={setLeaveType}
+                placeholder="Select Leave Type"
                 options={leaveTypeOptions}
               />
               <SelectField
                 label="Day Type"
                 value={dayType}
                 onChange={(value) => setDayType(value as DayType)}
+                placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
               />
               <DateFieldCustom

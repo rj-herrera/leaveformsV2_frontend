@@ -14,11 +14,11 @@ export const LEAVE_STATUS_LABELS: Record<LeaveRequestStatus, string> = {
 }
 
 export const LEAVE_STATUS_STYLES: Record<LeaveRequestStatus, string> = {
-  PENDING: 'bg-status-pending text-text-white',
-  PENDING_CONVERSION: 'bg-status-pending-conversion text-text-white',
-  APPROVED: 'bg-status-approved text-text-white',
-  REJECTED: 'bg-status-rejected text-text-white',
-  CANCELLED: 'bg-status-cancelled text-text-white',
+  PENDING: 'bg-status-pending text-white',
+  PENDING_CONVERSION: 'bg-status-pending-conversion text-white',
+  APPROVED: 'bg-status-approved text-white',
+  REJECTED: 'bg-status-rejected text-white',
+  CANCELLED: 'bg-status-cancelled text-white',
 }
 
 export type StatusFilter = 'ALL' | LeaveRequestStatus

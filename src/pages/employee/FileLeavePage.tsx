@@ -25,7 +25,6 @@ import {
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
-  { value: '', label: 'Select Day Type' },
   { value: 'full', label: 'Whole day' },
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
@@ -240,6 +239,7 @@ export function FileLeavePage() {
                 label="Day Type"
                 value={dayType}
                 onChange={handleDayTypeChange}
+                placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
                 disabled={!dayTypeEnabled}
               />

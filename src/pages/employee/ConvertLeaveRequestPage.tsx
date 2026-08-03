@@ -20,7 +20,7 @@ export function ConvertLeaveRequestPage() {
   const showSkeleton = shouldShowDataSkeleton()
 
   const [conversionReason, setConversionReason] = useState('')
-  const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -80,24 +80,24 @@ export function ConvertLeaveRequestPage() {
   }
 
   const reasonMissing = conversionReason.trim().length === 0
-  const attachmentMissing = !attachment
+  const attachmentMissing = attachments.length === 0
   const canSubmit =
     !reasonMissing && !attachmentMissing && !attachmentUploading
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
-    if (!canSubmit || !attachment || attachmentUploading) return
+    if (!canSubmit || attachments.length === 0 || attachmentUploading) return
     setConfirmOpen(true)
   }
 
   function handleConfirmConversion() {
-    if (!attachment) return
+    if (attachments.length === 0) return
 
     // TODO(REPLACE): POST VL → SL conversion to API
     submitVlToSlConversion(requestId, {
       reason: conversionReason.trim(),
-      attachmentFileName: attachment.name,
+      attachmentFileName: attachments.map((file) => file.name).join(', '),
     })
 
     setConfirmOpen(false)
@@ -142,12 +142,14 @@ export function ConvertLeaveRequestPage() {
             ) : null}
             <FileField
               label="Supporting attachment (medical certificate)"
-              fileName={attachment?.name ?? null}
-              onChange={setAttachment}
+              files={attachments}
+              onChange={setAttachments}
               onUploadingChange={setAttachmentUploading}
               accept="image/*,.pdf"
               required
-              hint="Required. Upload a medical certificate or other supporting document."
+              multiple
+              maxFiles={5}
+              hint="Required. Upload a medical certificate or other supporting document. You can attach up to 5 files."
               error={
                 triedSubmit && attachmentMissing
                   ? 'An attachment is required to submit a conversion request.'
@@ -164,11 +166,15 @@ export function ConvertLeaveRequestPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={attachmentUploading}
+            disabled={!canSubmit}
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
-                : undefined
+                : reasonMissing
+                  ? 'Enter a conversion reason before confirming.'
+                  : attachmentMissing
+                    ? 'Upload a supporting attachment before confirming.'
+                    : undefined
             }
           >
             Confirm

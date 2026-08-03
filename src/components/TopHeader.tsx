@@ -1,5 +1,13 @@
+import { useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
+import { NotificationPanel } from './ui/NotificationPanel'
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from '../mocks/notifications'
 
 type TopHeaderProps = {
   sidebarCollapsed: boolean
@@ -11,6 +19,19 @@ export function TopHeader({
   onToggleSidebar,
 }: TopHeaderProps) {
   const { user } = useAuth()
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState(getNotifications)
+  const bellRef = useRef<HTMLButtonElement>(null)
+
+  const unreadCount = getUnreadNotificationCount(notifications)
+
+  function handleMarkRead(id: string) {
+    setNotifications(markNotificationRead(id))
+  }
+
+  function handleMarkAllRead() {
+    setNotifications(markAllNotificationsRead())
+  }
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-white pl-4 pr-6">
@@ -21,22 +42,38 @@ export function TopHeader({
         aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {sidebarCollapsed ? (
-          <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
-        ) : (
-          <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
-        )}
+        <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
       </button>
 
       <div className="flex items-center gap-3 sm:gap-4">
-        <button
-          type="button"
-          className="relative rounded-md p-2 text-text-gray hover:bg-background hover:text-text-black"
-          aria-label="Notifications"
-        >
-          <BellIcon />
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary" />
-        </button>
+        <div className="relative">
+          <button
+            ref={bellRef}
+            type="button"
+            className="relative rounded-md p-2 text-text-gray hover:bg-background hover:text-text-black"
+            aria-label="Notifications"
+            aria-haspopup="dialog"
+            aria-expanded={notificationsOpen}
+            onClick={() => setNotificationsOpen((prev) => !prev)}
+          >
+            <BellIcon />
+            {unreadCount > 0 ? (
+              <span
+                className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary"
+                aria-hidden="true"
+              />
+            ) : null}
+          </button>
+
+          <NotificationPanel
+            open={notificationsOpen}
+            onClose={() => setNotificationsOpen(false)}
+            notifications={notifications}
+            onMarkRead={handleMarkRead}
+            onMarkAllRead={handleMarkAllRead}
+            anchorRef={bellRef}
+          />
+        </div>
         <div
           className="h-6 w-px bg-border"
           role="separator"
