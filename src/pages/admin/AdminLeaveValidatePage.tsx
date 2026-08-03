@@ -270,7 +270,11 @@ export function AdminLeaveValidatePage() {
           <Button type="button" onClick={() => setRejectOpen(true)}>
             Reject
           </Button>
-          <Button type="button" onClick={() => setApproveOpen(true)}>
+          <Button  
+            type="button" 
+            variant="primary"
+            onClick={() => setApproveOpen(true)}
+          >
             Approve
           </Button>
         </div>
@@ -338,7 +342,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-small text-text-gray">{label}</dt>
-      <dd className="text-body text-text-black sm:text-right">{value}</dd>
+      <dd className="text-body font-semibold text-text-black sm:text-right">{value}</dd>
     </div>
   )
 }

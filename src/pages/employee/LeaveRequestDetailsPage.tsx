@@ -81,10 +81,13 @@ export function LeaveRequestDetailsPage() {
     detail.approvalsCompleted,
     detail.approvalsRequired,
   )
-  const progressLabel = getApprovalProgressLabel(
-    detail.approvalsCompleted,
-    detail.approvalsRequired,
-  )
+  const isRejected = detail.status === 'REJECTED'
+  const progressLabel = isRejected
+    ? 'Rejected'
+    : getApprovalProgressLabel(
+        detail.approvalsCompleted,
+        detail.approvalsRequired,
+      )
 
   function openPreview(fileName: string) {
     setPreviewFileName(fileName)
@@ -183,7 +186,7 @@ export function LeaveRequestDetailsPage() {
               <InfoRow label="Reason" value={detail.conversion.originalReason} />
               <InfoRow
                 label="Attachment"
-                value={detail.conversion.originalAttachment ?? '�'}
+                value={detail.conversion.originalAttachment ?? '—'}
               />
             </dl>
           </article>
@@ -250,7 +253,10 @@ export function LeaveRequestDetailsPage() {
               aria-label="Approval progress"
             >
               <div
-                className="h-full rounded-full bg-primary transition-[width]"
+                className={[
+                  'h-full rounded-full transition-[width]',
+                  isRejected ? 'bg-status-rejected' : 'bg-primary',
+                ].join(' ')}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -262,14 +268,19 @@ export function LeaveRequestDetailsPage() {
                   className="flex items-center justify-between gap-3"
                 >
                   <span className="flex items-center gap-2 text-body text-text-black">
-                    {requirement.status === 'completed' ? (
+                    {isRejected ? (
+                      <XCircle
+                        className="size-4 shrink-0 fill-status-rejected text-white"
+                        aria-hidden="true"
+                      />
+                    ) : requirement.status === 'completed' ? (
                       <CheckCircle2
-                        className="size-4 shrink-0 text-status-approved"
+                        className="size-4 shrink-0 fill-status-approved text-white"
                         aria-hidden="true"
                       />
                     ) : (
                       <Clock3
-                        className="size-4 shrink-0 text-status-pending-conversion"
+                        className="size-4 shrink-0 fill-status-pending-conversion text-white"
                         aria-hidden="true"
                       />
                     )}
@@ -277,12 +288,18 @@ export function LeaveRequestDetailsPage() {
                   </span>
                   <span
                     className={`text-small font-semibold ${
-                      requirement.status === 'completed'
-                        ? 'text-status-approved'
-                        : 'text-status-pending-conversion'
+                      isRejected
+                        ? 'text-status-rejected'
+                        : requirement.status === 'completed'
+                          ? 'text-status-approved'
+                          : 'text-status-pending-conversion'
                     }`}
                   >
-                    {requirement.status === 'completed' ? 'Completed' : 'Pending'}
+                    {isRejected
+                      ? 'Rejected'
+                      : requirement.status === 'completed'
+                        ? 'Completed'
+                        : 'Pending'}
                   </span>
                 </li>
               ))}
@@ -348,26 +365,26 @@ export function LeaveRequestDetailsPage() {
                   <td className="px-5 py-3.5">
                     {approver.status === 'approved' ? (
                       <span className="inline-flex items-center gap-1.5 text-status-approved">
-                        <CheckCircle2 className="size-4" aria-hidden="true" />
+                        <CheckCircle2 className="size-4 fill-status-approved text-white" aria-hidden="true" />
                         Approved
                       </span>
                     ) : approver.status === 'rejected' ? (
                       <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                        <XCircle className="size-4" aria-hidden="true" />
+                        <XCircle className="size-4 fill-status-rejected text-white" aria-hidden="true" />
                         Rejected
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-text-gray">
-                        <Circle className="size-4" aria-hidden="true" />
+                        <Circle className="size-3.5" aria-hidden="true" />
                         No Action Yet
                       </span>
                     )}
                   </td>
                   <td className="px-5 py-3.5 text-text-gray">
-                    {approver.actionDate ?? '�'}
+                    {approver.actionDate ?? '—'}
                   </td>
                   <td className="px-5 py-3.5 text-text-gray">
-                    {approver.remarks ?? '�'}
+                    {approver.remarks ?? '—'}
                   </td>
                 </tr>
               ))}

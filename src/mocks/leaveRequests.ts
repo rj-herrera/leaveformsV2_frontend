@@ -279,6 +279,16 @@ const EMPLOYEE_OWN_REQUESTS: LeaveRequestSummary[] = [
     status: 'APPROVED',
     ...summaryFields(EMPLOYEE),
   },
+  {
+    id: 'emp-6',
+    leaveType: 'Vacation Leave',
+    filedOnDate: '2026-07-18',
+    filedOnLabel: 'Jul 18, 2026',
+    period: 'Aug 3–5, 2026',
+    duration: '3 days',
+    status: 'REJECTED',
+    ...summaryFields(EMPLOYEE),
+  },
 ]
 
 /** Jordan — own leave as employee+approver */
@@ -303,6 +313,16 @@ const APPROVER_OWN_REQUESTS: LeaveRequestSummary[] = [
     status: 'APPROVED',
     ...summaryFields(JORDAN),
   },
+  {
+    id: 'apr-3',
+    leaveType: 'Emergency Leave',
+    filedOnDate: '2026-07-14',
+    filedOnLabel: 'Jul 14, 2026',
+    period: 'Jul 21, 2026',
+    duration: '1 day',
+    status: 'REJECTED',
+    ...summaryFields(JORDAN),
+  },
 ]
 
 /** Casey — own leave */
@@ -325,6 +345,16 @@ const ADMIN_OWN_REQUESTS: LeaveRequestSummary[] = [
     period: 'May 31, 2026',
     duration: '1 day',
     status: 'APPROVED',
+    ...summaryFields(ADMIN),
+  },
+  {
+    id: 'adm-3',
+    leaveType: 'Vacation Leave',
+    filedOnDate: '2026-07-09',
+    filedOnLabel: 'Jul 9, 2026',
+    period: 'Jul 28–29, 2026',
+    duration: '2 days',
+    status: 'REJECTED',
     ...summaryFields(ADMIN),
   },
 ]
@@ -815,6 +845,26 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(APPROVER_4, 'no_action'),
     ],
   }),
+  'emp-6': detailFromSummary(EMPLOYEE_OWN_REQUESTS[5], {
+    reason: 'Weekend getaway',
+    approvalsCompleted: 1,
+    approvalsRequired: 1,
+    requirements: [
+      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
+    ],
+    attachmentNote: null,
+    approvers: [
+      approverRow(
+        JORDAN,
+        'rejected',
+        'Jul 19, 2026, 9:15 AM',
+        'Insufficient staffing coverage for the requested dates.',
+      ),
+      approverRow(APPROVER_2, 'no_action'),
+      approverRow(APPROVER_3, 'no_action'),
+      approverRow(APPROVER_4, 'no_action'),
+    ],
+  }),
   'apr-1': detailFromSummary(APPROVER_OWN_REQUESTS[0], {
     reason: 'Long weekend',
     approvalsCompleted: 0,
@@ -847,6 +897,26 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(ADMIN, 'approved', 'Jun 3, 2026', null, 'admin', 'Admin validation'),
     ],
   }),
+  'apr-3': detailFromSummary(APPROVER_OWN_REQUESTS[2], {
+    reason: 'Family emergency travel',
+    approvalsCompleted: 1,
+    approvalsRequired: 1,
+    requirements: [
+      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
+    ],
+    attachmentNote: null,
+    department: 'Solution',
+    approvers: [
+      approverRow(
+        APPROVER_2,
+        'rejected',
+        'Jul 15, 2026, 2:40 PM',
+        'Critical deliverable scheduled on the same day.',
+      ),
+      approverRow(APPROVER_3, 'no_action'),
+      approverRow(APPROVER_4, 'no_action'),
+    ],
+  }),
   'adm-1': detailFromSummary(ADMIN_OWN_REQUESTS[0], {
     reason: 'Personal errands',
     approvalsCompleted: 0,
@@ -869,6 +939,23 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
     ],
     attachmentNote: null,
     approvers: [approverRow(JORDAN, 'approved', 'May 30, 2026, 2:00 PM')],
+  }),
+  'adm-3': detailFromSummary(ADMIN_OWN_REQUESTS[2], {
+    reason: 'Short personal trip',
+    approvalsCompleted: 1,
+    approvalsRequired: 1,
+    requirements: [
+      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
+    ],
+    attachmentNote: null,
+    approvers: [
+      approverRow(
+        JORDAN,
+        'rejected',
+        'Jul 10, 2026, 11:05 AM',
+        'Conflicting leadership offsite on those dates.',
+      ),
+    ],
   }),
   'org-cecile-1': detailFromSummary(OTHER_ORG_REQUESTS[0], {
     reason: 'Unexpected illness',

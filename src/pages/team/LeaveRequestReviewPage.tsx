@@ -87,10 +87,14 @@ export function LeaveRequestReviewPage() {
     detail.approvalsCompleted,
     detail.approvalsRequired,
   )
-  const progressLabel = getApprovalProgressLabel(
-    detail.approvalsCompleted,
-    detail.approvalsRequired,
-  )
+
+  const isRejected = detail.status === 'REJECTED'
+  const progressLabel = isRejected
+    ? 'Rejected'
+    : getApprovalProgressLabel(
+        detail.approvalsCompleted,
+        detail.approvalsRequired,
+      )
 
   function openPreview(fileName: string) {
     setPreviewFileName(fileName)
@@ -166,7 +170,10 @@ export function LeaveRequestReviewPage() {
             aria-label="Approval progress"
           >
             <div
-              className="h-full rounded-full bg-primary transition-[width]"
+              className={[
+                'h-full rounded-full transition-[width]',
+                isRejected ? 'bg-status-rejected' : 'bg-primary',
+              ].join(' ')}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -177,14 +184,19 @@ export function LeaveRequestReviewPage() {
                 className="flex items-center justify-between gap-3"
               >
                 <span className="flex items-center gap-2 text-body text-text-black">
-                  {requirement.status === 'completed' ? (
+                  {isRejected ? (
+                      <XCircle
+                        className="size-4 shrink-0 fill-status-rejected text-white"
+                        aria-hidden="true"
+                      />
+                    ) : requirement.status === 'completed' ? (
                     <CheckCircle2
-                      className="size-4 shrink-0 text-status-approved"
+                      className="size-4 shrink-0 fill-status-approved text-white"
                       aria-hidden="true"
                     />
                   ) : (
                     <Clock3
-                      className="size-4 shrink-0 text-status-pending-conversion"
+                      className="size-4 shrink-0 fill-status-pending-conversion text-white"
                       aria-hidden="true"
                     />
                   )}
@@ -192,12 +204,18 @@ export function LeaveRequestReviewPage() {
                 </span>
                 <span
                   className={`text-small font-semibold ${
-                    requirement.status === 'completed'
-                      ? 'text-status-approved'
-                      : 'text-status-pending-conversion'
+                    isRejected
+                        ? 'text-status-rejected'
+                        : requirement.status === 'completed'
+                          ? 'text-status-approved'
+                          : 'text-status-pending-conversion'
                   }`}
                 >
-                  {requirement.status === 'completed' ? 'Completed' : 'Pending'}
+                  {isRejected
+                      ? 'Rejected'
+                      : requirement.status === 'completed'
+                        ? 'Completed'
+                        : 'Pending'}
                 </span>
               </li>
             ))}
@@ -254,7 +272,7 @@ export function LeaveRequestReviewPage() {
                       <span className="inline-flex flex-wrap items-center gap-2">
                         {approver.name}
                         {isYou ? (
-                          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-header tracking-[0.08em] text-text-gray uppercase">
+                          <span className="rounded bg-primary px-1.5 py-0.5 text-header tracking-[0.08em] text-white uppercase">
                             You
                           </span>
                         ) : null}
@@ -264,19 +282,19 @@ export function LeaveRequestReviewPage() {
                       {approver.status === 'approved' ? (
                         <span className="inline-flex items-center gap-1.5 text-status-approved">
                           <CheckCircle2
-                            className="size-4"
+                            className="size-4 fill-status-approved text-white"
                             aria-hidden="true"
                           />
                           Approved
                         </span>
                       ) : approver.status === 'rejected' ? (
                         <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                          <XCircle className="size-4" aria-hidden="true" />
+                          <XCircle className="size-4 fill-status-rejected text-white" aria-hidden="true" />
                           Rejected
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-text-gray">
-                          <Circle className="size-4" aria-hidden="true" />
+                          <Circle className="size-3.5" aria-hidden="true" />
                           No Action Yet
                         </span>
                       )}

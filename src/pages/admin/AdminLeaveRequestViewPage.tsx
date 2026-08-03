@@ -78,10 +78,13 @@ export function AdminLeaveRequestViewPage() {
     detail.approvalsCompleted,
     detail.approvalsRequired,
   )
-  const progressLabel = getApprovalProgressLabel(
-    detail.approvalsCompleted,
-    detail.approvalsRequired,
-  )
+  const isRejected = detail.status === 'REJECTED'
+  const progressLabel = isRejected
+    ? 'Rejected'
+    : getApprovalProgressLabel(
+        detail.approvalsCompleted,
+        detail.approvalsRequired,
+      )
 
   function openPreview(fileName: string) {
     setPreviewFileName(fileName)
@@ -150,7 +153,10 @@ export function AdminLeaveRequestViewPage() {
             aria-label="Approval progress"
           >
             <div
-              className="h-full rounded-full bg-primary transition-[width]"
+              className={[
+                'h-full rounded-full transition-[width]',
+                isRejected ? 'bg-status-rejected' : 'bg-primary',
+              ].join(' ')}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -161,7 +167,12 @@ export function AdminLeaveRequestViewPage() {
                 className="flex items-center justify-between gap-3"
               >
                 <span className="flex items-center gap-2 text-body text-text-black">
-                  {requirement.status === 'completed' ? (
+                  {isRejected ? (
+                    <XCircle
+                      className="size-4 shrink-0 fill-status-rejected text-white"
+                      aria-hidden="true"
+                    />
+                  ) : requirement.status === 'completed' ? (
                     <CheckCircle2
                       className="size-4 shrink-0 text-status-approved"
                       aria-hidden="true"
@@ -176,12 +187,18 @@ export function AdminLeaveRequestViewPage() {
                 </span>
                 <span
                   className={`text-small font-semibold ${
-                    requirement.status === 'completed'
-                      ? 'text-status-approved'
-                      : 'text-status-pending-conversion'
+                    isRejected
+                        ? 'text-status-rejected'
+                        : requirement.status === 'completed'
+                          ? 'text-status-approved'
+                          : 'text-status-pending-conversion'
                   }`}
                 >
-                  {requirement.status === 'completed' ? 'Completed' : 'Pending'}
+                  {isRejected
+                      ? 'Rejected'
+                      : requirement.status === 'completed'
+                        ? 'Completed'
+                        : 'Pending'}
                 </span>
               </li>
             ))}
@@ -327,7 +344,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-small text-text-gray">{label}</dt>
-      <dd className="text-body text-text-black sm:text-right">{value}</dd>
+      <dd className="text-body font-semibold text-text-black sm:text-right">{value}</dd>
     </div>
   )
 }
