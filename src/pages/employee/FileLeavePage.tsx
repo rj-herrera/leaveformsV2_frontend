@@ -14,6 +14,7 @@ import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
+import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { swrKeys } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
@@ -61,6 +62,7 @@ export function FileLeavePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const [leaveType, setLeaveType] = useState(EMPTY_FORM.leaveType)
   const [dayType, setDayType] = useState<'' | DayType>(EMPTY_FORM.dayType)
@@ -81,8 +83,13 @@ export function FileLeavePage() {
     if (!startDate || !endDate) return 0
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
     if (dayType !== 'full') return 0
-    return countLeaveDurationDays(leaveType, startDate, endDate)
-  }, [dayType, startDate, endDate, leaveType])
+    return countLeaveDurationDays(
+      leaveType,
+      startDate,
+      endDate,
+      nonWorkingDates,
+    )
+  }, [dayType, startDate, endDate, leaveType, nonWorkingDates])
 
   const durationLabel = useMemo(() => {
     if (!dayType || (!startDate && !endDate)) return '0 day(s)'
@@ -234,6 +241,11 @@ export function FileLeavePage() {
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
                 options={LEAVE_TYPE_OPTIONS}
+                error={
+                  triedSubmit && leaveTypeMissing
+                    ? 'Please select a leave type.'
+                    : null
+                }
               />
               <SelectField
                 label="Day Type"
@@ -242,22 +254,41 @@ export function FileLeavePage() {
                 placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
                 disabled={!dayTypeEnabled}
+                error={
+                  triedSubmit && dayTypeEnabled && dayTypeMissing
+                    ? 'Please select a day type.'
+                    : null
+                }
               />
               <DateFieldCustom
                 label="Start Date"
                 value={startDate}
                 onChange={handleStartDateChange}
                 weekdaysOnly={workingDaysOnly}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
                 disabled={!startDateEnabled}
                 max={endDate || undefined}
+                error={
+                  triedSubmit && startDateEnabled && startMissing
+                    ? 'Please select a start date.'
+                    : null
+                }
               />
               <DateFieldCustom
                 label="End Date"
                 value={endDate}
                 onChange={handleEndDateChange}
                 weekdaysOnly={workingDaysOnly}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
                 disabled={!endDateEnabled}
                 min={startDate || undefined}
+                error={
+                  triedSubmit && endDateEnabled && endMissing
+                    ? 'Please select an end date.'
+                    : null
+                }
               />
               <TextField
                 label="Duration"
@@ -304,34 +335,23 @@ export function FileLeavePage() {
                 placeholder="Enter reason for leave"
                 className="sm:col-span-2"
                 rows={2}
+                error={
+                  triedSubmit && reasonMissing ? 'Reason is required.' : null
+                }
               />
-              {triedSubmit && reasonMissing ? (
-                <p
-                  className="-mt-1 text-small text-status-rejected sm:col-span-2"
-                  role="alert"
-                >
-                  Reason is required.
-                </p>
-              ) : null}
-              {triedSubmit &&
-              (leaveTypeMissing ||
-                dayTypeMissing ||
-                startMissing ||
-                endMissing) ? (
-                <p
-                  className="text-small text-status-rejected sm:col-span-2"
-                  role="alert"
-                >
-                  Please complete Leave Type, Day Type, Start Date, and End Date.
-                </p>
-              ) : null}
               {submitError ? (
-                <p
-                  className="text-small text-status-rejected sm:col-span-2"
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
                   role="alert"
                 >
-                  {submitError}
-                </p>
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    {submitError}
+                  </p>
+                </div>
               ) : null}
             </div>
           </div>

@@ -12,6 +12,14 @@ export const swrKeys = {
       params?.per_page ?? null,
     ] as const,
 
+  holidays: (params: { from?: string; to?: string; year?: number }) =>
+    [
+      'holidays',
+      params.from ?? null,
+      params.to ?? null,
+      params.year ?? null,
+    ] as const,
+
   pendingApprovals: ['approvals', 'pending'] as const,
 
   pendingConversions: ['conversions', 'pending'] as const,

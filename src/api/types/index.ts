@@ -8,6 +8,8 @@ export type {
 
 export type { LeaveBalanceResource } from './balance'
 
+export type { HolidayResource } from './holiday'
+
 export type {
   ConversionLeaveSummary,
   LeaveConversionResource,

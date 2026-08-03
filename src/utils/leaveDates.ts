@@ -138,14 +138,22 @@ export function isWeekday(date: Date): boolean {
 }
 
 /** Weekday that is not a configured non-working holiday. */
-export function isWorkingDay(date: Date): boolean {
+export function isWorkingDay(
+  date: Date,
+  nonWorkingDates?: ReadonlySet<string>,
+): boolean {
   if (!isWeekday(date)) return false
-  return !isNonWorkingHoliday(toLocalISODate(date))
+  const iso = toLocalISODate(date)
+  if (nonWorkingDates) return !nonWorkingDates.has(iso)
+  return !isNonWorkingHoliday(iso)
 }
 
-export function isWorkingDayISO(iso: string): boolean {
+export function isWorkingDayISO(
+  iso: string,
+  nonWorkingDates?: ReadonlySet<string>,
+): boolean {
   const date = parseLocalISO(iso)
-  return date ? isWorkingDay(date) : false
+  return date ? isWorkingDay(date, nonWorkingDates) : false
 }
 
 /** Maternity uses consecutive calendar days; all other types use working days. */
@@ -171,11 +179,12 @@ export function snapToWeekday(
 export function snapToWorkingDay(
   iso: string,
   direction: 'forward' | 'backward' = 'forward',
+  nonWorkingDates?: ReadonlySet<string>,
 ): string {
   const date = parseLocalISO(iso)
   if (!date) return iso
   const step = direction === 'forward' ? 1 : -1
-  while (!isWorkingDay(date)) {
+  while (!isWorkingDay(date, nonWorkingDates)) {
     date.setDate(date.getDate() + step)
   }
   return toLocalISODate(date)
@@ -215,7 +224,11 @@ export function countWeekdays(startISO: string, endISO: string): number {
  * Inclusive working-day count (weekends + configured non-working holidays excluded).
  * Used for Paternity Leave and other working-day leave types.
  */
-export function countWorkingDays(startISO: string, endISO: string): number {
+export function countWorkingDays(
+  startISO: string,
+  endISO: string,
+  nonWorkingDates?: ReadonlySet<string>,
+): number {
   const start = parseLocalISO(startISO)
   const end = parseLocalISO(endISO)
   if (!start || !end || end < start) return 0
@@ -223,7 +236,7 @@ export function countWorkingDays(startISO: string, endISO: string): number {
   let count = 0
   const cursor = new Date(start)
   while (cursor <= end) {
-    if (isWorkingDay(cursor)) count += 1
+    if (isWorkingDay(cursor, nonWorkingDates)) count += 1
     cursor.setDate(cursor.getDate() + 1)
   }
   return count
@@ -234,11 +247,12 @@ export function countLeaveDurationDays(
   leaveType: string,
   startISO: string,
   endISO: string,
+  nonWorkingDates?: ReadonlySet<string>,
 ): number {
   if (usesCalendarDayCounting(leaveType)) {
     return countCalendarDays(startISO, endISO)
   }
-  return countWorkingDays(startISO, endISO)
+  return countWorkingDays(startISO, endISO, nonWorkingDates)
 }
 
 export function parentalEntitlementDays(

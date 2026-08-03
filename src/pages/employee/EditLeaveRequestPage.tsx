@@ -17,6 +17,7 @@ import {
 } from '../../constants/leaveTypeTheme'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
+import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -39,6 +40,7 @@ export function EditLeaveRequestPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
   const detail = getLeaveRequestDetail(leaveRequestId)
   const showSkeleton = shouldShowDataSkeleton()
 
@@ -95,8 +97,13 @@ export function EditLeaveRequestPage() {
 
   const leaveDuration = useMemo(() => {
     if (dayType !== 'full') return 0.5
-    return countLeaveDurationDays(leaveType, startDate, endDate)
-  }, [dayType, startDate, endDate, leaveType])
+    return countLeaveDurationDays(
+      leaveType,
+      startDate,
+      endDate,
+      nonWorkingDates,
+    )
+  }, [dayType, startDate, endDate, leaveType, nonWorkingDates])
 
   const durationLabel = useMemo(
     () => formatDurationLabel(leaveDuration, dayType),
@@ -235,6 +242,8 @@ export function EditLeaveRequestPage() {
                 value={startDate}
                 onChange={handleStartDateChange}
                 weekdaysOnly={workingDaysOnly}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
                 max={endDate || undefined}
               />
               <DateFieldCustom
@@ -242,6 +251,8 @@ export function EditLeaveRequestPage() {
                 value={endDate}
                 onChange={handleEndDateChange}
                 weekdaysOnly={workingDaysOnly}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
                 min={startDate || undefined}
               />
               <TextField

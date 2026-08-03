@@ -1,5 +1,6 @@
 /**
- * TODO(REPLACE): Configured work calendar / holiday API.
+ * Fallback mock work calendar when GET /holidays is not available.
+ * Leave filing pages prefer `useNonWorkingHolidayDates()` (API).
  * Non-working holidays are excluded from working-day leave counts (e.g. Paternity).
  */
 import { MOCK_DATA_ENABLED } from './config'
