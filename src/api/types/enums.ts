@@ -4,8 +4,8 @@ export type DayType = 'full' | 'half_am' | 'half_pm'
 
 export type LeaveStatus =
   | 'pending_approval'
-  | 'partially_approved'
   | 'confirmed'
+  | 'pending_conversion'
   | 'rejected'
   | 'cancelled'
   | 'converted_to_sl'

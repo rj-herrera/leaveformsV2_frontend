@@ -22,24 +22,28 @@ import {
   VACATION_LEAVE_THEME,
   type SelectableLeaveType,
 } from '../../constants/leaveTypeTheme'
+import { useMyBalances } from '../../hooks/api/useMyBalances'
+import { useMyLeaves } from '../../hooks/api/useMyLeaves'
 import {
   TABLE_ROW_HEIGHT_CLASS,
   usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
 } from '../../mocks/leaveBalances'
+import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
 import {
-  canViewParentalLeaveCredits,
-  getLeaveRequestsForRole,
-} from '../../mocks/leaveRequests'
+  formatDurationDays,
+  formatLeavePeriod,
+  formatShortDate,
+  mapApiLeaveStatusToUi,
+} from '../../utils/leaveDisplay'
 
 type LeaveTypeFilter = 'ALL' | string
 type FiledOnSort = 'desc' | 'asc'
 
-/** TODO(REPLACE): Leave balances — replace with API data when wired. */
+/** Other leave types (EL/PTB/parental) — keep mock until those APIs exist. */
 const MOCK_OTHER_BALANCES = {
   emergency: 3,
   ptb: 7,
@@ -47,15 +51,36 @@ const MOCK_OTHER_BALANCES = {
   paternity: 7,
 } as const
 
-const MOCK_VL_AVAILABLE = 12
-const MOCK_VL_RESERVED = 3
-const MOCK_SL_AVAILABLE = 14
+/** Format API decimal strings (e.g. `"12.00"`) for balance cards. */
+function formatBalanceDays(value: string | undefined): string {
+  if (value == null) return '—'
+  const n = Number(value)
+  if (Number.isNaN(n)) return '—'
+  return String(Number.parseFloat(n.toFixed(2)))
+}
 
 export function DashboardPage() {
   const { user } = useAuth()
   const tableAreaRef = useRef<HTMLDivElement>(null)
   const pageSize = usePageSizeFromHeight(tableAreaRef)
-  const showSkeleton = shouldShowDataSkeleton()
+
+  const { data: balances, isLoading: balancesLoading } = useMyBalances()
+  const showBalanceSkeleton = balancesLoading
+
+  // Max API page size; filter/sort/paginate client-side for this slice.
+  const { data: leavesPage, isLoading: leavesLoading } = useMyLeaves({
+    per_page: 50,
+  })
+  const showTableSkeleton = leavesLoading
+
+  const vlBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'VL'),
+    [balances],
+  )
+  const slBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'SL'),
+    [balances],
+  )
 
   const [isLeaveTypeOpen, setIsLeaveTypeOpen] = useState(false)
   const [selectedLeaveType, setSelectedLeaveType] =
@@ -64,11 +89,8 @@ export function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [filedOnSort, setFiledOnSort] = useState<FiledOnSort>('desc')
 
-  // My Leave dashboard always uses the employee mock set until Phase 2 wires APIs.
-  const roleLeaveRequests = useMemo(
-    () => getLeaveRequestsForRole('employee'),
-    [],
-  )
+  const leaveRequests = leavesPage?.data ?? []
+
   const parentalLabel =
     user.gender === 'female' ? 'Maternity Leave' : 'Paternity Leave'
 
@@ -92,14 +114,14 @@ export function DashboardPage() {
 
   const leaveTypeFilterOptions = useMemo(() => {
     const types = Array.from(
-      new Set(roleLeaveRequests.map((request) => request.leaveType)),
+      new Set(leaveRequests.map((request) => request.leave_type.name)),
     ).sort((a, b) => a.localeCompare(b))
 
     return [
       { value: 'ALL' as const, label: 'All leave types' },
       ...types.map((type) => ({ value: type, label: type })),
     ]
-  }, [roleLeaveRequests])
+  }, [leaveRequests])
 
   const selectedOption = selectedLeaveType
     ? leaveTypeOptions.find((option) => option.id === selectedLeaveType)
@@ -120,20 +142,23 @@ export function DashboardPage() {
   })()
 
   const filteredRequests = useMemo(() => {
-    return roleLeaveRequests
+    return leaveRequests
       .filter((request) => {
+        const uiStatus = mapApiLeaveStatusToUi(request.status)
         const matchesType =
-          leaveTypeFilter === 'ALL' || request.leaveType === leaveTypeFilter
+          leaveTypeFilter === 'ALL' ||
+          request.leave_type.name === leaveTypeFilter
         const matchesStatus =
-          statusFilter === 'ALL' || request.status === statusFilter
+          statusFilter === 'ALL' || uiStatus === statusFilter
         return matchesType && matchesStatus
       })
       .sort((a, b) => {
-        const diff =
-          new Date(a.filedOnDate).getTime() - new Date(b.filedOnDate).getTime()
+        const aFiled = a.created_at ?? a.start_date
+        const bFiled = b.created_at ?? b.start_date
+        const diff = new Date(aFiled).getTime() - new Date(bFiled).getTime()
         return filedOnSort === 'asc' ? diff : -diff
       })
-  }, [roleLeaveRequests, leaveTypeFilter, statusFilter, filedOnSort])
+  }, [leaveRequests, leaveTypeFilter, statusFilter, filedOnSort])
 
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(
@@ -149,9 +174,9 @@ export function DashboardPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-5">
-      {/* Balance cards */}
+      {/* Balance cards — VL/SL from GET /balances; other types still mock */}
       <section className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
-        {showSkeleton ? (
+        {showBalanceSkeleton ? (
           <>
             <BalanceCardSkeleton />
             <BalanceCardSkeleton />
@@ -171,7 +196,7 @@ export function DashboardPage() {
           </div>
           <div className="mt-5 text-center">
             <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
-              {MOCK_VL_AVAILABLE}
+              {formatBalanceDays(vlBalance?.available)}
             </p>
             <p className="text-body text-text-gray mt-1.5">days available</p>
           </div>
@@ -186,7 +211,7 @@ export function DashboardPage() {
                 </p>
               </div>
               <p className="text-body font-semibold text-text-black">
-                {MOCK_VL_RESERVED} days
+                {formatBalanceDays(vlBalance?.reserved)} days
               </p>
             </div>
           </div>
@@ -204,7 +229,7 @@ export function DashboardPage() {
           </div>
           <div className="flex flex-1 flex-col items-center justify-center text-center">
             <p className="text-[2.5rem] leading-none font-bold text-text-black">
-              {MOCK_SL_AVAILABLE}
+              {formatBalanceDays(slBalance?.available)}
             </p>
             <p className="text-body text-text-gray mt-1.5">days available</p>
           </div>
@@ -350,7 +375,7 @@ export function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {showSkeleton ? (
+              {showTableSkeleton ? (
                 <TableBodySkeleton rows={pageSize} cols={6} />
               ) : paginatedItems.length === 0 ? (
                 <tr className={TABLE_ROW_HEIGHT_CLASS}>
@@ -362,32 +387,41 @@ export function DashboardPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((request) => (
-                  <tr
-                    key={request.id}
-                    className={`border-b border-black/5 text-body text-text-black last:border-b-0 ${TABLE_ROW_HEIGHT_CLASS}`}
-                  >
-                    <td className="truncate px-5">{request.leaveType}</td>
-                    <td className="px-5 whitespace-nowrap">
-                      {request.filedOnLabel}
-                    </td>
-                    <td className="truncate px-5">{request.period}</td>
-                    <td className="px-5 whitespace-nowrap">
-                      {request.duration}
-                    </td>
-                    <td className="px-5">
-                      <StatusBadge status={request.status} />
-                    </td>
-                    <td className="px-5 text-center">
-                      <Link
-                        to={`/my-leave/requests/${request.id}`}
-                        className={TABLE_ACTION_BUTTON_CLASS}
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))
+                paginatedItems.map((request) => {
+                  const uiStatus = mapApiLeaveStatusToUi(request.status)
+                  const filedOn = request.created_at
+                    ? formatShortDate(request.created_at.slice(0, 10))
+                    : '—'
+
+                  return (
+                    <tr
+                      key={request.id}
+                      className={`border-b border-black/5 text-body text-text-black last:border-b-0 ${TABLE_ROW_HEIGHT_CLASS}`}
+                    >
+                      <td className="truncate px-5">
+                        {request.leave_type.name}
+                      </td>
+                      <td className="px-5 whitespace-nowrap">{filedOn}</td>
+                      <td className="truncate px-5">
+                        {formatLeavePeriod(request.start_date, request.end_date)}
+                      </td>
+                      <td className="px-5 whitespace-nowrap">
+                        {formatDurationDays(request.duration)}
+                      </td>
+                      <td className="px-5">
+                        <StatusBadge status={uiStatus} />
+                      </td>
+                      <td className="px-5 text-center">
+                        <Link
+                          to={`/my-leave/requests/${request.id}`}
+                          className={TABLE_ACTION_BUTTON_CLASS}
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

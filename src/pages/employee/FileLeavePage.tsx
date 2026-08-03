@@ -1,20 +1,20 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
 import { TriangleAlert } from 'lucide-react'
+import { ApiError } from '../../api/axios-client'
+import { createLeave } from '../../api/leaves'
+import type { DayType as ApiDayType } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
-import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import {
-  getSelectableLeaveThemes,
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
+import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
+import { swrKeys } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -31,6 +31,12 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
+/** Only VL is supported by POST /leaves for now. */
+const LEAVE_TYPE_OPTIONS = [
+  { value: '', label: 'Select Leave Type' },
+  { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
+]
+
 const EMPTY_FORM = {
   leaveType: '',
   dayType: '' as '' | DayType,
@@ -39,47 +45,35 @@ const EMPTY_FORM = {
   reason: '',
 }
 
-function isAttachmentRequired(leaveType: string): boolean {
-  return leaveType !== '' && leaveType !== VACATION_LEAVE_THEME.label
+function messageFromApiError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to submit leave request. Please try again.'
 }
 
 export function FileLeavePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-
-  const parentalLabel =
-    user.gender === 'female' ? 'Maternity Leave' : 'Paternity Leave'
-
-  const leaveTypeOptions = useMemo(() => {
-    const selectable = getSelectableLeaveThemes(parentalLabel, user.gender)
-    return [
-      { value: '', label: 'Select Leave Type' },
-      { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
-      { value: SICK_LEAVE_THEME.label, label: SICK_LEAVE_THEME.label },
-      {
-        value: selectable.emergency.label,
-        label: selectable.emergency.label,
-      },
-      { value: selectable.ptb.label, label: selectable.ptb.label },
-      {
-        value: selectable.parental.label,
-        label: selectable.parental.label,
-      },
-    ]
-  }, [parentalLabel, user.gender])
+  const { mutate } = useSWRConfig()
 
   const [leaveType, setLeaveType] = useState(EMPTY_FORM.leaveType)
   const [dayType, setDayType] = useState<'' | DayType>(EMPTY_FORM.dayType)
   const [startDate, setStartDate] = useState(EMPTY_FORM.startDate)
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
-  const [attachment, setAttachment] = useState<File | null>(null)
-  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const attachmentRequired = isAttachmentRequired(leaveType)
   const dayTypeEnabled = leaveType !== ''
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
@@ -118,7 +112,6 @@ export function FileLeavePage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = attachmentRequired && !attachment
 
   const formValid =
     !leaveTypeMissing &&
@@ -126,19 +119,15 @@ export function FileLeavePage() {
     !startMissing &&
     !endMissing &&
     !reasonMissing &&
-    !attachmentMissing &&
-    !attachmentUploading &&
-    leadTimeValidation.ok
+    leadTimeValidation.ok &&
+    leaveType === VACATION_LEAVE_THEME.label
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
     setDayType(EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
-    if (!isAttachmentRequired(value)) {
-      setAttachment(null)
-      setAttachmentUploading(false)
-    }
+    setSubmitError(null)
   }
 
   function handleDayTypeChange(value: string) {
@@ -153,22 +142,48 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
-    setAttachment(null)
-    setAttachmentUploading(false)
     setTriedSubmit(false)
+    setSubmitError(null)
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
+    setSubmitError(null)
     if (!formValid) return
     setConfirmOpen(true)
   }
 
-  function handleConfirmSubmit() {
-    // TODO(REPLACE): POST new leave request via API
+  async function handleConfirmSubmit() {
+    if (dayType === '' || leaveType !== VACATION_LEAVE_THEME.label) return
+
     setConfirmOpen(false)
-    setSuccessOpen(true)
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      await createLeave({
+        start_date: startDate,
+        end_date: endDate,
+        day_type: dayType as ApiDayType,
+        leave_reason: reason.trim(),
+      })
+
+      await Promise.all([
+        mutate(
+          (key) => Array.isArray(key) && key[0] === 'leaves',
+          undefined,
+          { revalidate: true },
+        ),
+        mutate(swrKeys.balances()),
+      ])
+
+      setSuccessOpen(true)
+    } catch (error) {
+      setSubmitError(messageFromApiError(error))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleSuccessClose() {
@@ -178,7 +193,6 @@ export function FileLeavePage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    // Changing start resets end; seed end to the same day when a start is chosen
     setEndDate(value)
   }
 
@@ -209,6 +223,10 @@ export function FileLeavePage() {
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
+            <p className="mt-1 text-small text-text-gray">
+              Only Vacation Leave can be filed online for now. Other leave types
+              will be available when their APIs are ready.
+            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2">
@@ -216,7 +234,7 @@ export function FileLeavePage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
-                options={leaveTypeOptions}
+                options={LEAVE_TYPE_OPTIONS}
               />
               <SelectField
                 label="Day Type"
@@ -295,23 +313,6 @@ export function FileLeavePage() {
                   Reason is required.
                 </p>
               ) : null}
-              {attachmentRequired ? (
-                <FileField
-                  label="Supporting attachment"
-                  fileName={attachment?.name ?? null}
-                  onChange={setAttachment}
-                  onUploadingChange={setAttachmentUploading}
-                  accept="image/*,.pdf"
-                  required
-                  className="sm:col-span-2"
-                  hint="Required for this leave type (e.g. medical certificate or supporting document)."
-                  error={
-                    triedSubmit && attachmentMissing
-                      ? 'An attachment is required for this leave type.'
-                      : null
-                  }
-                />
-              ) : null}
               {triedSubmit &&
               (leaveTypeMissing ||
                 dayTypeMissing ||
@@ -324,23 +325,29 @@ export function FileLeavePage() {
                   Please complete Leave Type, Day Type, Start Date, and End Date.
                 </p>
               ) : null}
+              {submitError ? (
+                <p
+                  className="text-small text-status-rejected sm:col-span-2"
+                  role="alert"
+                >
+                  {submitError}
+                </p>
+              ) : null}
             </div>
           </div>
         </section>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <Button type="button" onClick={handleClear}>
+          <Button type="button" onClick={handleClear} disabled={submitting}>
             Clear
           </Button>
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || attachmentUploading}
-            title={
-              attachmentUploading ? 'Wait for the attachment upload to finish.' : undefined
-            }
+            disabled={!leadTimeValidation.ok || submitting}
+            title={submitting ? 'Submitting…' : undefined}
           >
-            Submit Request
+            {submitting ? 'Submitting…' : 'Submit Request'}
           </Button>
         </div>
       </form>
@@ -348,7 +355,9 @@ export function FileLeavePage() {
       <ConfirmReasonModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmSubmit}
+        onConfirm={() => {
+          void handleConfirmSubmit()
+        }}
         title="Confirm leave request"
         description="Are you sure you want to submit this leave request?"
         requireReason={false}
