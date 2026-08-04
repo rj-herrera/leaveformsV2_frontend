@@ -55,8 +55,18 @@ export type LeaveDetailConversion = {
   to_leave_type: LeaveTypeRef
   has_med_cert: boolean
   med_cert_url: string | null
+  reviewed_by_emp_id: number | null
   remarks: string | null
+  reviewed_at: string | null
   created_at: string | null
+}
+
+/** Who may act on the current stage — always listed on detail. */
+export type EligibleApprover = {
+  emp_id: number
+  name: string
+  approver_type: ApproverType
+  purpose: string
 }
 
 /**
@@ -79,6 +89,7 @@ export type LeaveDetail = {
   attachment_url: string | null
   cancellation_reason: string | null
   approval_requirements: LeaveApprovalRequirement[]
+  eligible_approvers: EligibleApprover[]
   conversion: LeaveDetailConversion | null
   confirmed_at: string | null
   created_at: string | null

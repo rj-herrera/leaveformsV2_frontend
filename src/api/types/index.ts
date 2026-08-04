@@ -18,6 +18,7 @@ export type {
 
 export type {
   CancelLeavePayload,
+  EligibleApprover,
   LeaveApprovalHistory,
   LeaveApprovalRequirement,
   LeaveDetail,

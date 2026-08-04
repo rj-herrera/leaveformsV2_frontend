@@ -19,8 +19,8 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import {
-  approvalPurposeLabel,
   approvalRequirementLabel,
+  eligibleApproverPurpose,
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
@@ -48,13 +48,95 @@ export function LeaveRequestDetailsPage() {
   const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
 
   const requirements = detail?.approval_requirements ?? []
+  const eligibleApprovers = detail?.eligible_approvers ?? []
   const approvalsRequired = requirements.length
   const approvalsCompleted = useMemo(
     () => requirements.filter((req) => req.is_satisfied).length,
     [requirements],
   )
 
-  const hasApproverAction = requirements.some((req) => req.history != null)
+  /** Match acted history by emp_id for Status / Date / Remarks columns. */
+  const historyByEmpId = useMemo(() => {
+    const map = new Map<
+      number,
+      NonNullable<(typeof requirements)[number]['history']>
+    >()
+    for (const requirement of requirements) {
+      const history = requirement.history
+      if (history) map.set(history.approver_emp_id, history)
+    }
+    return map
+  }, [requirements])
+
+  const leaveStatus = detail?.status
+  const conversion = detail?.conversion ?? null
+  const usesConversionReview =
+    leaveStatus === 'pending_conversion' || leaveStatus === 'converted_to_sl'
+
+  /**
+   * Approvers table: eligible pool for the current stage.
+   * Leave stages join `approval_requirements[].history`;
+   * conversion stages join nested `conversion` review fields.
+   */
+  const approverRows = useMemo(
+    () =>
+      eligibleApprovers.map((approver) => {
+        let status: 'approved' | 'rejected' | 'no_action' = 'no_action'
+        let actionDate: string | null = null
+        let remarks: string | null = null
+
+        if (usesConversionReview && conversion) {
+          const reviewedBy = conversion.reviewed_by_emp_id
+          if (
+            reviewedBy != null &&
+            Number(reviewedBy) === Number(approver.emp_id)
+          ) {
+            if (conversion.status === 'approved') status = 'approved'
+            else if (conversion.status === 'rejected') status = 'rejected'
+
+            actionDate = conversion.reviewed_at
+              ? formatDateTime(conversion.reviewed_at)
+              : null
+            remarks = conversion.remarks?.trim() || null
+          }
+        } else {
+          const history = historyByEmpId.get(approver.emp_id)
+          if (history?.is_approved === true) status = 'approved'
+          else if (history?.is_approved === false) status = 'rejected'
+
+          actionDate = history?.created_at
+            ? formatDateTime(history.created_at)
+            : null
+          remarks = history?.remarks?.trim() || null
+        }
+
+        return {
+          id: String(approver.emp_id),
+          name: approver.name.trim() || `Employee #${approver.emp_id}`,
+          purpose: eligibleApproverPurpose(
+            approver.purpose,
+            approver.approver_type,
+          ),
+          role:
+            approver.approver_type === 'admin'
+              ? ('admin' as const)
+              : ('approver' as const),
+          status,
+          actionDate,
+          remarks,
+        }
+      }),
+    [
+      conversion,
+      eligibleApprovers,
+      historyByEmpId,
+      usesConversionReview,
+    ],
+  )
+
+  const hasApproverAction = approverRows.some(
+    (row) => row.status === 'approved' || row.status === 'rejected',
+  )
   const isConversion =
     detail?.status === 'pending_conversion' && detail.conversion != null
   const canEdit =
@@ -126,8 +208,6 @@ export function LeaveRequestDetailsPage() {
       </div>
     )
   }
-
-  const conversion = detail.conversion
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -416,70 +496,60 @@ export function LeaveRequestDetailsPage() {
               </tr>
             </thead>
             <tbody>
-              {requirements.length === 0 ? (
+              {approverRows.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
                     className="px-5 py-6 text-center text-body text-text-gray"
                   >
-                    No approver steps for this request.
+                    No eligible approvers for this request.
                   </td>
                 </tr>
               ) : (
-                requirements.map((requirement) => {
-                  const history = requirement.history
-                  const name =
-                    history?.approver_name?.trim() ||
-                    (history
-                      ? `Employee #${history.approver_emp_id}`
-                      : '—')
-                  const approved = history?.is_approved === true
-                  const rejected = history?.is_approved === false
-
-                  return (
-                    <tr
-                      key={requirement.display_order}
-                      className="border-b border-border/60 text-body text-text-black last:border-b-0"
-                    >
-                      <td className="px-5 py-3.5">{name}</td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {approvalPurposeLabel(
-                          requirement.required_approver_type,
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {approved ? (
-                          <span className="inline-flex items-center gap-1.5 text-status-approved">
-                            <CheckCircle2
-                              className="size-4 fill-status-approved text-white"
-                              aria-hidden="true"
-                            />
-                            Approved
-                          </span>
-                        ) : rejected ? (
-                          <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                            <XCircle
-                              className="size-4 fill-status-rejected text-white"
-                              aria-hidden="true"
-                            />
-                            Rejected
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-text-gray">
-                            <Circle className="size-3.5" aria-hidden="true" />
-                            No Action Yet
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {formatDateTime(history?.created_at)}
-                      </td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {history?.remarks?.trim() || '—'}
-                      </td>
-                    </tr>
-                  )
-                })
+                approverRows.map((approver) => (
+                  <tr
+                    key={`${approver.id}-${approver.purpose}`}
+                    className="border-b border-border/60 text-body text-text-black last:border-b-0"
+                  >
+                    <td className="px-5 py-3.5">{approver.name}</td>
+                    <td className="px-5 py-3.5 text-text-gray">
+                      {approver.purpose ??
+                        (approver.role === 'admin'
+                          ? 'Admin validation'
+                          : 'Leave approval')}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {approver.status === 'approved' ? (
+                        <span className="inline-flex items-center gap-1.5 text-status-approved">
+                          <CheckCircle2
+                            className="size-4 fill-status-approved text-white"
+                            aria-hidden="true"
+                          />
+                          Approved
+                        </span>
+                      ) : approver.status === 'rejected' ? (
+                        <span className="inline-flex items-center gap-1.5 text-status-rejected">
+                          <XCircle
+                            className="size-4 fill-status-rejected text-white"
+                            aria-hidden="true"
+                          />
+                          Rejected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-text-gray">
+                          <Circle className="size-3.5" aria-hidden="true" />
+                          No Action Yet
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-text-gray">
+                      {approver.actionDate ?? '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-text-gray">
+                      {approver.remarks ?? '—'}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

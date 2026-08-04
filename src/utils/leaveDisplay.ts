@@ -59,7 +59,7 @@ export function approvalRequirementLabel(
   if (requirement.required_approver_type === 'president') return 'President'
   if (requirement.required_approver_type === 'admin') return 'Admin'
   if (requirement.allowed_levels.length > 0) {
-    return `Approver (P${requirement.allowed_levels.join('/P')})`
+    return `Assigned group approver`
   }
   return `Step ${requirement.display_order}`
 }
@@ -69,6 +69,21 @@ export function approvalPurposeLabel(
 ): string {
   if (requiredType === 'admin') return 'Admin validation'
   if (requiredType === 'president') return 'President approval'
+  return 'Leave approval'
+}
+
+/**
+ * Purpose for Approvers table: prefer API `purpose`, else derive from type
+ * (admin → Admin validation, otherwise Leave approval).
+ */
+export function eligibleApproverPurpose(
+  purpose: string | undefined,
+  approverType: string,
+): string {
+  const trimmed = purpose?.trim()
+  if (trimmed) return trimmed
+  if (approverType === 'admin') return 'Admin validation'
+  if (approverType === 'president') return 'President approval'
   return 'Leave approval'
 }
 
