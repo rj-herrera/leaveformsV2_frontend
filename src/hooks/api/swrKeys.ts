@@ -10,7 +10,10 @@ export const swrKeys = {
       'leaves',
       params?.status ?? null,
       params?.per_page ?? null,
+      params?.page ?? null,
     ] as const,
+
+  leave: (id: number) => ['leaves', id] as const,
 
   holidays: (params: { from?: string; to?: string; year?: number }) =>
     [

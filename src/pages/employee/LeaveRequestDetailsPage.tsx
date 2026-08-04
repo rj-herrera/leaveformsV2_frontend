@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -10,35 +10,100 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
+import { ApiError } from '../../api/axios-client'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { shouldShowDataSkeleton } from '../../mocks/config'
+import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import {
+  approvalPurposeLabel,
+  approvalRequirementLabel,
+  formatDateTime,
+  formatDurationDays,
+  formatLeavePeriod,
   getApprovalProgressLabel,
   getApprovalProgressPercent,
-  getLeaveRequestDetail,
-} from '../../mocks/leaveRequests'
+  mapApiLeaveStatusToUi,
+} from '../../utils/leaveDisplay'
 
 export function LeaveRequestDetailsPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const navigate = useNavigate()
-  const detail = getLeaveRequestDetail(leaveRequestId)
-  const showSkeleton = shouldShowDataSkeleton()
+  const leaveId = Number(leaveRequestId)
+  const validId = Number.isInteger(leaveId) && leaveId > 0
+
+  const { data: detail, error, isLoading } = useLeaveDetail(
+    validId ? leaveId : null,
+  )
 
   const [cancelOpen, setCancelOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  if (showSkeleton) {
+  const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
+
+  const requirements = detail?.approval_requirements ?? []
+  const approvalsRequired = requirements.length
+  const approvalsCompleted = useMemo(
+    () => requirements.filter((req) => req.is_satisfied).length,
+    [requirements],
+  )
+
+  const hasApproverAction = requirements.some((req) => req.history != null)
+  const isConversion =
+    detail?.status === 'pending_conversion' && detail.conversion != null
+  const canEdit =
+    detail?.status === 'pending_approval' && !hasApproverAction && !isConversion
+  const canCancel =
+    detail?.status === 'pending_approval' ||
+    detail?.status === 'pending_conversion'
+  const canConvertToSick =
+    detail?.status === 'confirmed' &&
+    detail.leave_type.code.toUpperCase() === 'VL' &&
+    detail.conversion == null
+
+  const isRejected = detail?.status === 'rejected'
+  const progressPercent = getApprovalProgressPercent(
+    approvalsCompleted,
+    approvalsRequired,
+  )
+  const progressLabel = isRejected
+    ? 'Rejected'
+    : getApprovalProgressLabel(approvalsCompleted, approvalsRequired)
+
+  const notFound =
+    !validId ||
+    (error instanceof ApiError && error.status === 404) ||
+    (!isLoading && !detail && error != null)
+
+  function openPreview(fileName: string, url: string | null) {
+    setPreviewFileName(fileName)
+    setPreviewUrl(url)
+    setPreviewOpen(true)
+  }
+
+  function handleCancelConfirm(_reason: string) {
+    // TODO(REPLACE): Phase 2.6 — POST /leaves/{id}/cancel
+    void _reason
+    setCancelOpen(false)
+    setSuccessOpen(true)
+  }
+
+  function handleSuccessClose() {
+    setSuccessOpen(false)
+    navigate('/dashboard')
+  }
+
+  if (isLoading) {
     return <DetailPageSkeleton />
   }
 
-  if (!detail) {
+  if (notFound || !detail || !uiStatus) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4">
         <Link
@@ -51,60 +116,18 @@ export function LeaveRequestDetailsPage() {
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Leave request not found</h1>
           <p className="text-body text-text-gray mt-2">
-            No mock details exist for ID{' '}
+            No leave request was found for ID{' '}
             <span className="font-semibold text-text-black">
               {leaveRequestId ?? 'unknown'}
             </span>
-            . Open a request from the dashboard list for the current role.
+            . Open a request from your dashboard list.
           </p>
         </div>
       </div>
     )
   }
 
-  const isConversion =
-    detail.status === 'PENDING_CONVERSION' && detail.conversion
-  const hasApproverAction = detail.approvers.some(
-    (approver) =>
-      approver.status === 'approved' || approver.status === 'rejected',
-  )
-  const canEdit =
-    !isConversion && !hasApproverAction && detail.status === 'PENDING'
-  const canCancel =
-    detail.status === 'PENDING' || detail.status === 'PENDING_CONVERSION'
-  const canConvertToSick =
-    detail.status === 'APPROVED' &&
-    detail.leaveType === 'Vacation Leave' &&
-    !detail.conversion
-
-  const progressPercent = getApprovalProgressPercent(
-    detail.approvalsCompleted,
-    detail.approvalsRequired,
-  )
-  const isRejected = detail.status === 'REJECTED'
-  const progressLabel = isRejected
-    ? 'Rejected'
-    : getApprovalProgressLabel(
-        detail.approvalsCompleted,
-        detail.approvalsRequired,
-      )
-
-  function openPreview(fileName: string) {
-    setPreviewFileName(fileName)
-    setPreviewOpen(true)
-  }
-
-  function handleCancelConfirm(_reason: string) {
-    // TODO(REPLACE): POST cancel with reason to API for detail.id
-    void _reason
-    setCancelOpen(false)
-    setSuccessOpen(true)
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate('/dashboard')
-  }
+  const conversion = detail.conversion
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -118,8 +141,8 @@ export function LeaveRequestDetailsPage() {
 
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-h1 text-text-black">{detail.leaveType}</h1>
-          <StatusBadge status={detail.status} />
+          <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
+          <StatusBadge status={uiStatus} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -165,28 +188,39 @@ export function LeaveRequestDetailsPage() {
         </div>
       </div>
 
-      {isConversion && detail.conversion ? (
+      {isConversion && conversion ? (
         <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
           <article className="flex flex-col justify-center rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Original Leave Request</h2>
             <dl className="mt-4 space-y-3">
               <InfoRow
                 label="Leave Type"
-                value={detail.conversion.originalLeaveType}
+                value={conversion.from_leave_type.name}
               />
               <InfoRow
                 label="Date Filed"
-                value={detail.conversion.originalDateFiled}
+                value={formatDateTime(detail.created_at)}
               />
               <InfoRow
                 label="Actual Leave Period"
-                value={detail.conversion.originalLeavePeriod}
+                value={formatLeavePeriod(detail.start_date, detail.end_date)}
               />
-              <InfoRow label="Filed By" value={detail.conversion.filedBy} />
-              <InfoRow label="Reason" value={detail.conversion.originalReason} />
+              <InfoRow
+                label="Filed By"
+                value={
+                  detail.filed_by_emp_id === detail.emp_id
+                    ? 'Self'
+                    : `Employee #${detail.filed_by_emp_id}`
+                }
+              />
+              <InfoRow label="Reason" value={detail.leave_reason} />
               <InfoRow
                 label="Attachment"
-                value={detail.conversion.originalAttachment ?? '—'}
+                value={
+                  detail.has_attachment
+                    ? 'Attached'
+                    : 'No attachment'
+                }
               />
             </dl>
           </article>
@@ -196,33 +230,36 @@ export function LeaveRequestDetailsPage() {
             <dl className="mt-4 space-y-3">
               <InfoRow
                 label="Requested Leave Type"
-                value={detail.conversion.requestedLeaveType}
+                value={conversion.to_leave_type.name}
               />
               <InfoRow
                 label="Date of Conversion Request"
-                value={detail.conversion.conversionRequestDate}
+                value={formatDateTime(conversion.created_at)}
               />
               <InfoRow
-                label="Conversion Reason"
-                value={detail.conversion.conversionReason}
+                label="Remarks"
+                value={conversion.remarks?.trim() || '—'}
               />
               <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <dt className="text-body text-text-gray">Attachment</dt>
+                <dt className="text-body text-text-gray">Medical certificate</dt>
                 <dd className="flex items-center gap-2 sm:justify-end">
                   <span className="text-body font-semibold text-text-black">
-                    {detail.conversion.conversionAttachment ?? '—'}
+                    {conversion.has_med_cert ? 'Uploaded' : '—'}
                   </span>
-                  {detail.conversion.conversionAttachment && (
+                  {conversion.has_med_cert && conversion.med_cert_url ? (
                     <Button
                       type="button"
                       size="sm"
                       onClick={() =>
-                        openPreview(detail.conversion!.conversionAttachment!)
+                        openPreview(
+                          'Medical certificate',
+                          conversion.med_cert_url,
+                        )
                       }
                     >
                       View
                     </Button>
-                  )}
+                  ) : null}
                 </dd>
               </div>
             </dl>
@@ -233,10 +270,19 @@ export function LeaveRequestDetailsPage() {
           <article className="rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <dl className="mt-4 space-y-3">
-              <InfoRow label="Date Filed" value={detail.dateFiled} />
-              <InfoRow label="Leave Period" value={detail.leavePeriod} />
-              <InfoRow label="Duration" value={detail.duration} />
-              <InfoRow label="Reason" value={detail.reason} />
+              <InfoRow
+                label="Date Filed"
+                value={formatDateTime(detail.created_at)}
+              />
+              <InfoRow
+                label="Leave Period"
+                value={formatLeavePeriod(detail.start_date, detail.end_date)}
+              />
+              <InfoRow
+                label="Duration"
+                value={formatDurationDays(detail.duration)}
+              />
+              <InfoRow label="Reason" value={detail.leave_reason} />
             </dl>
           </article>
 
@@ -262,47 +308,56 @@ export function LeaveRequestDetailsPage() {
             </div>
 
             <ul className="mt-4 space-y-3">
-              {detail.requirements.map((requirement) => (
-                <li
-                  key={requirement.id}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="flex items-center gap-2 text-body text-text-black">
-                    {isRejected ? (
-                      <XCircle
-                        className="size-4 shrink-0 fill-status-rejected text-white"
-                        aria-hidden="true"
-                      />
-                    ) : requirement.status === 'completed' ? (
-                      <CheckCircle2
-                        className="size-4 shrink-0 fill-status-approved text-white"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Clock3
-                        className="size-4 shrink-0 fill-status-pending-conversion text-white"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {requirement.label}
-                  </span>
-                  <span
-                    className={`text-small font-semibold ${
-                      isRejected
-                        ? 'text-status-rejected'
-                        : requirement.status === 'completed'
-                          ? 'text-status-approved'
-                          : 'text-status-pending-conversion'
-                    }`}
-                  >
-                    {isRejected
-                      ? 'Rejected'
-                      : requirement.status === 'completed'
-                        ? 'Completed'
-                        : 'Pending'}
-                  </span>
+              {requirements.length === 0 ? (
+                <li className="text-body text-text-gray">
+                  No approval steps on this request.
                 </li>
-              ))}
+              ) : (
+                requirements.map((requirement) => {
+                  const completed = requirement.is_satisfied
+                  return (
+                    <li
+                      key={requirement.display_order}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <span className="flex items-center gap-2 text-body text-text-black">
+                        {isRejected ? (
+                          <XCircle
+                            className="size-4 shrink-0 fill-status-rejected text-white"
+                            aria-hidden="true"
+                          />
+                        ) : completed ? (
+                          <CheckCircle2
+                            className="size-4 shrink-0 fill-status-approved text-white"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Clock3
+                            className="size-4 shrink-0 fill-status-pending-conversion text-white"
+                            aria-hidden="true"
+                          />
+                        )}
+                        {approvalRequirementLabel(requirement)}
+                      </span>
+                      <span
+                        className={`text-small font-semibold ${
+                          isRejected
+                            ? 'text-status-rejected'
+                            : completed
+                              ? 'text-status-approved'
+                              : 'text-status-pending-conversion'
+                        }`}
+                      >
+                        {isRejected
+                          ? 'Rejected'
+                          : completed
+                            ? 'Completed'
+                            : 'Pending'}
+                      </span>
+                    </li>
+                  )
+                })
+              )}
             </ul>
           </article>
         </section>
@@ -311,23 +366,24 @@ export function LeaveRequestDetailsPage() {
       {!isConversion && (
         <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
           <h2 className="text-h2 text-text-black">Attachments</h2>
-          {detail.attachmentFileName ? (
+          {detail.has_attachment && detail.attachment_url ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-body font-semibold text-text-black">
-                {detail.attachmentFileName}
+                Attachment
               </span>
               <Button
                 type="button"
                 size="sm"
-                onClick={() => openPreview(detail.attachmentFileName!)}
+                onClick={() =>
+                  openPreview('Attachment', detail.attachment_url)
+                }
               >
                 View
               </Button>
             </div>
           ) : (
             <p className="text-body text-text-gray mt-3 italic">
-              {detail.attachmentNote ??
-                'No attachment required for this leave request.'}
+              No attachment required for this leave request.
             </p>
           )}
         </article>
@@ -342,52 +398,89 @@ export function LeaveRequestDetailsPage() {
           <table className="w-full min-w-[640px] text-left">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Approver</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Purpose</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Status</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Action Date</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Remarks</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Approver
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Purpose
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Status
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Action Date
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Remarks
+                </th>
               </tr>
             </thead>
             <tbody>
-              {detail.approvers.map((approver) => (
-                <tr
-                  key={`${approver.id}-${approver.purpose ?? 'default'}`}
-                  className="border-b border-border/60 text-body text-text-black last:border-b-0"
-                >
-                  <td className="px-5 py-3.5">{approver.name}</td>
-                  <td className="px-5 py-3.5 text-text-gray">
-                    {approver.purpose ??
-                      (approver.role === 'admin'
-                        ? 'Admin validation'
-                        : 'Leave approval')}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {approver.status === 'approved' ? (
-                      <span className="inline-flex items-center gap-1.5 text-status-approved">
-                        <CheckCircle2 className="size-4 fill-status-approved text-white" aria-hidden="true" />
-                        Approved
-                      </span>
-                    ) : approver.status === 'rejected' ? (
-                      <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                        <XCircle className="size-4 fill-status-rejected text-white" aria-hidden="true" />
-                        Rejected
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-text-gray">
-                        <Circle className="size-3.5" aria-hidden="true" />
-                        No Action Yet
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 text-text-gray">
-                    {approver.actionDate ?? '—'}
-                  </td>
-                  <td className="px-5 py-3.5 text-text-gray">
-                    {approver.remarks ?? '—'}
+              {requirements.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-5 py-6 text-center text-body text-text-gray"
+                  >
+                    No approver steps for this request.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                requirements.map((requirement) => {
+                  const history = requirement.history
+                  const name =
+                    history?.approver_name?.trim() ||
+                    (history
+                      ? `Employee #${history.approver_emp_id}`
+                      : '—')
+                  const approved = history?.is_approved === true
+                  const rejected = history?.is_approved === false
+
+                  return (
+                    <tr
+                      key={requirement.display_order}
+                      className="border-b border-border/60 text-body text-text-black last:border-b-0"
+                    >
+                      <td className="px-5 py-3.5">{name}</td>
+                      <td className="px-5 py-3.5 text-text-gray">
+                        {approvalPurposeLabel(
+                          requirement.required_approver_type,
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {approved ? (
+                          <span className="inline-flex items-center gap-1.5 text-status-approved">
+                            <CheckCircle2
+                              className="size-4 fill-status-approved text-white"
+                              aria-hidden="true"
+                            />
+                            Approved
+                          </span>
+                        ) : rejected ? (
+                          <span className="inline-flex items-center gap-1.5 text-status-rejected">
+                            <XCircle
+                              className="size-4 fill-status-rejected text-white"
+                              aria-hidden="true"
+                            />
+                            Rejected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-text-gray">
+                            <Circle className="size-3.5" aria-hidden="true" />
+                            No Action Yet
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-text-gray">
+                        {formatDateTime(history?.created_at)}
+                      </td>
+                      <td className="px-5 py-3.5 text-text-gray">
+                        {history?.remarks?.trim() || '—'}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -418,6 +511,7 @@ export function LeaveRequestDetailsPage() {
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
         fileName={previewFileName}
+        previewUrl={previewUrl}
       />
     </div>
   )
