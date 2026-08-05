@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
 import { cancelLeave } from '../../api/leaves'
+import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -49,6 +50,7 @@ function messageFromApiError(error: unknown): string {
 export function LeaveRequestDetailsPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { mutate } = useSWRConfig()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -164,7 +166,8 @@ export function LeaveRequestDetailsPage() {
   const canConvertToSick =
     detail?.status === 'confirmed' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
-    detail.conversion == null
+    detail.conversion == null &&
+    String(detail.emp_id) === String(user.id)
 
   const isRejected = detail?.status === 'rejected'
   const progressPercent = getApprovalProgressPercent(
