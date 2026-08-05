@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -8,9 +9,11 @@ import {
   Pencil,
   RefreshCw,
   Trash2,
+  TriangleAlert,
   XCircle,
 } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
+import { cancelLeave } from '../../api/leaves'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -18,6 +21,7 @@ import { DetailPageSkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
+import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import {
   approvalRequirementLabel,
   eligibleApproverPurpose,
@@ -29,9 +33,23 @@ import {
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 
+function messageFromApiError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to cancel leave request. Please try again.'
+}
+
 export function LeaveRequestDetailsPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const navigate = useNavigate()
+  const { mutate } = useSWRConfig()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
 
@@ -41,6 +59,8 @@ export function LeaveRequestDetailsPage() {
 
   const [cancelOpen, setCancelOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -140,9 +160,7 @@ export function LeaveRequestDetailsPage() {
     detail?.status === 'pending_approval' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
     !detail.approval_requirements.some((req) => req.history != null)
-  const canCancel =
-    detail?.status === 'pending_approval' ||
-    detail?.status === 'pending_conversion'
+  const canCancel = detail?.status === 'pending_approval'
   const canConvertToSick =
     detail?.status === 'confirmed' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
@@ -168,11 +186,30 @@ export function LeaveRequestDetailsPage() {
     setPreviewOpen(true)
   }
 
-  function handleCancelConfirm(_reason: string) {
-    // TODO(REPLACE): Phase 2.6 — POST /leaves/{id}/cancel
-    void _reason
+  async function handleCancelConfirm(reason: string) {
+    if (!detail) return
+
     setCancelOpen(false)
-    setSuccessOpen(true)
+    setCancelling(true)
+    setCancelError(null)
+
+    try {
+      const updated = await cancelLeave(detail.id, {
+        cancellation_reason: reason.trim(),
+      })
+
+      await Promise.all([
+        mutate(swrKeys.leave(detail.id), updated, { revalidate: false }),
+        mutate(isLeaveListKey, undefined, { revalidate: true }),
+        mutate(swrKeys.balances()),
+      ])
+
+      setSuccessOpen(true)
+    } catch (err) {
+      setCancelError(messageFromApiError(err))
+    } finally {
+      setCancelling(false)
+    }
   }
 
   function handleSuccessClose() {
@@ -258,14 +295,39 @@ export function LeaveRequestDetailsPage() {
 
           <Button
             type="button"
-            disabled={!canCancel}
-            onClick={() => setCancelOpen(true)}
+            disabled={!canCancel || cancelling}
+            onClick={() => {
+              setCancelError(null)
+              setCancelOpen(true)
+            }}
+            title={
+              !canCancel
+                ? 'Only pending leave requests can be cancelled'
+                : cancelling
+                  ? 'Cancelling…'
+                  : undefined
+            }
           >
             <Trash2 className="size-4" aria-hidden="true" />
-            Cancel Request
+            {cancelling ? 'Cancelling…' : 'Cancel Request'}
           </Button>
         </div>
       </div>
+
+      {cancelError ? (
+        <div
+          className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+          role="alert"
+        >
+          <TriangleAlert
+            className="mt-0.5 size-4 shrink-0 text-status-rejected"
+            aria-hidden="true"
+          />
+          <p className="text-small font-semibold text-status-rejected">
+            {cancelError}
+          </p>
+        </div>
+      ) : null}
 
       {isConversion && conversion ? (
         <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
@@ -558,7 +620,9 @@ export function LeaveRequestDetailsPage() {
       <ConfirmReasonModal
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
-        onConfirm={handleCancelConfirm}
+        onConfirm={(reason) => {
+          void handleCancelConfirm(reason)
+        }}
         title="Cancel leave request"
         description="This will cancel the leave request. Please provide a cancellation reason."
         reasonLabel="Cancellation reason"
