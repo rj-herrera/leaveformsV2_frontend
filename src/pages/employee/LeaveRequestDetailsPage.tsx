@@ -134,13 +134,12 @@ export function LeaveRequestDetailsPage() {
     ],
   )
 
-  const hasApproverAction = approverRows.some(
-    (row) => row.status === 'approved' || row.status === 'rejected',
-  )
   const isConversion =
     detail?.status === 'pending_conversion' && detail.conversion != null
   const canEdit =
-    detail?.status === 'pending_approval' && !hasApproverAction && !isConversion
+    detail?.status === 'pending_approval' &&
+    detail.leave_type.code.toUpperCase() === 'VL' &&
+    !detail.approval_requirements.some((req) => req.history != null)
   const canCancel =
     detail?.status === 'pending_approval' ||
     detail?.status === 'pending_conversion'

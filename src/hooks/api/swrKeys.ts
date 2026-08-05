@@ -27,3 +27,16 @@ export const swrKeys = {
 
   pendingConversions: ['conversions', 'pending'] as const,
 }
+
+/**
+ * True for list keys `['leaves', status, per_page, page]`.
+ * False for detail keys `['leaves', id]` — important so mutate(undefined)
+ * does not wipe an open leave detail cache.
+ */
+export function isLeaveListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'leaves' &&
+    key.length === 4
+  )
+}

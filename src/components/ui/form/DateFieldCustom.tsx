@@ -25,6 +25,8 @@ type DateFieldCustomProps = {
   hint?: string
   /** Validation message — red outline + message below when set. */
   error?: string | null
+  /** Force red outline/label without a message (e.g. shared date-range banner). */
+  invalid?: boolean
   className?: string
   /** When true, only working days can be selected (excludes weekends and non-working holidays). */
   weekdaysOnly?: boolean
@@ -87,6 +89,7 @@ export function DateFieldCustom({
   id,
   hint,
   error = null,
+  invalid: invalidProp = false,
   className = '',
   weekdaysOnly = false,
   nonWorkingDates,
@@ -102,7 +105,7 @@ export function DateFieldCustom({
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState<PopoverPosition | null>(null)
   const isLocked = readOnly || disabled
-  const invalid = Boolean(error) && !isLocked
+  const invalid = (Boolean(error) || invalidProp) && !isLocked
 
   const selected = parseISODate(value)
   const minDate = parseISODate(min ?? '')
@@ -325,7 +328,7 @@ export function DateFieldCustom({
           id={inputId}
           disabled={isLocked}
           aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? errorId : undefined}
+          aria-describedby={error ? errorId : undefined}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? popoverId : undefined}

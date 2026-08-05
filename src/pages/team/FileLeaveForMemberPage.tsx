@@ -288,7 +288,10 @@ export function FileLeaveForMemberPage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    setEndDate(value)
+    // Keep end in range: first pick, half-day, or start moved past end.
+    if (dayType !== 'full' || !endDate || value > endDate) {
+      setEndDate(value)
+    }
   }
 
   function handleEndDateChange(value: string) {
@@ -365,7 +368,6 @@ export function FileLeaveForMemberPage() {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 disabled={!startDateEnabled}
-                max={endDate || undefined}
               />
               <DateFieldCustom
                 label="End Date"
@@ -374,7 +376,7 @@ export function FileLeaveForMemberPage() {
                 weekdaysOnly={workingDaysOnly}
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
-                disabled={!endDateEnabled}
+                disabled={!endDateEnabled || dayType !== 'full'}
                 min={startDate || undefined}
               />
               {parentalCreditsLocked ? (

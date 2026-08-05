@@ -2,7 +2,6 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import { TriangleAlert } from 'lucide-react'
-import { ApiError } from '../../api/axios-client'
 import { createLeave } from '../../api/leaves'
 import type { DayType as ApiDayType } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
@@ -15,7 +14,7 @@ import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
-import { swrKeys } from '../../hooks/api/swrKeys'
+import { swrKeys, isLeaveListKey } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -23,6 +22,11 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import {
+  clearLeaveFormApiErrors,
+  parseLeaveFormApiError,
+  type LeaveFormApiErrors,
+} from '../../utils/leaveFormApiErrors'
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
@@ -45,19 +49,6 @@ const EMPTY_FORM = {
   reason: '',
 }
 
-function messageFromApiError(error: unknown): string {
-  if (error instanceof ApiError) {
-    const body = error.body
-    if (body && typeof body === 'object' && 'errors' in body) {
-      const errors = (body as { errors: Record<string, string[]> }).errors
-      const first = Object.values(errors).flat()[0]
-      if (typeof first === 'string' && first.length > 0) return first
-    }
-    if (error.message) return error.message
-  }
-  return 'Unable to submit leave request. Please try again.'
-}
-
 export function FileLeavePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -73,11 +64,17 @@ export function FileLeavePage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
+    clearLeaveFormApiErrors,
+  )
 
   const dayTypeEnabled = leaveType !== ''
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
+
+  function clearApiErrors() {
+    setApiErrors(clearLeaveFormApiErrors())
+  }
 
   const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
@@ -133,13 +130,14 @@ export function FileLeavePage() {
     setDayType(EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
-    setSubmitError(null)
+    clearApiErrors()
   }
 
   function handleDayTypeChange(value: string) {
     setDayType(value as '' | DayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
+    clearApiErrors()
   }
 
   function handleClear() {
@@ -149,13 +147,13 @@ export function FileLeavePage() {
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
     setTriedSubmit(false)
-    setSubmitError(null)
+    clearApiErrors()
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
-    setSubmitError(null)
+    clearApiErrors()
     if (!formValid) return
     setConfirmOpen(true)
   }
@@ -165,7 +163,7 @@ export function FileLeavePage() {
 
     setConfirmOpen(false)
     setSubmitting(true)
-    setSubmitError(null)
+    clearApiErrors()
 
     try {
       await createLeave({
@@ -176,17 +174,13 @@ export function FileLeavePage() {
       })
 
       await Promise.all([
-        mutate(
-          (key) => Array.isArray(key) && key[0] === 'leaves',
-          undefined,
-          { revalidate: true },
-        ),
+        mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
       ])
 
       setSuccessOpen(true)
     } catch (error) {
-      setSubmitError(messageFromApiError(error))
+      setApiErrors(parseLeaveFormApiError(error))
     } finally {
       setSubmitting(false)
     }
@@ -199,11 +193,21 @@ export function FileLeavePage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    setEndDate(value)
+    // Keep end in range: first pick, half-day, or start moved past end.
+    if (dayType !== 'full' || !endDate || value > endDate) {
+      setEndDate(value)
+    }
+    clearApiErrors()
   }
 
   function handleEndDateChange(value: string) {
     setEndDate(value)
+    clearApiErrors()
+  }
+
+  function handleReasonChange(value: string) {
+    setReason(value)
+    if (apiErrors.reason || apiErrors.form) clearApiErrors()
   }
 
   return (
@@ -257,7 +261,7 @@ export function FileLeavePage() {
                 error={
                   triedSubmit && dayTypeEnabled && dayTypeMissing
                     ? 'Please select a day type.'
-                    : null
+                    : (apiErrors.dayType ?? null)
                 }
               />
               <DateFieldCustom
@@ -268,7 +272,7 @@ export function FileLeavePage() {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 disabled={!startDateEnabled}
-                max={endDate || undefined}
+                invalid={Boolean(apiErrors.dates) && !startMissing}
                 error={
                   triedSubmit && startDateEnabled && startMissing
                     ? 'Please select a start date.'
@@ -282,14 +286,29 @@ export function FileLeavePage() {
                 weekdaysOnly={workingDaysOnly}
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
-                disabled={!endDateEnabled}
+                disabled={!endDateEnabled || dayType !== 'full'}
                 min={startDate || undefined}
+                invalid={Boolean(apiErrors.dates) && !endMissing}
                 error={
                   triedSubmit && endDateEnabled && endMissing
                     ? 'Please select an end date.'
                     : null
                 }
               />
+              {apiErrors.dates ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    {apiErrors.dates}
+                  </p>
+                </div>
+              ) : null}
               <TextField
                 label="Duration"
                 value={durationLabel}
@@ -331,15 +350,17 @@ export function FileLeavePage() {
               <TextAreaField
                 label="Reason"
                 value={reason}
-                onChange={setReason}
+                onChange={handleReasonChange}
                 placeholder="Enter reason for leave"
                 className="sm:col-span-2"
                 rows={2}
                 error={
-                  triedSubmit && reasonMissing ? 'Reason is required.' : null
+                  triedSubmit && reasonMissing
+                    ? 'Reason is required.'
+                    : (apiErrors.reason ?? null)
                 }
               />
-              {submitError ? (
+              {apiErrors.form ? (
                 <div
                   className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
                   role="alert"
@@ -349,7 +370,7 @@ export function FileLeavePage() {
                     aria-hidden="true"
                   />
                   <p className="text-small font-semibold text-status-rejected">
-                    {submitError}
+                    {apiErrors.form}
                   </p>
                 </div>
               ) : null}
