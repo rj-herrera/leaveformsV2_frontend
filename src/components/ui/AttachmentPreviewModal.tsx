@@ -1,63 +1,270 @@
-import { FileText } from 'lucide-react'
-import { Modal } from './Modal'
+import { useEffect, useState } from 'react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Minus,
+  Plus,
+  X,
+} from 'lucide-react'
+import type { AttachmentFile } from '../../utils/attachments'
 
 type AttachmentPreviewModalProps = {
   open: boolean
   onClose: () => void
-  fileName: string
-  /** Optional preview image URL; falls back to a document placeholder */
+  /** Preferred: one or more files to preview */
+  files?: AttachmentFile[]
+  /**
+   * Single-file shorthand (still supported).
+   * Prefer `files` when opening multiple attachments.
+   */
+  fileName?: string
+  /** Preview URL for the single-file shorthand */
   previewUrl?: string | null
+  /** Starting file index when `files` has more than one entry */
+  initialIndex?: number
+}
+
+const DEFAULT_ZOOM = 1
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 3
+const ZOOM_STEP = 0.1
+
+function isImageFileName(name: string) {
+  return /\.(png|jpe?g|gif|webp)$/i.test(name)
 }
 
 export function AttachmentPreviewModal({
   open,
   onClose,
-  fileName,
+  files,
+  fileName = '',
   previewUrl = null,
+  initialIndex = 0,
 }: AttachmentPreviewModalProps) {
-  const isImage = /\.(png|jpe?g|gif|webp)$/i.test(fileName)
+  const resolvedFiles: AttachmentFile[] =
+    files && files.length > 0
+      ? files
+      : fileName
+        ? [{ name: fileName, previewUrl }]
+        : []
+
+  const fileCount = resolvedFiles.length
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM)
+
+  useEffect(() => {
+    if (!open) return
+    const maxIndex = Math.max(0, fileCount - 1)
+    const nextIndex = Math.min(Math.max(0, initialIndex), maxIndex)
+    setCurrentIndex(nextIndex)
+    setZoom(DEFAULT_ZOOM)
+  }, [open, initialIndex, fileCount])
+
+  useEffect(() => {
+    setZoom(DEFAULT_ZOOM)
+  }, [currentIndex])
+
+  useEffect(() => {
+    if (!open) return
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        setCurrentIndex((index) => Math.max(0, index - 1))
+        return
+      }
+      if (event.key === 'ArrowRight') {
+        setCurrentIndex((index) => Math.min(fileCount - 1, index + 1))
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [open, onClose, fileCount])
+
+  if (!open) return null
+
+  const current = resolvedFiles[currentIndex]
+  const currentName = current?.name ?? 'Attachment'
+  const currentPreviewUrl = current?.previewUrl ?? null
+  const showImage = Boolean(
+    currentName && isImageFileName(currentName) && currentPreviewUrl,
+  )
+  const hasMultiple = fileCount > 1
+  const canDownload = Boolean(currentPreviewUrl)
+
+  function goPrevious() {
+    setCurrentIndex((index) => Math.max(0, index - 1))
+  }
+
+  function goNext() {
+    setCurrentIndex((index) => Math.min(fileCount - 1, index + 1))
+  }
+
+  function zoomIn() {
+    setZoom((value) =>
+      Math.min(MAX_ZOOM, Number((value + ZOOM_STEP).toFixed(2))),
+    )
+  }
+
+  function zoomOut() {
+    setZoom((value) =>
+      Math.max(MIN_ZOOM, Number((value - ZOOM_STEP).toFixed(2))),
+    )
+  }
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Attachment preview"
-      maxWidthClass="max-w-3xl"
-      footer={
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md border border-border bg-surface px-4 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
-          Close
-        </button>
-      }
-    >
-      <p className="text-small text-text-gray mb-3">{fileName}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 "
+        aria-label="Close attachment preview"
+        onClick={onClose}
+      />
 
-      <div className="flex min-h-[320px] items-center justify-center rounded-md border border-border bg-surface-muted p-4">
-        {isImage && previewUrl ? (
-          <img
-            src={previewUrl}
-            alt={fileName}
-            className="max-h-[55vh] max-w-full rounded object-contain"
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-3 text-center">
-            <span className="flex size-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <FileText className="size-7" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-body font-semibold text-text-black">
-                {fileName}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="attachment-preview-title"
+        className="relative z-10 flex h-[90vh] w-[80vw] max-w-[80vw] flex-col overflow-hidden rounded-lg border border-white/15 bg-black/75 backdrop-blur-[2.5px] shadow-lg"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
+          <div className="min-w-0">
+            <h2
+              id="attachment-preview-title"
+              className="truncate text-h2 text-white"
+            >
+              {currentName}
+            </h2>
+            {hasMultiple ? (
+              <p className="mt-0.5 text-body text-white/75">
+                File {currentIndex + 1} of {fileCount}
               </p>
-              <p className="text-small text-text-gray mt-1">
-                Preview placeholder — file content will load from the API later.
-              </p>
-            </div>
+            ) : null}
           </div>
-        )}
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            {canDownload ? (
+              <a
+                href={currentPreviewUrl!}
+                download={currentName}
+                className="inline-flex size-10 items-center justify-center rounded-md text-white transition-colors hover:bg-white/10"
+                aria-label={`Download ${currentName}`}
+              >
+                <Download className="size-5" aria-hidden="true" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex size-10 items-center justify-center rounded-md text-white opacity-40"
+                aria-label="Download unavailable"
+                title="Download will be available when file content loads from the API"
+              >
+                <Download className="size-5" aria-hidden="true" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex size-10 items-center justify-center rounded-md text-white transition-colors hover:bg-white/10"
+              aria-label="Close"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        <div className="relative flex min-h-0 flex-1 items-center justify-center px-14 pb-20 pt-3 sm:px-16">
+          {hasMultiple ? (
+            <button
+              type="button"
+              onClick={goPrevious}
+              disabled={currentIndex <= 0}
+              className="absolute top-1/2 left-2 z-20 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-30 sm:left-3"
+              aria-label="Previous file"
+            >
+              <ChevronLeft className="size-8" aria-hidden="true" />
+            </button>
+          ) : null}
+
+          {fileCount === 0 ? (
+            <p className="text-body text-white/80">No attachment to preview.</p>
+          ) : showImage ? (
+            <div className="flex h-full max-h-full w-full max-w-full items-center justify-center overflow-auto">
+              <img
+                src={currentPreviewUrl!}
+                alt={currentName}
+                className="max-h-full max-w-full object-contain transition-transform duration-150"
+                style={{ transform: `scale(${zoom})` }}
+              />
+            </div>
+          ) : (
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-lg bg-white/10 px-8 py-10 text-center">
+              <span className="flex size-16 items-center justify-center rounded-lg bg-white/15 text-white">
+                <FileText className="size-8" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-h2 text-white">{currentName}</p>
+                <p className="mt-1 text-body text-white/75">
+                  Preview placeholder — file content will load from the API later.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hasMultiple ? (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={currentIndex >= fileCount - 1}
+              className="absolute top-1/2 right-2 z-20 inline-flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 disabled:cursor-not-allowed disabled:opacity-30 sm:right-3"
+              aria-label="Next file"
+            >
+              <ChevronRight className="size-8" aria-hidden="true" />
+            </button>
+          ) : null}
+
+          {showImage ? (
+            <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/55 px-2 py-1.5 backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={zoomOut}
+                disabled={zoom <= MIN_ZOOM}
+                className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Zoom out"
+              >
+                <Minus className="size-5" aria-hidden="true" />
+              </button>
+              <span className="text-body min-w-14 text-center font-medium text-white">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={zoomIn}
+                disabled={zoom >= MAX_ZOOM}
+                className="inline-flex size-10 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Zoom in"
+              >
+                <Plus className="size-5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </Modal>
+    </div>
   )
 }

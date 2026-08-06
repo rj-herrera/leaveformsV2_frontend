@@ -16,6 +16,11 @@ import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
+  attachmentFilesFromNames,
+  parseAttachmentFileNames,
+  type AttachmentFile,
+} from '../../utils/attachments'
+import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
@@ -37,7 +42,7 @@ export function AdminLeaveValidatePage() {
     'approve',
   )
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFileName, setPreviewFileName] = useState('')
+  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
 
   const canAct = useMemo(() => {
     if (!detail) return false
@@ -86,9 +91,13 @@ export function AdminLeaveValidatePage() {
   }
 
   const conversion = detail.conversion
+  const decisionSettled =
+    detail.status === 'APPROVED' || detail.status === 'REJECTED'
 
-  function openPreview(fileName: string) {
-    setPreviewFileName(fileName)
+  function openPreview(attachmentValue: string | null | undefined) {
+    const files = attachmentFilesFromNames(attachmentValue)
+    if (files.length === 0) return
+    setPreviewFiles(files)
     setPreviewOpen(true)
   }
 
@@ -114,7 +123,7 @@ export function AdminLeaveValidatePage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto">
       <Link
         to={backToList}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -132,10 +141,7 @@ export function AdminLeaveValidatePage() {
 
       <article className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
-          <InfoCell
-            label="Employee No."
-            value={detail.employeeNumber}
-          />
+          <InfoCell label="Employee No." value={detail.employeeNumber} />
           <InfoCell
             label="Employee Name"
             value={detail.requesterName}
@@ -167,9 +173,9 @@ export function AdminLeaveValidatePage() {
               />
               <InfoRow label="Filed By" value={conversion.filedBy} />
               <InfoRow label="Reason" value={conversion.originalReason} />
-              <InfoRow
-                label="Attachment"
-                value={conversion.originalAttachment ?? '—'}
+              <AttachmentRow
+                value={conversion.originalAttachment}
+                onView={() => openPreview(conversion.originalAttachment)}
               />
             </dl>
           </article>
@@ -189,23 +195,10 @@ export function AdminLeaveValidatePage() {
                 label="Conversion Reason"
                 value={conversion.conversionReason}
               />
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <dt className="text-small text-text-gray">Attachment</dt>
-                  <dd className="mt-0.5 text-body text-text-black">
-                    {conversion.conversionAttachment ?? '—'}
-                  </dd>
-                </div>
-                {conversion.conversionAttachment ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => openPreview(conversion.conversionAttachment!)}
-                  >
-                    View
-                  </Button>
-                ) : null}
-              </div>
+              <AttachmentRow
+                value={conversion.conversionAttachment}
+                onView={() => openPreview(conversion.conversionAttachment)}
+              />
             </dl>
           </article>
         </section>
@@ -217,22 +210,34 @@ export function AdminLeaveValidatePage() {
             <InfoRow label="Leave Period" value={detail.leavePeriod} />
             <InfoRow label="Duration" value={detail.duration} />
             <InfoRow label="Reason" value={detail.reason} />
+            <AttachmentRow
+              value={detail.attachmentFileName}
+              onView={() => openPreview(detail.attachmentFileName)}
+            />
           </dl>
         </article>
       )}
 
-      <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-3">
-          <h2 className="text-h2 text-text-black">Approvers</h2>
+      <article className="shrink-0 rounded-lg border border-border bg-surface">
+        <div className="border-b border-border px-5 py-3">
+          <h2 className="text-h2 text-text-black">Approval Details</h2>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="max-h-[min(22rem,45vh)] overflow-x-auto overflow-y-auto">
           <table className="w-full min-w-[640px] text-left">
-            <thead className="sticky top-0 z-10 bg-surface">
-              <tr className="border-b border-border text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Approver</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Status</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Action Date</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Remarks</th>
+            <thead className="sticky top-0 z-10">
+              <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Approver
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Status
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Action Date
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Remarks
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -254,7 +259,10 @@ export function AdminLeaveValidatePage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <ApproverStatus status={approver.status} />
+                      <ApproverStatus
+                        status={approver.status}
+                        decisionSettled={decisionSettled}
+                      />
                     </td>
                     <td className="px-5 py-3.5 text-text-gray">
                       {approver.actionDate ?? '—'}
@@ -275,8 +283,8 @@ export function AdminLeaveValidatePage() {
           <Button type="button" onClick={() => setRejectOpen(true)}>
             Reject
           </Button>
-          <Button  
-            type="button" 
+          <Button
+            type="button"
             variant="primary"
             onClick={() => setApproveOpen(true)}
           >
@@ -320,7 +328,7 @@ export function AdminLeaveValidatePage() {
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        fileName={previewFileName}
+        files={previewFiles}
       />
     </div>
   )
@@ -345,22 +353,51 @@ function InfoCell({
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <dt className="shrink-0 text-small text-text-gray">{label}</dt>
-      <dd className="text-body font-semibold text-text-black sm:text-right">{value}</dd>
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <dt className="shrink-0 text-body text-text-gray">{label}</dt>
+      <dd className="text-body font-semibold text-text-black sm:text-right">
+        {value}
+      </dd>
+    </div>
+  )
+}
+
+function AttachmentRow({
+  value,
+  onView,
+}: {
+  value: string | null | undefined
+  onView: () => void
+}) {
+  const fileCount = parseAttachmentFileNames(value).length
+  if (fileCount === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <dt className="text-body text-text-gray">Attachment</dt>
+      <dd className="sm:text-right">
+        <Button type="button" size="sm" onClick={onView}>
+          View
+        </Button>
+      </dd>
     </div>
   )
 }
 
 function ApproverStatus({
   status,
+  decisionSettled = false,
 }: {
   status: 'approved' | 'rejected' | 'no_action'
+  decisionSettled?: boolean
 }) {
   if (status === 'approved') {
     return (
       <span className="inline-flex items-center gap-1.5 text-status-approved">
-        <CheckCircle2 className="size-4" aria-hidden="true" />
+        <CheckCircle2
+          className="size-4 fill-status-approved text-white"
+          aria-hidden="true"
+        />
         Approved
       </span>
     )
@@ -368,8 +405,22 @@ function ApproverStatus({
   if (status === 'rejected') {
     return (
       <span className="inline-flex items-center gap-1.5 text-status-rejected">
-        <XCircle className="size-4" aria-hidden="true" />
+        <XCircle
+          className="size-4 fill-status-rejected text-white"
+          aria-hidden="true"
+        />
         Rejected
+      </span>
+    )
+  }
+  if (decisionSettled) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-text-gray">
+        <Circle
+          className="size-4 fill-text-gray text-text-gray"
+          aria-hidden="true"
+        />
+        No action required
       </span>
     )
   }

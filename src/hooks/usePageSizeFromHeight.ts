@@ -154,7 +154,7 @@ export function usePageSizeFromHeight(
   return pageSize
 }
 
-export const TABLE_ROW_HEIGHT_CLASS = 'h-[46px]'
+export const TABLE_ROW_HEIGHT_CLASS = 'h-[50px]'
 
 /** Taller rows for Leave Approvals (progress + stacked employee meta). */
 export const APPROVALS_TABLE_ROW_HEIGHT = 56

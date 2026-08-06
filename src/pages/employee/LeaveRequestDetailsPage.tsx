@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Circle,
-  Clock3,
   Pencil,
   RefreshCw,
   Trash2,
@@ -17,11 +16,12 @@ import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
+import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
-  getApprovalProgressLabel,
-  getApprovalProgressPercent,
-  getLeaveRequestDetail,
-} from '../../mocks/leaveRequests'
+  attachmentFilesFromNames,
+  parseAttachmentFileNames,
+  type AttachmentFile,
+} from '../../utils/attachments'
 
 export function LeaveRequestDetailsPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
@@ -32,7 +32,7 @@ export function LeaveRequestDetailsPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFileName, setPreviewFileName] = useState('')
+  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
 
   if (showSkeleton) {
     return (
@@ -81,21 +81,13 @@ export function LeaveRequestDetailsPage() {
     detail.status === 'APPROVED' &&
     detail.leaveType === 'Vacation Leave' &&
     !detail.conversion
+  const decisionSettled =
+    detail.status === 'APPROVED' || detail.status === 'REJECTED'
 
-  const progressPercent = getApprovalProgressPercent(
-    detail.approvalsCompleted,
-    detail.approvalsRequired,
-  )
-  const isRejected = detail.status === 'REJECTED'
-  const progressLabel = isRejected
-    ? 'Rejected'
-    : getApprovalProgressLabel(
-        detail.approvalsCompleted,
-        detail.approvalsRequired,
-      )
-
-  function openPreview(fileName: string) {
-    setPreviewFileName(fileName)
+  function openPreview(attachmentValue: string | null | undefined) {
+    const files = attachmentFilesFromNames(attachmentValue)
+    if (files.length === 0) return
+    setPreviewFiles(files)
     setPreviewOpen(true)
   }
 
@@ -112,7 +104,7 @@ export function LeaveRequestDetailsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
       <Link
         to="/dashboard"
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -189,9 +181,9 @@ export function LeaveRequestDetailsPage() {
               />
               <InfoRow label="Filed By" value={detail.conversion.filedBy} />
               <InfoRow label="Reason" value={detail.conversion.originalReason} />
-              <InfoRow
-                label="Attachment"
-                value={detail.conversion.originalAttachment ?? '—'}
+              <AttachmentRow
+                value={detail.conversion.originalAttachment}
+                onView={() => openPreview(detail.conversion!.originalAttachment)}
               />
             </dl>
           </article>
@@ -211,147 +203,55 @@ export function LeaveRequestDetailsPage() {
                 label="Conversion Reason"
                 value={detail.conversion.conversionReason}
               />
-              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <dt className="text-body text-text-gray">Attachment</dt>
-                <dd className="flex items-center gap-2 sm:justify-end">
-                  <span className="text-body font-semibold text-text-black">
-                    {detail.conversion.conversionAttachment ?? '—'}
-                  </span>
-                  {detail.conversion.conversionAttachment && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() =>
-                        openPreview(detail.conversion!.conversionAttachment!)
-                      }
-                    >
-                      View
-                    </Button>
-                  )}
-                </dd>
-              </div>
+              <AttachmentRow
+                value={detail.conversion.conversionAttachment}
+                onView={() =>
+                  openPreview(detail.conversion!.conversionAttachment)
+                }
+              />
             </dl>
           </article>
         </section>
       ) : (
-        <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2">
-          <article className="rounded-lg border border-border bg-surface p-5">
-            <h2 className="text-h2 text-text-black">Leave Information</h2>
-            <dl className="mt-4 space-y-3">
-              <InfoRow label="Date Filed" value={detail.dateFiled} />
-              <InfoRow label="Leave Period" value={detail.leavePeriod} />
-              <InfoRow label="Duration" value={detail.duration} />
-              <InfoRow label="Reason" value={detail.reason} />
-            </dl>
-          </article>
-
-          <article className="rounded-lg border border-border bg-surface p-5">
-            <h2 className="text-h2 text-text-black">Approval Progress</h2>
-            <p className="text-small text-text-gray mt-2">{progressLabel}</p>
-
-            <div
-              className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted"
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Approval progress"
-            >
-              <div
-                className={[
-                  'h-full rounded-full transition-[width]',
-                  isRejected ? 'bg-status-rejected' : 'bg-primary',
-                ].join(' ')}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-
-            <ul className="mt-4 space-y-3">
-              {detail.requirements.map((requirement) => (
-                <li
-                  key={requirement.id}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="flex items-center gap-2 text-body text-text-black">
-                    {isRejected ? (
-                      <XCircle
-                        className="size-4 shrink-0 fill-status-rejected text-white"
-                        aria-hidden="true"
-                      />
-                    ) : requirement.status === 'completed' ? (
-                      <CheckCircle2
-                        className="size-4 shrink-0 fill-status-approved text-white"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Clock3
-                        className="size-4 shrink-0 fill-status-pending-conversion text-white"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {requirement.label}
-                  </span>
-                  <span
-                    className={`text-small font-semibold ${
-                      isRejected
-                        ? 'text-status-rejected'
-                        : requirement.status === 'completed'
-                          ? 'text-status-approved'
-                          : 'text-status-pending-conversion'
-                    }`}
-                  >
-                    {isRejected
-                      ? 'Rejected'
-                      : requirement.status === 'completed'
-                        ? 'Completed'
-                        : 'Pending'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </article>
-        </section>
-      )}
-
-      {!isConversion && (
         <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-h2 text-text-black">Attachments</h2>
-          {detail.attachmentFileName ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-body font-semibold text-text-black">
-                {detail.attachmentFileName}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => openPreview(detail.attachmentFileName!)}
-              >
-                View
-              </Button>
-            </div>
-          ) : (
-            <p className="text-body text-text-gray mt-3 italic">
-              {detail.attachmentNote ??
-                'No attachment required for this leave request.'}
-            </p>
-          )}
+          <h2 className="text-h2 text-text-black">Leave Information</h2>
+          <dl className="mt-4 space-y-3">
+            <InfoRow label="Date Filed" value={detail.dateFiled} />
+            <InfoRow label="Leave Period" value={detail.leavePeriod} />
+            <InfoRow label="Duration" value={detail.duration} />
+            <InfoRow label="Reason" value={detail.reason} />
+            <AttachmentRow
+              value={detail.attachmentFileName}
+              onView={() => openPreview(detail.attachmentFileName)}
+            />
+          </dl>
         </article>
       )}
 
-      <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-4">
-          <h2 className="text-h2 text-text-black">Approvers</h2>
+      <article className="shrink-0 rounded-lg border border-border bg-surface">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-h2 text-text-black">Approval Details</h2>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="max-h-[min(22rem,45vh)] overflow-x-auto overflow-y-auto">
           <table className="w-full min-w-[640px] text-left">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Approver</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Purpose</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Status</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Action Date</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Remarks</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Approver
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Purpose
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Status
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Action Date
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Remarks
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -370,13 +270,27 @@ export function LeaveRequestDetailsPage() {
                   <td className="px-5 py-3.5">
                     {approver.status === 'approved' ? (
                       <span className="inline-flex items-center gap-1.5 text-status-approved">
-                        <CheckCircle2 className="size-4 fill-status-approved text-white" aria-hidden="true" />
+                        <CheckCircle2
+                          className="size-4 fill-status-approved text-white"
+                          aria-hidden="true"
+                        />
                         Approved
                       </span>
                     ) : approver.status === 'rejected' ? (
                       <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                        <XCircle className="size-4 fill-status-rejected text-white" aria-hidden="true" />
+                        <XCircle
+                          className="size-4 fill-status-rejected text-white"
+                          aria-hidden="true"
+                        />
                         Rejected
+                      </span>
+                    ) : decisionSettled ? (
+                      <span className="inline-flex items-center gap-1.5 text-text-gray">
+                        <Circle
+                          className="size-3.5 fill-text-gray text-text-gray"
+                          aria-hidden="true"
+                        />
+                        No action required
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-text-gray">
@@ -422,7 +336,7 @@ export function LeaveRequestDetailsPage() {
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        fileName={previewFileName}
+        files={previewFiles}
       />
     </div>
   )
@@ -430,10 +344,32 @@ export function LeaveRequestDetailsPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <dt className="text-body text-text-gray">{label}</dt>
       <dd className="text-body font-semibold text-text-black sm:text-right">
         {value}
+      </dd>
+    </div>
+  )
+}
+
+function AttachmentRow({
+  value,
+  onView,
+}: {
+  value: string | null | undefined
+  onView: () => void
+}) {
+  const fileCount = parseAttachmentFileNames(value).length
+  if (fileCount === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <dt className="text-body text-text-gray">Attachment</dt>
+      <dd className="sm:text-right">
+        <Button type="button" size="sm" onClick={onView}>
+          View
+        </Button>
       </dd>
     </div>
   )

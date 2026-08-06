@@ -94,7 +94,7 @@ function LoadingInfoRow({ label }: { label: string }) {
 
 /**
  * Content-aware leave detail loading: back link + section headings stay;
- * only dynamic values (title, badge, row values, progress, approvers) pulse.
+ * only dynamic values pulse.
  */
 export function LeaveDetailLoadingView({
   backTo,
@@ -118,39 +118,18 @@ export function LeaveDetailLoadingView({
         <Skeleton className="h-6 w-28 rounded-full" />
       </div>
 
-      <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-        <article className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-h2 text-text-black">Leave Details</h2>
-          <dl className="mt-4 space-y-3">
-            <LoadingInfoRow label="Date Filed" />
-            <LoadingInfoRow label="Leave Period" />
-            <LoadingInfoRow label="Duration" />
-            <LoadingInfoRow label="Filed By" />
-            <LoadingInfoRow label="Reason" />
-            <LoadingInfoRow label="Attachment" />
-          </dl>
-        </article>
-
-        <article className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-h2 text-text-black">Approval Progress</h2>
-          <Skeleton className="mt-4 h-2 w-full rounded-full" />
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-          <ul className="mt-4 space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <li key={index} className="flex items-center gap-3">
-                <Skeleton className="size-5 shrink-0 rounded-full" />
-                <Skeleton className="h-4 w-40" />
-              </li>
-            ))}
-          </ul>
-        </article>
-      </section>
+      <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
+        <h2 className="text-h2 text-text-black">Leave Information</h2>
+        <dl className="mt-4 space-y-3">
+          <LoadingInfoRow label="Date Filed" />
+          <LoadingInfoRow label="Leave Period" />
+          <LoadingInfoRow label="Duration" />
+          <LoadingInfoRow label="Reason" />
+        </dl>
+      </article>
 
       <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface p-5">
-        <h2 className="text-h2 text-text-black">Approvers</h2>
+        <h2 className="text-h2 text-text-black">Approval Details</h2>
         <div className="mt-4 space-y-3">
           {Array.from({ length: 4 }).map((_, index) => (
             <div

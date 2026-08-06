@@ -807,7 +807,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       { id: 'r1', label: 'Assigned group approver', status: 'completed' },
     ],
     attachmentNote: 'Medical certificate uploaded.',
-    attachmentFileName: 'Medical_certificate.jpg',
+    attachmentFileName: 'medcert.png, rx.png',
     approvers: [
       approverRow(JORDAN, 'approved', 'Jun 20, 2026, 9:30 AM'),
       approverRow(APPROVER_2, 'no_action'),
