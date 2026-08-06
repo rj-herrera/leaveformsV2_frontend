@@ -10,7 +10,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -53,7 +53,12 @@ export function AdminLeaveValidatePage() {
   }, [detail, user.id])
 
   if (showSkeleton) {
-    return <DetailPageSkeleton />
+    return (
+      <LeaveDetailLoadingView
+        backTo={backToList}
+        backLabel="Back to Leave Requests"
+      />
+    )
   }
 
   if (!detail) {

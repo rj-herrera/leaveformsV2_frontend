@@ -407,13 +407,15 @@ export function AdminLeaveRequestsPage() {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredItems.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+        {!showSkeleton ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
 
       <ConfirmReasonModal

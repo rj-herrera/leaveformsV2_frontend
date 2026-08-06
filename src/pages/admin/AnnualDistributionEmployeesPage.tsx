@@ -264,13 +264,15 @@ export function AnnualDistributionEmployeesPage() {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredCandidates.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+        {!showSkeleton && selectionReady ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCandidates.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">

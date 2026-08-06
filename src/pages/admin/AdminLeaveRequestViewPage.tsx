@@ -11,7 +11,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -47,7 +47,12 @@ export function AdminLeaveRequestViewPage() {
   const [reminderSuccessOpen, setReminderSuccessOpen] = useState(false)
 
   if (showSkeleton) {
-    return <DetailPageSkeleton />
+    return (
+      <LeaveDetailLoadingView
+        backTo={backToList}
+        backLabel="Back to Leave Requests"
+      />
+    )
   }
 
   if (!detail) {
@@ -174,12 +179,12 @@ export function AdminLeaveRequestViewPage() {
                     />
                   ) : requirement.status === 'completed' ? (
                     <CheckCircle2
-                      className="size-4 shrink-0 text-status-approved"
+                      className="size-4 shrink-0 fill-status-approved text-white"
                       aria-hidden="true"
                     />
                   ) : (
                     <Clock3
-                      className="size-4 shrink-0 text-status-pending-conversion"
+                      className="size-4 shrink-0 fill-status-pending text-white"
                       aria-hidden="true"
                     />
                   )}
@@ -269,12 +274,12 @@ export function AdminLeaveRequestViewPage() {
                     <td className="px-5 py-3.5">
                       {approver.status === 'approved' ? (
                         <span className="inline-flex items-center gap-1.5 text-status-approved">
-                          <CheckCircle2 className="size-4" aria-hidden="true" />
+                          <CheckCircle2 className="size-4 fill-status-approved text-white" aria-hidden="true" />
                           Approved
                         </span>
                       ) : approver.status === 'rejected' ? (
                         <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                          <XCircle className="size-4" aria-hidden="true" />
+                          <XCircle className="size-4 fill-status-rejected text-white" aria-hidden="true" />
                           Rejected
                         </span>
                       ) : (

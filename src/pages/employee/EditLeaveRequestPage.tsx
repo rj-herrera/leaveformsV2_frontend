@@ -9,7 +9,7 @@ import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import {
   getSelectableLeaveThemes,
   SICK_LEAVE_THEME,
@@ -117,7 +117,33 @@ export function EditLeaveRequestPage() {
   const workingDaysOnly = !usesCalendarDayCounting(leaveType)
 
   if (showSkeleton) {
-    return <DetailPageSkeleton />
+    return (
+      <FormPageLoadingView
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+        title="Edit Leave Request"
+        sections={[
+          {
+            heading: 'Employee Information',
+            fields: [
+              { label: 'Employee No.' },
+              { label: 'Name' },
+            ],
+          },
+          {
+            heading: 'Leave Information',
+            fields: [
+              { label: 'Leave Type' },
+              { label: 'Day Type' },
+              { label: 'Start Date' },
+              { label: 'End Date' },
+              { label: 'Duration', span: 2 },
+              { label: 'Reason', span: 2 },
+            ],
+          },
+        ]}
+      />
+    )
   }
 
   if (!detail) {

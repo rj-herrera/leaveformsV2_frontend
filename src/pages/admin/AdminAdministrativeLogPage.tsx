@@ -277,13 +277,15 @@ export function AdminAdministrativeLogPage() {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredEntries.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+        {!showSkeleton ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredEntries.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
     </div>
   )

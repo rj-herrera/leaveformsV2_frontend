@@ -322,13 +322,15 @@ export function AdminLeaveBalancesPage() {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={sortedRows.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+        {!showSkeleton ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={sortedRows.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
 
       <SelectDistributionModal

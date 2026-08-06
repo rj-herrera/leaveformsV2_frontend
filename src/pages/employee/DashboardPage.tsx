@@ -161,9 +161,22 @@ export function DashboardPage() {
       <section className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
         {showSkeleton ? (
           <>
-            <BalanceCardSkeleton />
-            <BalanceCardSkeleton />
-            <BalanceCardSkeleton />
+            <BalanceCardSkeleton
+              label={VACATION_LEAVE_THEME.label}
+              icon={VACATION_LEAVE_THEME.icon}
+              iconBgClass={VACATION_LEAVE_THEME.iconBgClass}
+              showReserved
+            />
+            <BalanceCardSkeleton
+              label={SICK_LEAVE_THEME.label}
+              icon={SICK_LEAVE_THEME.icon}
+              iconBgClass={SICK_LEAVE_THEME.iconBgClass}
+            />
+            <BalanceCardSkeleton
+              label={SELECTABLE_LEAVE_DEFAULT.label}
+              icon={SELECTABLE_LEAVE_DEFAULT.icon}
+              iconBgClass={SELECTABLE_LEAVE_DEFAULT.iconBgClass}
+            />
           </>
         ) : (
           <>
@@ -401,13 +414,15 @@ export function DashboardPage() {
           </table>
         </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredRequests.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
+        {!showSkeleton ? (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredRequests.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        ) : null}
       </section>
     </div>
   )

@@ -6,7 +6,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { FileField } from '../../components/ui/form/FileField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   getLeaveRequestDetail,
@@ -36,7 +36,25 @@ export function ConvertLeaveRequestPage() {
   }, [detail])
 
   if (showSkeleton) {
-    return <DetailPageSkeleton />
+    return (
+      <FormPageLoadingView
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+        title="Convert to Sick Leave"
+        sections={[
+          {
+            heading: 'Leave Conversion Request',
+            fields: [
+              { label: 'Reason for converting to Sick Leave', span: 2 },
+              {
+                label: 'Supporting attachment (medical certificate)',
+                span: 2,
+              },
+            ],
+          },
+        ]}
+      />
+    )
   }
 
   if (!detail) {

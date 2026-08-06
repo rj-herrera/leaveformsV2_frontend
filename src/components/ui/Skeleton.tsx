@@ -1,3 +1,7 @@
+import { Link } from 'react-router-dom'
+import { ArrowLeft, type LucideIcon } from 'lucide-react'
+import { LeaveTypeIconBadge } from './LeaveTypeIconBadge'
+
 type SkeletonProps = {
   className?: string
 }
@@ -36,75 +40,202 @@ export function TableBodySkeleton({
   )
 }
 
-export function BalanceCardSkeleton() {
+/** Balance card chrome stays; only numeric values pulse. */
+export function BalanceCardSkeleton({
+  label,
+  icon,
+  iconBgClass,
+  showReserved = false,
+}: {
+  label: string
+  icon: LucideIcon
+  iconBgClass: string
+  showReserved?: boolean
+}) {
   return (
     <article className="flex flex-col rounded-lg border border-border bg-white p-5">
       <div className="flex items-center gap-2.5">
-        <Skeleton className="size-9 rounded-full" />
-        <Skeleton className="h-4 w-28" />
+        <LeaveTypeIconBadge icon={icon} iconBgClass={iconBgClass} />
+        <h2 className="text-body font-semibold text-text-black">{label}</h2>
       </div>
       <div className="mt-5 flex flex-col items-center gap-2">
-        <Skeleton className="h-8 w-16" />
-        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-10 w-16" />
+        <p className="text-body text-text-gray">days available</p>
       </div>
-      <div className="mt-4 border-t border-border pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-4 w-12" />
+      {showReserved ? (
+        <div className="mt-4 border-t border-border pt-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-small font-semibold text-text-black">
+                Reserved Credits
+              </p>
+              <p className="text-small text-text-gray mt-0.5">
+                Subject for approval
+              </p>
+            </div>
+            <Skeleton className="h-4 w-14" />
+          </div>
         </div>
-      </div>
+      ) : null}
     </article>
   )
 }
 
-export function DetailPageSkeleton() {
+function LoadingInfoRow({ label }: { label: string }) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Skeleton className="h-4 w-40" />
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-6 w-28 rounded-full" />
-      </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <Skeleton className="h-5 w-40" />
-          <div className="mt-4 space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="mt-4 h-2 w-full rounded-full" />
-          <div className="mt-4 space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-4/5" />
-          </div>
-        </div>
-      </div>
-      <div className="min-h-0 flex-1 rounded-lg border border-border bg-surface p-5">
-        <Skeleton className="h-5 w-28" />
-        <div className="mt-4 space-y-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-10 w-full" />
-          ))}
-        </div>
-      </div>
+    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <dt className="text-body shrink-0 text-text-gray">{label}</dt>
+      <dd className="min-w-0 sm:text-right">
+        <Skeleton className="h-4 w-36 sm:ml-auto" />
+      </dd>
     </div>
   )
 }
 
+/**
+ * Content-aware leave detail loading: back link + section headings stay;
+ * only dynamic values (title, badge, row values, progress, approvers) pulse.
+ */
+export function LeaveDetailLoadingView({
+  backTo,
+  backLabel,
+}: {
+  backTo: string
+  backLabel: string
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <Link
+        to={backTo}
+        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        {backLabel}
+      </Link>
+
+      <div className="flex shrink-0 flex-wrap items-center gap-3">
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-6 w-28 rounded-full" />
+      </div>
+
+      <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
+        <article className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="text-h2 text-text-black">Leave Details</h2>
+          <dl className="mt-4 space-y-3">
+            <LoadingInfoRow label="Date Filed" />
+            <LoadingInfoRow label="Leave Period" />
+            <LoadingInfoRow label="Duration" />
+            <LoadingInfoRow label="Filed By" />
+            <LoadingInfoRow label="Reason" />
+            <LoadingInfoRow label="Attachment" />
+          </dl>
+        </article>
+
+        <article className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="text-h2 text-text-black">Approval Progress</h2>
+          <Skeleton className="mt-4 h-2 w-full rounded-full" />
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <ul className="mt-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <li key={index} className="flex items-center gap-3">
+                <Skeleton className="size-5 shrink-0 rounded-full" />
+                <Skeleton className="h-4 w-40" />
+              </li>
+            ))}
+          </ul>
+        </article>
+      </section>
+
+      <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface p-5">
+        <h2 className="text-h2 text-text-black">Approvers</h2>
+        <div className="mt-4 space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5"
+            >
+              <Skeleton className="size-9 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-36" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+/** Form-page loading: static titles/labels; skeleton only for field values. */
+export function FormPageLoadingView({
+  backTo,
+  backLabel,
+  title,
+  sections,
+}: {
+  backTo: string
+  backLabel: string
+  title: string
+  sections: Array<{
+    heading: string
+    fields: Array<{ label: string; span?: 1 | 2 }>
+  }>
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <Link
+        to={backTo}
+        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
+      >
+        <ArrowLeft className="size-4" aria-hidden="true" />
+        {backLabel}
+      </Link>
+
+      <h1 className="shrink-0 text-h1 text-text-black">{title}</h1>
+
+      {sections.map((section) => (
+        <section
+          key={section.heading}
+          className="shrink-0 rounded-lg border border-border bg-surface p-5"
+        >
+          <h2 className="text-h2 text-text-black">{section.heading}</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {section.fields.map((field) => (
+              <div
+                key={field.label}
+                className={field.span === 2 ? 'sm:col-span-2' : undefined}
+              >
+                <p className="text-small mb-1.5 font-medium text-text-black">
+                  {field.label}
+                </p>
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+const WEEKDAY_HEADERS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
+
+/** Calendar data cells only — weekday headers stay real. */
 export function CalendarGridSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
       <div className="grid shrink-0 grid-cols-5 border-b border-border bg-surface-muted">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {WEEKDAY_HEADERS.map((day) => (
           <div
-            key={index}
-            className="border-r border-border px-2 py-2 last:border-r-0"
+            key={day}
+            className="border-r border-border px-2 py-2 text-center last:border-r-0"
           >
-            <Skeleton className="mx-auto h-3 w-8" />
+            <span className="text-small font-medium text-text-gray">{day}</span>
           </div>
         ))}
       </div>
@@ -131,6 +262,7 @@ export function CalendarGridSkeleton() {
   )
 }
 
+/** Side-panel list data only — panel title stays on the page. */
 export function SidePanelListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <ul className="mt-3 space-y-3">
