@@ -21,3 +21,14 @@ export type ApproverType =
   | 'president'
 
 export type RequiredApproverType = 'president' | 'admin'
+
+export type ActivityType =
+  | 'submitted'
+  | 'modified'
+  | 'cancelled'
+  | 'rejected'
+  | 'attachment_added'
+  | 'leave_confirmed'
+  | 'conversion_requested'
+  | 'conversion_approved'
+  | 'conversion_rejected'

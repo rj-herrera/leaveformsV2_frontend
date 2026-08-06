@@ -1,4 +1,5 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
+import type { ListActivitiesParams } from '../../api/activities'
 
 /** Stable SWR cache keys — use these with `mutate(key)` after writes. */
 export const swrKeys = {
@@ -14,6 +15,16 @@ export const swrKeys = {
     ] as const,
 
   leave: (id: number) => ['leaves', id] as const,
+
+  activities: (params?: ListActivitiesParams) =>
+    [
+      'activities',
+      params?.code ?? null,
+      params?.activity_type ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
 
   holidays: (params: { from?: string; to?: string; year?: number }) =>
     [

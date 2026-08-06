@@ -1,10 +1,16 @@
 export type {
   ApproverType,
+  ActivityType,
   ConversionStatus,
   DayType,
   LeaveStatus,
   RequiredApproverType,
 } from './enums'
+
+export type {
+  ActivityLedgerEntry,
+  LeaveActivityResource,
+} from './activity'
 
 export type { LeaveBalanceResource } from './balance'
 
