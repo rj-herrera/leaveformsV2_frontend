@@ -122,7 +122,7 @@ export function LeaveRequestReviewPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <Link
         to={backToApprovals}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -173,13 +173,13 @@ export function LeaveRequestReviewPage() {
         </article>
       </section>
 
-      <article className="shrink-0 rounded-lg border border-border bg-surface">
-        <div className="border-b border-border px-5 py-3">
+      <article className="flex min-h-0 flex-[0_1_auto] flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="shrink-0 border-b border-border px-5 py-3">
           <h2 className="text-h2 text-text-black">Approval Details</h2>
         </div>
-        <div className="max-h-[min(22rem,45vh)] overflow-x-auto overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
           <table className="w-full min-w-[640px] text-left">
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-10 bg-surface-muted shadow-[0_1px_0_0_var(--color-border)]">
               <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   Approver
