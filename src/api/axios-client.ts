@@ -233,7 +233,7 @@ export async function apiPatchData<T>(
 
 /**
  * POST multipart FormData returning a JsonResource: `{ data: T }` → `T`.
- * Omits the default JSON Content-Type so the browser sets the multipart boundary.
+ * Omits the default JSON Content-Type so the runtime sets multipart + boundary.
  */
 export async function apiPostFormData<T>(
   url: string,
@@ -244,9 +244,23 @@ export async function apiPostFormData<T>(
     ...config,
     headers: {
       ...config?.headers,
-      // Axios: `false` drops the header so the runtime can set multipart + boundary.
+      // Axios: `false` drops the instance default `application/json`.
       'Content-Type': false as unknown as string,
     },
+    transformRequest: [
+      (body, headers) => {
+        if (body instanceof FormData && headers) {
+          // Ensure no stale JSON content-type survives merging/adapters.
+          if (typeof headers.delete === 'function') {
+            headers.delete('Content-Type')
+          } else {
+            delete (headers as Record<string, unknown>)['Content-Type']
+            delete (headers as Record<string, unknown>)['content-type']
+          }
+        }
+        return body
+      },
+    ],
   })
   return unwrapData<T>(data)
 }

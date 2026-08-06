@@ -15,7 +15,8 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 
 /** API: pdf / jpg / jpeg / png, max 5120 KB. */
-const MED_CERT_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+const MED_CERT_ACCEPT =
+  '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
 const MED_CERT_MAX_BYTES = 5120 * 1024
 
 function messageFromApiError(error: unknown): string {
@@ -44,9 +45,11 @@ function canRequestConversion(
 
 type ConvertLeaveFormProps = {
   detail: LeaveDetail
+  /** Called after a successful API submit (parent owns success dialog). */
+  onSubmitted: () => void
 }
 
-function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
+function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
   const navigate = useNavigate()
   const { mutate } = useSWRConfig()
   const detailsPath = `/my-leave/requests/${detail.id}`
@@ -55,14 +58,12 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const medCert = attachments[0] ?? null
   const attachmentMissing = medCert == null
-  const fileTooLarge =
-    medCert != null && medCert.size > MED_CERT_MAX_BYTES
+  const fileTooLarge = medCert != null && medCert.size > MED_CERT_MAX_BYTES
   const canSubmit =
     !attachmentMissing &&
     !fileTooLarge &&
@@ -87,23 +88,20 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
     try {
       await requestConversion(detail.id, medCert)
 
+      // Signal success first so parent keeps success UI even after detail
+      // revalidates to pending_conversion (convertible becomes false).
+      onSubmitted()
+
       await Promise.all([
         mutate(swrKeys.leave(detail.id)),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
       ])
-
-      setSuccessOpen(true)
     } catch (error) {
       setSubmitError(messageFromApiError(error))
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate(detailsPath)
   }
 
   return (
@@ -207,20 +205,13 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
         cancelLabel="Go back"
         confirmVariant="primary"
       />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Conversion submitted"
-        message="Your leave conversion request has been submitted successfully and is awaiting Admin validation."
-        confirmLabel="Back to request"
-      />
     </div>
   )
 }
 
 export function ConvertLeaveRequestPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -229,15 +220,26 @@ export function ConvertLeaveRequestPage() {
     validId ? leaveId : null,
   )
 
+  const [successOpen, setSuccessOpen] = useState(false)
+
   const convertible = useMemo(() => {
     if (!detail) return false
     return canRequestConversion(detail, user.id)
   }, [detail, user.id])
 
+  const detailsPath = detail
+    ? `/my-leave/requests/${detail.id}`
+    : '/dashboard'
+
   const notFound =
     !validId ||
     (error instanceof ApiError && error.status === 404) ||
     (!isLoading && !detail && error != null)
+
+  function handleSuccessClose() {
+    setSuccessOpen(false)
+    navigate(detailsPath)
+  }
 
   if (isLoading) {
     return <DetailPageSkeleton />
@@ -263,11 +265,26 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
+  // Success owns the screen after submit — even when leave is no longer convertible.
+  if (successOpen) {
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+        <SuccessDialog
+          open={successOpen}
+          onClose={handleSuccessClose}
+          title="Conversion submitted"
+          message="Your leave conversion request has been submitted successfully and is awaiting Admin validation."
+          confirmLabel="Back to request"
+        />
+      </div>
+    )
+  }
+
   if (!convertible) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <Link
-          to={`/my-leave/requests/${detail.id}`}
+          to={detailsPath}
           className="text-body inline-flex w-fit items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -284,5 +301,10 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
-  return <ConvertLeaveForm detail={detail} />
+  return (
+    <ConvertLeaveForm
+      detail={detail}
+      onSubmitted={() => setSuccessOpen(true)}
+    />
+  )
 }
