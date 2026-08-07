@@ -15,7 +15,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_BODY_ROW_BORDER_CLASS, INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
@@ -165,12 +165,16 @@ export function LeaveRequestDetailsPage() {
 
       {isConversion && detail.conversion ? (
         <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-          <article className="flex flex-col justify-center rounded-lg border border-border bg-surface p-5">
+          <article className="flex flex-col rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Original Leave Request</h2>
-            <dl className="mt-4 space-y-3">
+            <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
               <InfoRow
                 label="Leave Type"
                 value={detail.conversion.originalLeaveType}
+              />
+              <InfoRow
+                label="Day Type"
+                value={detail.conversion.originalDayType}
               />
               <InfoRow
                 label="Date Filed"
@@ -189,9 +193,9 @@ export function LeaveRequestDetailsPage() {
             </dl>
           </article>
 
-          <article className="flex flex-col justify-center rounded-lg border border-border bg-surface p-5">
+          <article className="flex flex-col rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
-            <dl className="mt-4 space-y-3">
+            <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
               <InfoRow
                 label="Requested Leave Type"
                 value={detail.conversion.requestedLeaveType}
@@ -216,7 +220,7 @@ export function LeaveRequestDetailsPage() {
       ) : (
         <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
           <h2 className="text-h2 text-text-black">Leave Information</h2>
-          <dl className="mt-4 space-y-3">
+          <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
             <InfoRow label="Date Filed" value={detail.dateFiled} />
             <InfoRow label="Leave Period" value={detail.leavePeriod} />
             <InfoRow label="Duration" value={detail.duration} />
@@ -345,11 +349,9 @@ export function LeaveRequestDetailsPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">{label}</dt>
-      <dd className="text-body font-semibold text-text-black sm:text-right">
-        {value}
-      </dd>
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-small text-text-gray">{label}</dt>
+      <dd className="text-body font-semibold text-text-black">{value}</dd>
     </div>
   )
 }
@@ -365,9 +367,9 @@ function AttachmentRow({
   if (fileCount === 0) return null
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">Attachment</dt>
-      <dd className="sm:text-right">
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-small text-text-gray">Attachment</dt>
+      <dd>
         <Button type="button" size="sm" onClick={onView}>
           View
         </Button>

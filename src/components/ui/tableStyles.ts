@@ -12,3 +12,7 @@ export const TABLE_ACTION_BUTTON_CLASS =
 /** Standard tbody row divider — matches thead / section borders. */
 export const TABLE_BODY_ROW_BORDER_CLASS =
   'border-b border-border last:border-b-0'
+
+/** Leave-detail info fields: ~40% / ~60% columns for longer right-side values. */
+export const INFO_FIELD_GRID_CLASS =
+  'grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-6 gap-y-3'

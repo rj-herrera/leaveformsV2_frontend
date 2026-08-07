@@ -13,7 +13,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_BODY_ROW_BORDER_CLASS, INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   getLeaveRequestDetail,
@@ -137,10 +137,10 @@ export function LeaveRequestReviewPage() {
         <StatusBadge status={detail.status} />
       </div>
 
-      <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
-        <article className="rounded-lg border border-border bg-surface p-4">
+      <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
+        <article className="flex flex-col rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
-          <dl className="mt-3 space-y-2.5">
+          <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
             <InfoRow label="Employee No." value={detail.employeeNumber} />
             <InfoRow label="Employee Name" value={detail.requesterName} />
             <InfoRow label="Department" value={detail.department} />
@@ -148,9 +148,9 @@ export function LeaveRequestReviewPage() {
           </dl>
         </article>
 
-        <article className="rounded-lg border border-border bg-surface p-4">
+        <article className="flex flex-col rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Leave Request Summary</h2>
-          <dl className="mt-3 space-y-2.5">
+          <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
             <InfoRow label="Date Filed" value={detail.dateFiled} />
             <InfoRow label="Leave Period" value={detail.leavePeriod} />
             <InfoRow label="Duration" value={detail.duration} />
@@ -325,11 +325,9 @@ export function LeaveRequestReviewPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">{label}</dt>
-      <dd className="text-body font-semibold text-text-black sm:text-right">
-        {value}
-      </dd>
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-small text-text-gray">{label}</dt>
+      <dd className="text-body font-semibold text-text-black">{value}</dd>
     </div>
   )
 }
@@ -348,9 +346,9 @@ function AttachmentRow({
   if (fileCount === 0 && !alwaysShow) return null
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">Attachment</dt>
-      <dd className="sm:text-right">
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-small text-text-gray">Attachment</dt>
+      <dd>
         {fileCount > 0 ? (
           <Button type="button" size="sm" onClick={onView}>
             View

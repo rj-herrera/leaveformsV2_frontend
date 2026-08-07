@@ -17,6 +17,10 @@ import {
   isParentalLeaveType,
 } from './leaveBalances'
 import { MOCK_DATA_ENABLED } from './config'
+import {
+  formatDayTypeLabel,
+  inferDayTypeFromDuration,
+} from '../utils/leaveDates'
 
 export type LeaveRequestSummary = {
   id: string
@@ -62,6 +66,7 @@ export type ApprovalRequirement = {
 
 export type LeaveConversionInfo = {
   originalLeaveType: string
+  originalDayType: string
   originalDateFiled: string
   originalLeavePeriod: string
   filedBy: string
@@ -530,6 +535,9 @@ function applyConversionSubmission(
     ],
     conversion: {
       originalLeaveType: base.leaveType,
+      originalDayType: formatDayTypeLabel(
+        inferDayTypeFromDuration(base.duration),
+      ),
       originalDateFiled: base.dateFiled,
       originalLeavePeriod: base.leavePeriod,
       filedBy: base.requesterName,
@@ -968,6 +976,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
     attachmentNote: null,
     conversion: {
       originalLeaveType: 'Vacation Leave',
+      originalDayType: 'Whole day',
       originalDateFiled: 'July 1, 2026',
       originalLeavePeriod: 'July 1, 2026',
       filedBy: 'Approver 2',
