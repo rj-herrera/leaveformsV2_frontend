@@ -7,9 +7,17 @@ import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import {
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
+import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -31,11 +39,19 @@ const ANNUAL_EFFECTIVE_DATE = '2027-01-01'
 
 export function AnnualDistributionEmployeesPage() {
   const navigate = useNavigate()
+  const availableSlotRef = useRef<HTMLDivElement>(null)
+  const sectionHeaderRef = useRef<HTMLDivElement>(null)
+  const paginationRef = useRef<HTMLDivElement>(null)
   const tableAreaRef = useRef<HTMLDivElement>(null)
   const headerCheckboxRef = useRef<HTMLInputElement>(null)
-  const pageSize = usePageSizeFromHeight(
-    tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
+  const pageSize = useContentSizedTablePageSize(
+    {
+      availableSlotRef,
+      sectionHeaderRef,
+      paginationRef,
+      tableAreaRef,
+    },
+    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
   )
   const showSkeleton = shouldShowDataSkeleton()
 
@@ -140,7 +156,7 @@ export function AnnualDistributionEmployeesPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={leaveBalancesLandingPath()}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -153,135 +169,140 @@ export function AnnualDistributionEmployeesPage() {
         Select eligible employees
       </h1>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="relative block min-w-0 w-full flex-1">
-              <span className="sr-only">Search employee name or number</span>
-              <Search
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search employee name or number"
-                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
+        >
+          <div
+            ref={sectionHeaderRef}
+            className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4"
+          >
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="relative block min-w-0 w-full flex-1">
+                <span className="sr-only">Search employee name or number</span>
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search employee name or number"
+                  className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <FilterSelect
-                label="Filter by group"
-                value={groupFilter}
-                onChange={setGroupFilter}
-                options={groupOptions}
-                selectHeight="h-[2.125rem]"
-              />
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <FilterSelect
+                  label="Filter by group"
+                  value={groupFilter}
+                  onChange={setGroupFilter}
+                  options={groupOptions}
+                  selectHeight="h-[2.125rem]"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
-        >
-          <table className="w-full min-w-[960px] table-fixed text-left">
-            <colgroup>
-              <col className="w-[5%]" />
-              <col className="w-[12%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
-              <col className="w-[16%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-            </colgroup>
-            <thead>
-              <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
-                  <input
-                    ref={headerCheckboxRef}
-                    type="checkbox"
-                    checked={allFilteredSelected}
-                    disabled={filteredIds.length === 0}
-                    onChange={toggleSelectAllFiltered}
-                    aria-label="Select all employees"
-                    className="size-4 accent-primary disabled:cursor-not-allowed"
-                  />
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee No.
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee Name
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Group
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employment Status
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Years of Service
-                </th>
-                <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
-                  VL to add
-                </th>
-                <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
-                  SL to add
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton || !selectionReady ? (
-                <TableBodySkeleton
-                  rows={pageSize}
-                  cols={8}
-                  rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
-                />
-              ) : paginatedItems.length === 0 ? (
-                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={8}
-                    className="px-5 text-center text-body text-text-gray"
-                  >
-                    No employees match the selected filters.
-                  </td>
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
+            <table className="w-full min-w-[960px] table-fixed text-left">
+              <colgroup>
+                <col className="w-[5%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+                <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+              </colgroup>
+              <thead>
+                <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                  <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
+                    <input
+                      ref={headerCheckboxRef}
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      disabled={filteredIds.length === 0}
+                      onChange={toggleSelectAllFiltered}
+                      aria-label="Select all employees"
+                      className="size-4 accent-primary disabled:cursor-not-allowed"
+                    />
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee No.
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee Name
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Group
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employment Status
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Years of Service
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
+                    VL to add
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold uppercase tracking-wide">
+                    SL to add
+                  </th>
                 </tr>
-              ) : (
-                paginatedItems.map((row) => (
-                  <CandidateRow
-                    key={row.employee.id}
-                    candidate={row}
-                    checked={selectedIds.has(row.employee.id)}
-                    onToggle={() => toggleId(row.employee.id)}
+              </thead>
+              <tbody>
+                {showSkeleton || !selectionReady ? (
+                  <TableBodySkeleton
+                    rows={pageSize}
+                    cols={8}
+                    rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : paginatedItems.length === 0 ? (
+                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
+                    <td
+                      colSpan={8}
+                      className="px-5 text-center text-body text-text-gray"
+                    >
+                      No employees match the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((row) => (
+                    <CandidateRow
+                      key={row.employee.id}
+                      candidate={row}
+                      checked={selectedIds.has(row.employee.id)}
+                      onToggle={() => toggleId(row.employee.id)}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {!showSkeleton && selectionReady ? (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filteredCandidates.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-          />
-        ) : null}
-      </section>
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton && selectionReady ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredCandidates.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <Link
-          to={leaveBalancesLandingPath()}
-          className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
-          Back
-        </Link>
         <Button variant="primary" disabled={!canContinue} onClick={handleContinue}>
           Continue
         </Button>

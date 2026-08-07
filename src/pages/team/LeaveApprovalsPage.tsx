@@ -6,15 +6,23 @@ import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import {
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
 import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
 } from '../../constants/leaveStatus'
+import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
 import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -47,10 +55,18 @@ function compareEmployeeNumber(a: string, b: string): number {
 export function LeaveApprovalsPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
+  const availableSlotRef = useRef<HTMLDivElement>(null)
+  const sectionHeaderRef = useRef<HTMLDivElement>(null)
+  const paginationRef = useRef<HTMLDivElement>(null)
   const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
-    tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
+  const pageSize = useContentSizedTablePageSize(
+    {
+      availableSlotRef,
+      sectionHeaderRef,
+      paginationRef,
+      tableAreaRef,
+    },
+    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
   )
   const showSkeleton = shouldShowDataSkeleton()
 
@@ -170,7 +186,7 @@ export function LeaveApprovalsPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <h1 className="shrink-0 text-h1 text-text-black">Leave Approvals</h1>
 
       <div className="flex shrink-0 gap-6 border-b border-border">
@@ -187,151 +203,172 @@ export function LeaveApprovalsPage() {
         />
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <label className="relative block min-w-0 w-full flex-1">
-              <span className="sr-only">Search employee name or number</span>
-              <Search
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search employee name or number"
-                className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
-            </label>
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
+        >
+          <div
+            ref={sectionHeaderRef}
+            className="flex shrink-0 flex-col gap-3 border-b border-border px-5 py-4"
+          >
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="relative block min-w-0 w-full flex-1">
+                <span className="sr-only">Search employee name or number</span>
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search employee name or number"
+                  className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </label>
 
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <FilterSelect
-                label="Filter by group"
-                value={groupFilter}
-                onChange={setGroupFilter}
-                options={groupOptions}
-                selectHeight="h-[2.125rem]"
-              />
-              <FilterSelect
-                label="Filter by leave type"
-                value={leaveTypeFilter}
-                onChange={setLeaveTypeFilter}
-                options={leaveTypeOptions}
-                selectHeight="h-[2.125rem]"
-              />
-
-              {tab === 'all' ? (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <FilterSelect
-                  label="Filter by status"
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={STATUS_FILTER_OPTIONS}
+                  label="Filter by group"
+                  value={groupFilter}
+                  onChange={setGroupFilter}
+                  options={groupOptions}
                   selectHeight="h-[2.125rem]"
                 />
-              ) : null}
+                <FilterSelect
+                  label="Filter by leave type"
+                  value={leaveTypeFilter}
+                  onChange={setLeaveTypeFilter}
+                  options={leaveTypeOptions}
+                  selectHeight="h-[2.125rem]"
+                />
+
+                {tab === 'all' ? (
+                  <FilterSelect
+                    label="Filter by status"
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={STATUS_FILTER_OPTIONS}
+                    selectHeight="h-[2.125rem]"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden"
-        >
-          <table className="w-full min-w-[960px] table-fixed text-left">
-            <colgroup>
-              <col className="w-[10%]" />
-              <col className="w-[14%]" />
-              <col className="w-[8%]" />
-              <col className="w-[14%]" />
-              <col className="w-[13%]" />
-              <col className="w-[8%]" />
-              <col className="w-[11%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-            </colgroup>
-            <thead>
-              <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  <SortableHeader
-                    label="Employee No."
-                    active={sortKey === 'employeeNumber'}
-                    direction={sortDir}
-                    onToggle={() => toggleSort('employeeNumber')}
-                  />
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee Name</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Group</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  <SortableHeader
-                    label="Leave Period"
-                    active={sortKey === 'period'}
-                    direction={sortDir}
-                    onToggle={() => toggleSort('period')}
-                  />
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Duration</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  <SortableHeader
-                    label="Date Filed"
-                    active={sortKey === 'filedOn'}
-                    direction={sortDir}
-                    onToggle={() => toggleSort('filedOn')}
-                  />
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  {tab === 'pending' ? 'Approval Progress' : 'Status'}
-                </th>
-                <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <TableBodySkeleton
-                  rows={pageSize}
-                  cols={9}
-                  rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
-                />
-              ) : paginatedItems.length === 0 ? (
-                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={9}
-                    className="px-5 text-center text-body text-text-gray"
-                  >
-                    No leave requests match the selected filters.
-                  </td>
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
+            <table className="w-full min-w-[960px] table-fixed text-left">
+              <colgroup>
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="w-[8%]" />
+                <col className="w-[14%]" />
+                <col className="w-[13%]" />
+                <col className="w-[8%]" />
+                <col className="w-[11%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    <SortableHeader
+                      label="Employee No."
+                      active={sortKey === 'employeeNumber'}
+                      direction={sortDir}
+                      onToggle={() => toggleSort('employeeNumber')}
+                    />
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Employee Name
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Group
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Leave Type
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    <SortableHeader
+                      label="Leave Period"
+                      active={sortKey === 'period'}
+                      direction={sortDir}
+                      onToggle={() => toggleSort('period')}
+                    />
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Duration
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    <SortableHeader
+                      label="Date Filed"
+                      active={sortKey === 'filedOn'}
+                      direction={sortDir}
+                      onToggle={() => toggleSort('filedOn')}
+                    />
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    {tab === 'pending' ? 'Approval Progress' : 'Status'}
+                  </th>
+                  <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">
+                    Action
+                  </th>
                 </tr>
-              ) : (
-                paginatedItems.map((item) => (
-                  <ApprovalRow
-                    key={item.id}
-                    item={item}
-                    showStatus={tab === 'all'}
-                    actionLabel={tab === 'pending' ? 'Review' : 'View'}
-                    actionTo={
-                      tab === 'pending'
-                        ? `/team/leave-approvals/${item.id}`
-                        : `/team/leave-requests/${item.id}`
-                    }
-                    listTab={tab}
+              </thead>
+              <tbody>
+                {showSkeleton ? (
+                  <TableBodySkeleton
+                    rows={pageSize}
+                    cols={9}
+                    rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : paginatedItems.length === 0 ? (
+                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
+                    <td
+                      colSpan={9}
+                      className="px-5 text-center text-body text-text-gray"
+                    >
+                      No leave requests match the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((item) => (
+                    <ApprovalRow
+                      key={item.id}
+                      item={item}
+                      showStatus={tab === 'all'}
+                      actionLabel={tab === 'pending' ? 'Review' : 'View'}
+                      actionTo={
+                        tab === 'pending'
+                          ? `/team/leave-approvals/${item.id}`
+                          : `/team/leave-requests/${item.id}`
+                      }
+                      listTab={tab}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {!showSkeleton ? (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filteredItems.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-          />
-        ) : null}
-      </section>
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredItems.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

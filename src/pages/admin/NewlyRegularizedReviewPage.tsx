@@ -7,9 +7,17 @@ import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import {
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
+import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -37,10 +45,18 @@ function formatEffectiveDate(iso: string): string {
 
 export function NewlyRegularizedReviewPage() {
   const navigate = useNavigate()
+  const availableSlotRef = useRef<HTMLDivElement>(null)
+  const sectionHeaderRef = useRef<HTMLDivElement>(null)
+  const paginationRef = useRef<HTMLDivElement>(null)
   const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
-    tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
+  const pageSize = useContentSizedTablePageSize(
+    {
+      availableSlotRef,
+      sectionHeaderRef,
+      paginationRef,
+      tableAreaRef,
+    },
+    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
   )
   const showSkeleton = shouldShowDataSkeleton()
 
@@ -80,7 +96,7 @@ export function NewlyRegularizedReviewPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={distributionEmployeesPath('newly-regularized')}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -108,15 +124,18 @@ export function NewlyRegularizedReviewPage() {
         </dl>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-3">
-          <h2 className="text-h2 text-text-black">Selected recipients</h2>
-        </div>
-
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
         >
+          <div
+            ref={sectionHeaderRef}
+            className="shrink-0 border-b border-border px-5 py-3"
+          >
+            <h2 className="text-h2 text-text-black">Selected recipients</h2>
+          </div>
+
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
           <table className="w-full min-w-[960px] table-fixed text-left">
             <colgroup>
               <col className="w-[12%]" />
@@ -212,26 +231,28 @@ export function NewlyRegularizedReviewPage() {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
 
-        {!showSkeleton ? (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={reviewRows.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-          />
-        ) : null}
-      </section>
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={reviewRows.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <Link
-          to={distributionEmployeesPath('newly-regularized')}
-          className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
-          Back
-        </Link>
         <Button
           type="button"
           variant="primary"

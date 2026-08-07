@@ -6,9 +6,17 @@ import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
 import { Pagination } from '../../components/ui/Pagination'
 import {
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
+import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
 import {
@@ -53,10 +61,18 @@ function compareEmployeeNumber(a: string, b: string): number {
 }
 
 export function LeaveMonetizationCandidatesPage() {
+  const availableSlotRef = useRef<HTMLDivElement>(null)
+  const sectionHeaderRef = useRef<HTMLDivElement>(null)
+  const paginationRef = useRef<HTMLDivElement>(null)
   const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
-    tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
+  const pageSize = useContentSizedTablePageSize(
+    {
+      availableSlotRef,
+      sectionHeaderRef,
+      paginationRef,
+      tableAreaRef,
+    },
+    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
   )
 
   const [conversionYear, setConversionYear] = useState<number | null>(DEFAULT_YEAR)
@@ -162,7 +178,7 @@ export function LeaveMonetizationCandidatesPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-h1 text-text-black">Leave Monetization Candidates</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -191,132 +207,135 @@ export function LeaveMonetizationCandidatesPage() {
         </div>
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="relative z-40 shrink-0 border-b border-border px-5 py-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <YearPickerField
-              label="Conversion Year"
-              value={conversionYear}
-              onChange={handleYearChange}
-              controlHeight={FILTER_CONTROL_H}
-              className="min-w-[8rem]"
-              minYear={2020}
-              maxYear={2035}
-            />
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
+        >
+          <div ref={sectionHeaderRef} className="relative z-40 shrink-0">
+            <div className="border-b border-border px-5 py-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <YearPickerField
+                  label="Conversion Year"
+                  value={conversionYear}
+                  onChange={handleYearChange}
+                  controlHeight={FILTER_CONTROL_H}
+                  className="min-w-[8rem]"
+                  minYear={2020}
+                  maxYear={2035}
+                />
 
-            <div className="min-w-[14rem]">
-              <span className={fieldLabelClassName}>Eligibility Type</span>
-              <FilterSelect
-                label="Eligibility Type"
-                value={eligibilityType}
-                onChange={setEligibilityType}
-                options={eligibilityOptions}
-                selectHeight={FILTER_CONTROL_H}
-              />
-            </div>
+                <div className="min-w-[14rem]">
+                  <span className={fieldLabelClassName}>Eligibility Type</span>
+                  <FilterSelect
+                    label="Eligibility Type"
+                    value={eligibilityType}
+                    onChange={setEligibilityType}
+                    options={eligibilityOptions}
+                    selectHeight={FILTER_CONTROL_H}
+                  />
+                </div>
 
-            <label className="relative block min-w-[14rem] flex-1">
-              <span className={fieldLabelClassName}>Search Employee</span>
-              <span className="relative block">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
-                  aria-hidden="true"
-                />
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search employee name or number"
-                  disabled={!report}
-                  className={`w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 ${FILTER_CONTROL_H}`}
-                />
-              </span>
-            </label>
+                <label className="relative block min-w-[14rem] flex-1">
+                  <span className={fieldLabelClassName}>Search Employee</span>
+                  <span className="relative block">
+                    <Search
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-gray"
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search employee name or number"
+                      disabled={!report}
+                      className={`w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 ${FILTER_CONTROL_H}`}
+                    />
+                  </span>
+                </label>
 
-            <div className="flex shrink-0 items-end gap-2">
-              <Button
-                variant="primary"
-                disabled={!canGenerate}
-                onClick={handleGenerate}
-                title={
-                  !canGenerate && availability?.message
-                    ? availability.message
-                    : undefined
-                }
-              >
-                Generate Report
-              </Button>
-              <Button variant="secondary" onClick={handleReset}>
-                Reset
-              </Button>
-            </div>
-          </div>
-
-          {!canGenerate && availability?.message ? (
-            <p role="status" className="mt-2 text-body text-text-gray">
-              {availability.message}
-            </p>
-          ) : null}
-          {formError ? (
-            <p role="alert" className="mt-2 text-body text-status-rejected">
-              {formError}
-            </p>
-          ) : null}
-          {actionNotice ? (
-            <p role="status" className="mt-2 text-body text-text-gray">
-              {actionNotice}
-            </p>
-          ) : null}
-        </div>
-
-        {report ? (
-          <>
-            <div className="shrink-0 border-b border-border px-5 py-4">
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <SummaryCard
-                  label="Eligible Employees"
-                  value={String(filteredCandidates.length)}
-                />
-                <SummaryCard
-                  label="Total VL Excess Days"
-                  value={formatDays(filteredTotals.vlExcess)}
-                  accentClass="text-leave-vacation"
-                />
-                <SummaryCard
-                  label="Total SL Excess Days"
-                  value={formatDays(filteredTotals.slExcess)}
-                  accentClass="text-leave-sick"
-                />
-                <SummaryCard
-                  label="Total Eligible Leave Days"
-                  value={formatDays(filteredTotals.totalEligibleDays)}
-                />
+                <div className="flex shrink-0 items-end gap-2">
+                  <Button
+                    variant="primary"
+                    disabled={!canGenerate}
+                    onClick={handleGenerate}
+                    title={
+                      !canGenerate && availability?.message
+                        ? availability.message
+                        : undefined
+                    }
+                  >
+                    Generate Report
+                  </Button>
+                  <Button variant="secondary" onClick={handleReset}>
+                    Reset
+                  </Button>
+                </div>
               </div>
 
-              <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-small text-text-gray">
-                <InfoItem
-                  label="Conversion year"
-                  value={String(report.conversionYear)}
-                />
-                <InfoItem
-                  label="Balance cut-off"
-                  value={report.balanceAsOfLabel}
-                />
-                <InfoItem
-                  label="Date generated"
-                  value={formatGeneratedAt(report.generatedAt)}
-                />
-              </dl>
+              {!canGenerate && availability?.message ? (
+                <p role="status" className="mt-2 text-body text-text-gray">
+                  {availability.message}
+                </p>
+              ) : null}
+              {formError ? (
+                <p role="alert" className="mt-2 text-body text-status-rejected">
+                  {formError}
+                </p>
+              ) : null}
+              {actionNotice ? (
+                <p role="status" className="mt-2 text-body text-text-gray">
+                  {actionNotice}
+                </p>
+              ) : null}
             </div>
 
-            <div
-              ref={tableAreaRef}
-              className="min-h-0 flex-1 overflow-auto"
-            >
-              <table className="w-full min-w-[72rem] border-separate border-spacing-0 text-left">
-                <thead className="sticky top-0 z-20">
-                  <tr className="bg-surface-muted text-small text-text-gray">
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+            {report ? (
+              <div className="border-b border-border px-5 py-4">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <SummaryCard
+                    label="Eligible Employees"
+                    value={String(filteredCandidates.length)}
+                  />
+                  <SummaryCard
+                    label="Total VL Excess Days"
+                    value={formatDays(filteredTotals.vlExcess)}
+                    accentClass="text-leave-vacation"
+                  />
+                  <SummaryCard
+                    label="Total SL Excess Days"
+                    value={formatDays(filteredTotals.slExcess)}
+                    accentClass="text-leave-sick"
+                  />
+                  <SummaryCard
+                    label="Total Eligible Leave Days"
+                    value={formatDays(filteredTotals.totalEligibleDays)}
+                  />
+                </div>
+
+                <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-small text-text-gray">
+                  <InfoItem
+                    label="Conversion year"
+                    value={String(report.conversionYear)}
+                  />
+                  <InfoItem
+                    label="Balance cut-off"
+                    value={report.balanceAsOfLabel}
+                  />
+                  <InfoItem
+                    label="Date generated"
+                    value={formatGeneratedAt(report.generatedAt)}
+                  />
+                </dl>
+              </div>
+            ) : null}
+          </div>
+
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
+            {report ? (
+              <table className="w-full min-w-[72rem] table-fixed text-left">
+                <thead>
+                  <tr className="h-11 bg-surface-muted text-small text-text-gray">
+                    <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
                       <div className="flex items-center gap-1.5">
                         <span>Employee No.</span>
                         <button
@@ -333,44 +352,44 @@ export function LeaveMonetizationCandidatesPage() {
                         </button>
                       </div>
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
                       Employee Name
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
                       Group
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       VL Balance
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       VL Retained
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-vacation">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-vacation">
                       VL Excess
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       SL Balance
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       SL Retained
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-sick">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide text-leave-sick">
                       SL Excess
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       Total Eligible Days
                     </th>
-                    <th className="border-b border-border bg-surface-muted px-4 py-3 font-bold uppercase tracking-wide">
+                    <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
                       Eligibility Basis
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedItems.length === 0 ? (
-                    <tr>
+                    <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                       <td
                         colSpan={11}
-                        className="px-5 py-10 text-center text-body text-text-gray"
+                        className="px-5 text-center text-body text-text-gray"
                       >
                         No candidates match the current filters.
                       </td>
@@ -381,7 +400,7 @@ export function LeaveMonetizationCandidatesPage() {
                     ))
                   )}
                 </tbody>
-                <tfoot className="sticky bottom-0 z-20">
+                <tfoot>
                   <tr className="bg-surface-muted font-semibold">
                     <td
                       colSpan={3}
@@ -414,25 +433,34 @@ export function LeaveMonetizationCandidatesPage() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
-
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-            />
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center px-5 text-center text-body text-text-gray">
-            {canGenerate
-              ? 'Select a conversion year, then click Generate Report to view eligible monetization candidates.'
-              : availability?.message ??
-                'Report generation is not available for the selected conversion year yet.'}
+            ) : (
+              <p className="px-5 py-10 text-center text-body text-text-gray">
+                {canGenerate
+                  ? 'Select a conversion year, then click Generate Report to view eligible monetization candidates.'
+                  : (availability?.message ??
+                    'Report generation is not available for the selected conversion year yet.')}
+              </p>
+            )}
           </div>
-        )}
-      </section>
+
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {report ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
@@ -442,26 +470,24 @@ function CandidateRow({ row }: { row: MonetizationCandidate }) {
   const showSl = hasSlEligible(row.eligibilityBasis)
 
   return (
-    <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-      <td className="border-b border-border px-4 text-body text-text-black">
-        {row.employeeNumber}
-      </td>
-      <td className="border-b border-border px-4 text-body font-medium text-text-black">
+    <tr
+      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
+    >
+      <td className="px-4 text-body text-text-black">{row.employeeNumber}</td>
+      <td className="px-4 text-body font-medium text-text-black">
         {row.employeeName}
       </td>
-      <td className="border-b border-border px-4 text-body text-text-black">
-        {row.groupLabel}
-      </td>
+      <td className="px-4 text-body text-text-black">{row.groupLabel}</td>
 
       {showVl ? (
         <>
-          <td className="border-b border-border px-3 text-center text-body text-text-black">
+          <td className="px-3 text-center text-body text-text-black">
             {formatDays(row.vlBalance)}
           </td>
-          <td className="border-b border-border px-3 text-center text-body text-text-gray">
+          <td className="px-3 text-center text-body text-text-gray">
             {formatDays(row.vlRetained)}
           </td>
-          <td className="border-b border-border bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
+          <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
             {formatDays(row.vlExcess)}
           </td>
         </>
@@ -469,7 +495,7 @@ function CandidateRow({ row }: { row: MonetizationCandidate }) {
         <td
           colSpan={3}
           title="Not applicable"
-          className="border-b border-border px-3 text-center text-body text-text-gray"
+          className="px-3 text-center text-body text-text-gray"
         >
           N/A
         </td>
@@ -477,13 +503,13 @@ function CandidateRow({ row }: { row: MonetizationCandidate }) {
 
       {showSl ? (
         <>
-          <td className="border-b border-border px-3 text-center text-body text-text-black">
+          <td className="px-3 text-center text-body text-text-black">
             {formatDays(row.slBalance)}
           </td>
-          <td className="border-b border-border px-3 text-center text-body text-text-gray">
+          <td className="px-3 text-center text-body text-text-gray">
             {formatDays(row.slRetained)}
           </td>
-          <td className="border-b border-border bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
+          <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
             {formatDays(row.slExcess)}
           </td>
         </>
@@ -491,18 +517,16 @@ function CandidateRow({ row }: { row: MonetizationCandidate }) {
         <td
           colSpan={3}
           title="Not applicable"
-          className="border-b border-border px-3 text-center text-body text-text-gray"
+          className="px-3 text-center text-body text-text-gray"
         >
           N/A
         </td>
       )}
 
-      <td className="border-b border-border px-3 text-center text-body font-semibold text-text-black">
+      <td className="px-3 text-center text-body font-semibold text-text-black">
         {formatDays(row.totalEligibleDays)}
       </td>
-      <td className="border-b border-border px-4 text-body text-text-black">
-        {row.eligibilityBasis}
-      </td>
+      <td className="px-4 text-body text-text-black">{row.eligibilityBasis}</td>
     </tr>
   )
 }
