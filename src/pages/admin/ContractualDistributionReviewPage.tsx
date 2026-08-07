@@ -15,6 +15,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
 import {
   APPROVALS_TABLE_ROW_HEIGHT,
@@ -204,7 +205,7 @@ export function ContractualDistributionReviewPage() {
                 paginatedItems.map((row) => (
                   <tr
                     key={row.employee.id}
-                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
+                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                   >
                     <td className="px-4 text-body text-text-black">
                       {row.employee.employeeNumber}

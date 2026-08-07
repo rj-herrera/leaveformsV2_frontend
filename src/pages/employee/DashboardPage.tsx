@@ -18,7 +18,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -403,7 +403,7 @@ export function DashboardPage() {
                   paginatedItems.map((request) => (
                     <tr
                       key={request.id}
-                      className={`border-b border-black/5 text-body text-text-black last:border-b-0 ${TABLE_ROW_HEIGHT_CLASS}`}
+                      className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
                     >
                       <td className="truncate px-5">{request.leaveType}</td>
                       <td className="px-5 whitespace-nowrap">

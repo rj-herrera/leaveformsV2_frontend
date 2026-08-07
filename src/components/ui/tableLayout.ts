@@ -40,4 +40,4 @@ export const TABLE_PAGINATION_WRAP = 'shrink-0'
  * (e.g. data skeleton). Keep height reserved for page-size measurement.
  */
 export const TABLE_PAGINATION_PLACEHOLDER =
-  'flex shrink-0 flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between'
+  'flex shrink-0 flex-col gap-3 border-t border-border px-5 py-2 sm:flex-row sm:items-center sm:justify-between'

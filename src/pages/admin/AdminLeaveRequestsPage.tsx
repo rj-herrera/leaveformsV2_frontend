@@ -16,7 +16,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type LeaveRequestStatus,
@@ -557,7 +557,7 @@ function AdminRequestRow({
 
   return (
     <tr
-      className={`border-b border-border/60 text-body text-text-black last:border-b-0 ${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${
+      className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${
         needsAdminAction && showStatus
           ? 'bg-status-pending-conversion/5'
           : ''

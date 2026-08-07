@@ -12,6 +12,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import {
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
@@ -180,7 +181,7 @@ export function ActivityLogPage() {
                   paginatedItems.map((entry) => (
                     <tr
                       key={entry.id}
-                      className={`border-b border-border/60 text-body text-text-black last:border-b-0 ${TABLE_ROW_HEIGHT_CLASS}`}
+                      className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
                     >
                       <td className="px-5 whitespace-nowrap">
                         {formatActivityTimestamp(entry.occurredAt)}

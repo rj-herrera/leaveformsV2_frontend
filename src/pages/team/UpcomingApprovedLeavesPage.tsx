@@ -13,6 +13,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
 import { TABLE_ROW_HEIGHT_CLASS } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
@@ -199,7 +200,7 @@ export function UpcomingApprovedLeavesPage() {
                           navigate(`/team/leave-requests/${item.id}`)
                         }
                       }}
-                      className={`cursor-pointer border-b border-border/60 transition-colors last:border-b-0 hover:bg-surface-muted ${TABLE_ROW_HEIGHT_CLASS}`}
+                      className={`cursor-pointer ${TABLE_BODY_ROW_BORDER_CLASS} transition-colors hover:bg-surface-muted ${TABLE_ROW_HEIGHT_CLASS}`}
                     >
                       <td className="px-5 text-body text-text-black">
                         {item.periodLabel}

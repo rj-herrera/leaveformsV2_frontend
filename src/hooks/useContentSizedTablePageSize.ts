@@ -5,7 +5,7 @@ import { computePageSizeFromHeight } from './usePageSizeFromHeight'
 const FALLBACK_ROW_HEIGHT = 50
 const FALLBACK_THEAD_HEIGHT = 44
 /** Matches Pagination outer padding + controls when not yet mounted / measurable. */
-const FALLBACK_PAGINATION_HEIGHT = 72
+const FALLBACK_PAGINATION_HEIGHT = 56
 const DEFAULT_PAGE_SIZE = 5
 const SECTION_BORDER_Y = 2
 const ATTACH_POLL_MS = 100

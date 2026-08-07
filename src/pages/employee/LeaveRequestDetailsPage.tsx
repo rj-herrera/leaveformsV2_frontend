@@ -15,6 +15,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
@@ -258,7 +259,7 @@ export function LeaveRequestDetailsPage() {
               {detail.approvers.map((approver) => (
                 <tr
                   key={`${approver.id}-${approver.purpose ?? 'default'}`}
-                  className="border-b border-border/60 text-body text-text-black last:border-b-0"
+                  className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black`}
                 >
                   <td className="px-5 py-3.5">{approver.name}</td>
                   <td className="px-5 py-3.5 text-text-gray">
