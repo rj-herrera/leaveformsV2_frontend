@@ -39,10 +39,6 @@ export type LeaveRequestSummary = {
 
 export type ApproverListItem = LeaveRequestSummary & {
   department: string
-  approvalsCompleted: number
-  approvalsRequired: number
-  progressLabel: string
-  progressPercent: number
   needsAction: boolean
 }
 
@@ -587,24 +583,6 @@ export function getApproverInboxRequests(): LeaveRequestSummary[] {
   return getApproverVisibleRequests(JORDAN.id)
 }
 
-export function getApprovalProgressLabel(
-  completed: number,
-  required: number,
-): string {
-  if (required <= 0) return 'No approval required'
-  if (completed >= required) return 'Approved'
-  return 'Awaiting Approval'
-}
-
-export function getApprovalProgressPercent(
-  completed: number,
-  required: number,
-): number {
-  if (required <= 0) return 0
-  if (completed >= required) return 100
-  return Math.round((completed / required) * 100)
-}
-
 export function hasFinalizingApproverAction(
   detail: LeaveRequestDetail,
 ): boolean {
@@ -647,16 +625,6 @@ function toApproverListItem(
     groupId: detail.groupId,
     groupLabel: detail.groupLabel,
     department: detail.department,
-    approvalsCompleted: detail.approvalsCompleted,
-    approvalsRequired: detail.approvalsRequired,
-    progressLabel: getApprovalProgressLabel(
-      detail.approvalsCompleted,
-      detail.approvalsRequired,
-    ),
-    progressPercent: getApprovalProgressPercent(
-      detail.approvalsCompleted,
-      detail.approvalsRequired,
-    ),
     needsAction,
   }
 }

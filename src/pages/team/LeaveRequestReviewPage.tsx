@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  Check,
   CheckCircle2,
   Circle,
+  X,
   XCircle,
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
@@ -263,6 +265,7 @@ export function LeaveRequestReviewPage() {
       {isReviewMode ? (
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button type="button" onClick={() => setRejectOpen(true)}>
+            <X className="size-4 text-status-rejected" aria-hidden="true" />
             Reject
           </Button>
           <Button
@@ -270,6 +273,7 @@ export function LeaveRequestReviewPage() {
             variant="primary"
             onClick={() => setApproveOpen(true)}
           >
+            <Check className="size-4 text-white" aria-hidden="true" />
             Approve
           </Button>
         </div>

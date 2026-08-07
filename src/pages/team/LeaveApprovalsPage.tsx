@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
@@ -259,15 +259,30 @@ export function LeaveApprovalsPage() {
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
             <table className="w-full min-w-[960px] table-fixed text-left">
               <colgroup>
-                <col className="w-[10%]" />
-                <col className="w-[14%]" />
-                <col className="w-[8%]" />
-                <col className="w-[14%]" />
-                <col className="w-[13%]" />
-                <col className="w-[8%]" />
-                <col className="w-[11%]" />
-                <col className="w-[12%]" />
-                <col className="w-[10%]" />
+                {tab === 'pending' ? (
+                  <>
+                    <col className="w-[11%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[13%]" />
+                  </>
+                ) : (
+                  <>
+                    <col className="w-[10%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[10%]" />
+                  </>
+                )}
               </colgroup>
               <thead>
                 <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
@@ -307,9 +322,11 @@ export function LeaveApprovalsPage() {
                       onToggle={() => toggleSort('filedOn')}
                     />
                   </th>
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    {tab === 'pending' ? 'Approval Progress' : 'Status'}
-                  </th>
+                  {tab === 'all' ? (
+                    <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                      Status
+                    </th>
+                  ) : null}
                   <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">
                     Action
                   </th>
@@ -319,13 +336,13 @@ export function LeaveApprovalsPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
-                    cols={9}
+                    cols={tab === 'pending' ? 8 : 9}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : paginatedItems.length === 0 ? (
                   <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                     <td
-                      colSpan={9}
+                      colSpan={tab === 'pending' ? 8 : 9}
                       className="px-5 text-center text-body text-text-gray"
                     >
                       No leave requests match the selected filters.
@@ -447,32 +464,6 @@ function ApprovalRow({
   actionTo: string
   listTab: ListTab
 }) {
-  let statusOrProgress: ReactNode
-  if (showStatus) {
-    statusOrProgress = <StatusBadge status={item.status} />
-  } else {
-    statusOrProgress = (
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="truncate text-small text-text-gray">
-          {item.progressLabel}
-        </span>
-        <div
-          className="h-1.5 overflow-hidden rounded-full bg-surface-muted"
-          role="progressbar"
-          aria-valuenow={item.progressPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={item.progressLabel}
-        >
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${item.progressPercent}%` }}
-          />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <tr
       className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${APPROVALS_TABLE_ROW_HEIGHT_CLASS}`}
@@ -492,7 +483,11 @@ function ApprovalRow({
       </td>
       <td className="px-5 whitespace-nowrap">{item.duration}</td>
       <td className="px-5 whitespace-nowrap">{item.filedOnLabel}</td>
-      <td className="px-5">{statusOrProgress}</td>
+      {showStatus ? (
+        <td className="px-5">
+          <StatusBadge status={item.status} />
+        </td>
+      ) : null}
       <td className="px-5 text-center">
         <Link
           to={actionTo}
