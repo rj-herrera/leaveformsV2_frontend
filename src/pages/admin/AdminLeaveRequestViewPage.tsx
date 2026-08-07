@@ -164,7 +164,7 @@ export function AdminLeaveRequestViewPage() {
         </div>
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
           <table className="w-full min-w-[720px] text-left">
-            <thead className="sticky top-0 z-10 bg-surface-muted shadow-[0_1px_0_0_var(--color-border)]">
+            <thead className="sticky top-0 z-10 bg-surface-muted">
               <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   Approver
