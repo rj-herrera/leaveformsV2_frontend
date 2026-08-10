@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -13,7 +14,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, TABLE_ROW_HEIGHT, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -89,6 +91,17 @@ export function UpcomingApprovedLeavesPage() {
       pageSize,
       `upcoming-${user.id}-${search}-${leaveTypeFilter}-${groupFilter}`,
     )
+
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    leaveTypeFilter !== 'ALL' ||
+    groupFilter !== 'ALL'
+
+  function clearFilters() {
+    setSearch('')
+    setLeaveTypeFilter('ALL')
+    setGroupFilter('ALL')
+  }
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
@@ -173,14 +186,17 @@ export function UpcomingApprovedLeavesPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton rows={pageSize} cols={6} />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={6}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No upcoming approved leaves match the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((item) => (
                     <tr

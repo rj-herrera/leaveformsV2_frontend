@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
+import { EmptyState } from './EmptyState'
 import type { NotificationItem } from '../../mocks/notifications'
 
 type NotificationFilter = 'all' | 'unread'
@@ -142,23 +143,16 @@ export function NotificationPanel({
       </div>
 
       {visibleNotifications.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-          <Bell
-            className="size-8 text-text-gray/50"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-          <p className="text-body text-text-black">
-            {filter === 'unread'
+        <EmptyState
+          variant={filter === 'unread' ? 'no-results' : 'no-data'}
+          icon={Bell}
+          message={
+            filter === 'unread'
               ? 'No unread notifications'
-              : 'No notifications yet'}
-          </p>
-          <p className="text-small text-text-gray">
-            {filter === 'unread'
-              ? "You're all caught up. New updates will appear here."
-              : 'Updates about leave requests and credits will show up here.'}
-          </p>
-        </div>
+              : 'No notifications yet'
+          }
+          className="px-4 py-10"
+        />
       ) : (
         <ul className="max-h-80 overflow-y-auto" role="list">
           {visibleNotifications.map((item, index) => (

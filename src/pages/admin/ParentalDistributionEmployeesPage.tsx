@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Modal } from '../../components/ui/Modal'
 import { Pagination } from '../../components/ui/Pagination'
@@ -14,6 +15,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -102,6 +104,14 @@ export function ParentalDistributionEmployeesPage() {
   const filterResetKey = [search, groupFilter].join('|')
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(filteredCandidates, pageSize, filterResetKey)
+
+  const hasActiveFilters =
+    search.trim().length > 0 || groupFilter !== 'ALL'
+
+  function clearFilters() {
+    setSearch('')
+    setGroupFilter('ALL')
+  }
 
   const filteredKeys = filteredCandidates.map((c) =>
     parentalCandidateKey(c.employee.id, c.leaveType),
@@ -257,14 +267,17 @@ export function ParentalDistributionEmployeesPage() {
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={8}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No employees match the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={8}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((row) => {
                     const key = parentalCandidateKey(

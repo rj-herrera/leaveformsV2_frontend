@@ -6,6 +6,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import {
   CalendarGridSkeleton,
@@ -318,16 +319,12 @@ export function TeamLeaveCalendarPage() {
             {showSkeleton ? (
               <SidePanelListSkeleton rows={3} />
             ) : onLeaveToday.length === 0 ? (
-              <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-3 text-center">
-                <CalendarDays
-                  className="size-9 text-text-gray/40"
-                  aria-hidden="true"
-                />
-                <p className="mt-3 text-body text-text-gray">
-                  No employees are on leave today. Everyone in your team is
-                  scheduled to work today.
-                </p>
-              </div>
+              <EmptyState
+                variant="no-data"
+                icon={CalendarDays}
+                message="No employees are on leave today."
+                className="mt-4 min-h-0 flex-1 px-2 py-3"
+              />
             ) : (
               <ul className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
                 {onLeaveToday.map((entry) => (
@@ -348,15 +345,12 @@ export function TeamLeaveCalendarPage() {
             {showSkeleton ? (
               <SidePanelListSkeleton rows={4} />
             ) : upcoming.length === 0 ? (
-              <div className="mt-4 flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-3 text-center">
-                <CalendarDays
-                  className="size-9 text-text-gray/40"
-                  aria-hidden="true"
-                />
-                <p className="mt-3 text-body text-text-gray">
-                  No upcoming approved leaves for your team.
-                </p>
-              </div>
+              <EmptyState
+                variant="no-data"
+                icon={CalendarDays}
+                message="No upcoming approved leaves for your team."
+                className="mt-4 min-h-0 flex-1 px-2 py-3"
+              />
             ) : (
               <ul className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
                 {upcoming.map((entry) => (

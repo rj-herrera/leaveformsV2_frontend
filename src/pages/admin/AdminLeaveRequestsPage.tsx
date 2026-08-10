@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Search, Send } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { ListTabButton } from '../../components/ui/ListTabButton'
 import { Pagination } from '../../components/ui/Pagination'
@@ -18,6 +19,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
@@ -173,6 +175,19 @@ export function AdminLeaveRequestsPage() {
 
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(filteredItems, pageSize, filterResetKey)
+
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    groupFilter !== 'ALL' ||
+    leaveTypeFilter !== 'ALL' ||
+    statusFilter !== 'ALL'
+
+  function clearFilters() {
+    setSearch('')
+    setGroupFilter('ALL')
+    setLeaveTypeFilter('ALL')
+    setStatusFilter('ALL')
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -394,14 +409,17 @@ export function AdminLeaveRequestsPage() {
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={tab === 'pending' ? 8 : 9}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No leave requests match the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={tab === 'pending' ? 8 : 9}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((item) => (
                     <AdminRequestRow

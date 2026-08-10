@@ -27,6 +27,9 @@ export const TABLE_SEARCH_INPUT_BASE_CLASS =
 /** Default table search input — fixed control height matching FilterSelect sm. */
 export const TABLE_SEARCH_INPUT_CLASS = `h-[2.125rem] ${TABLE_SEARCH_INPUT_BASE_CLASS}`
 
+/** Numeric standard content table row height (`h-[50px]`). */
+export const TABLE_ROW_HEIGHT = 50
+
 /** Standard content table row height class (`h-[50px]`). */
 export const TABLE_ROW_HEIGHT_CLASS = 'h-[50px]'
 

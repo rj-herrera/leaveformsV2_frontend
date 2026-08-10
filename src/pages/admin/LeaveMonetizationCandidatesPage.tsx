@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, Printer, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { ClearFiltersButton, EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
@@ -13,6 +14,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -106,6 +108,14 @@ export function LeaveMonetizationCandidatesPage() {
   const filterResetKey = `${search}|${eligibilityType}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
     usePagination(sortedCandidates, pageSize, filterResetKey)
+
+  const hasActiveFilters =
+    search.trim().length > 0 || eligibilityType !== 'ALL'
+
+  function clearFilters() {
+    setSearch('')
+    setEligibilityType('ALL')
+  }
 
   const filteredTotals = useMemo(
     () => sumEligibleTotals(filteredCandidates),
@@ -369,14 +379,17 @@ export function LeaveMonetizationCandidatesPage() {
                 </thead>
                 <tbody>
                   {paginatedItems.length === 0 ? (
-                    <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                      <td
-                        colSpan={11}
-                        className="px-5 text-center text-body text-text-gray"
-                      >
-                        No candidates match the current filters.
-                      </td>
-                    </tr>
+                    <TableEmptyRow
+                      colSpan={11}
+                      pageSize={pageSize}
+                      rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                      variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                      action={
+                        hasActiveFilters ? (
+                          <ClearFiltersButton onClick={clearFilters} />
+                        ) : undefined
+                      }
+                    />
                   ) : (
                     paginatedItems.map((row) => (
                       <CandidateRow key={row.employeeId} row={row} />
@@ -417,12 +430,16 @@ export function LeaveMonetizationCandidatesPage() {
                 </tfoot>
               </table>
             ) : (
-              <p className="px-5 py-10 text-center text-body text-text-gray">
-                {canGenerate
-                  ? 'Select a conversion year, then click Generate Report to view eligible monetization candidates.'
-                  : (availability?.message ??
-                    'Report generation is not available for the selected conversion year yet.')}
-              </p>
+              <EmptyState
+                variant="no-data"
+                message={
+                  canGenerate
+                    ? 'Select a conversion year, then click Generate Report to view eligible monetization candidates.'
+                    : (availability?.message ??
+                      'Report generation is not available for the selected conversion year yet.')
+                }
+                className="min-h-[12rem]"
+              />
             )}
           </div>
 

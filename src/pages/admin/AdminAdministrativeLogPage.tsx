@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { MonthYearPickerField } from '../../components/ui/form/MonthYearPickerField'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import {
@@ -13,6 +14,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -117,6 +119,19 @@ export function AdminAdministrativeLogPage() {
 
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(filteredEntries, pageSize, filterResetKey)
+
+  const hasActiveFilters =
+    search.trim().length > 0 ||
+    leaveTypeFilter !== 'ALL' ||
+    groupFilter !== 'ALL' ||
+    monthYear.length > 0
+
+  function clearFilters() {
+    setSearch('')
+    setLeaveTypeFilter('ALL')
+    setGroupFilter('ALL')
+    setMonthYear('')
+  }
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
@@ -234,14 +249,17 @@ export function AdminAdministrativeLogPage() {
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={6}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No logs match the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((entry) => (
                     <tr

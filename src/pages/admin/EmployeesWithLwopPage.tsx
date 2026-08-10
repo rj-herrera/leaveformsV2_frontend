@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Download, Printer, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { ClearFiltersButton, EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
@@ -14,6 +15,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -102,6 +104,14 @@ export function EmployeesWithLwopPage() {
   const filterResetKey = `${search}|${groupFilter}|${sortKey}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
     usePagination(sortedSummaries, pageSize, filterResetKey)
+
+  const hasActiveFilters =
+    search.trim().length > 0 || groupFilter !== 'ALL'
+
+  function clearFilters() {
+    setSearch('')
+    setGroupFilter('ALL')
+  }
 
   function handleYearChange(nextYear: number | null) {
     setYear(nextYear)
@@ -295,14 +305,17 @@ export function EmployeesWithLwopPage() {
                 </thead>
                 <tbody>
                   {paginatedItems.length === 0 ? (
-                    <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                      <td
-                        colSpan={SUMMARY_COL_COUNT}
-                        className="px-5 text-center text-body text-text-gray"
-                      >
-                        No employees with LWOP match the current filters.
-                      </td>
-                    </tr>
+                    <TableEmptyRow
+                      colSpan={SUMMARY_COL_COUNT}
+                      pageSize={pageSize}
+                      rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                      variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                      action={
+                        hasActiveFilters ? (
+                          <ClearFiltersButton onClick={clearFilters} />
+                        ) : undefined
+                      }
+                    />
                   ) : (
                     paginatedItems.map((row) => (
                       <EmployeeRow key={row.employeeId} row={row} />
@@ -311,10 +324,11 @@ export function EmployeesWithLwopPage() {
                 </tbody>
               </table>
             ) : (
-              <p className="px-5 py-10 text-center text-body text-text-gray">
-                Select a year, then click Generate Report to view employees with
-                LWOP. Group is optional.
-              </p>
+              <EmptyState
+                variant="no-data"
+                message="Select a year, then click Generate Report to view employees with LWOP."
+                className="min-h-[12rem]"
+              />
             )}
           </div>
 

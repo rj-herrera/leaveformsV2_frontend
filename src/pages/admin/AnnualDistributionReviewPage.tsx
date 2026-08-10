@@ -14,6 +14,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -180,14 +181,12 @@ export function AnnualDistributionReviewPage() {
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={10}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No recipients selected.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={10}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                  />
                 ) : (
                   paginatedItems.map((row) => (
                     <tr

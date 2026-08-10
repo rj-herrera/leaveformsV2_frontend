@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
@@ -12,7 +13,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
@@ -90,6 +92,12 @@ export function ActivityLogPage() {
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(filteredEntries, pageSize, filterResetKey)
 
+  const hasActiveFilters = leaveTypeFilter !== 'ALL'
+
+  function clearFilters() {
+    setLeaveTypeFilter('ALL')
+  }
+
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -165,14 +173,17 @@ export function ActivityLogPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton rows={pageSize} cols={6} />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={6}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No activity matches the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((entry) => (
                     <tr

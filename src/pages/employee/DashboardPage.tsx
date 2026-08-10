@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { LeaveTypeIconBadge } from '../../components/ui/LeaveTypeIconBadge'
 import { Pagination } from '../../components/ui/Pagination'
@@ -18,7 +19,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -159,6 +161,14 @@ export function DashboardPage() {
       pageSize,
       `${mockPersona}-${leaveTypeFilter}-${statusFilter}-${filedOnSort}`,
     )
+
+  const hasActiveFilters =
+    leaveTypeFilter !== 'ALL' || statusFilter !== 'ALL'
+
+  function clearFilters() {
+    setLeaveTypeFilter('ALL')
+    setStatusFilter('ALL')
+  }
 
   function handleSelectLeaveType(type: SelectableLeaveType) {
     setSelectedLeaveType(type)
@@ -387,14 +397,17 @@ export function DashboardPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton rows={pageSize} cols={6} />
                 ) : paginatedItems.length === 0 ? (
-                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
-                    <td
-                      colSpan={6}
-                      className="px-5 text-center text-body text-text-gray"
-                    >
-                      No leave requests match the selected filters.
-                    </td>
-                  </tr>
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   paginatedItems.map((request) => (
                     <tr
