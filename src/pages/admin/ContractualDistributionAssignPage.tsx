@@ -13,12 +13,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-} from '../../hooks/usePageSizeFromHeight'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -76,20 +72,14 @@ function rowHasValidCredit(amounts: RowAmounts): boolean {
 
 export function ContractualDistributionAssignPage() {
   const navigate = useNavigate()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const headerCheckboxRef = useRef<HTMLInputElement>(null)
-  const pageSize = useContentSizedTablePageSize(
-    {
-      availableSlotRef,
-      sectionHeaderRef,
-      paginationRef,
-      tableAreaRef,
-    },
-    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
-  )
   const showSkeleton = shouldShowDataSkeleton()
 
   const candidates = useMemo(() => getContractualCandidates(), [])
@@ -264,7 +254,7 @@ export function ContractualDistributionAssignPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className="w-full rounded-md border border-border bg-surface py-1.5 pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className={`${TABLE_SEARCH_INPUT_BASE_CLASS} py-1.5`}
                 />
               </label>
 

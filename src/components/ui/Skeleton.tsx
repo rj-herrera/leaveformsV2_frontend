@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
-import { ArrowLeft, type LucideIcon } from 'lucide-react'
+import { type LucideIcon } from 'lucide-react'
 import { LeaveTypeIconBadge } from './LeaveTypeIconBadge'
+import { PageBackLink } from './PageBackLink'
 
 type SkeletonProps = {
   className?: string
@@ -105,13 +105,7 @@ export function LeaveDetailLoadingView({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Link
-        to={backTo}
-        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {backLabel}
-      </Link>
+      <PageBackLink to={backTo}>{backLabel}</PageBackLink>
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <Skeleton className="h-7 w-48" />
@@ -167,13 +161,7 @@ export function FormPageLoadingView({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Link
-        to={backTo}
-        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        {backLabel}
-      </Link>
+      <PageBackLink to={backTo}>{backLabel}</PageBackLink>
 
       <h1 className="shrink-0 text-h1 text-text-black">{title}</h1>
 

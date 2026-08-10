@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, Download, Printer, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Download, Printer, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
 import { Pagination } from '../../components/ui/Pagination'
+import { SortableHeader } from '../../components/ui/SortableHeader'
 import {
   TABLE_AVAILABLE_SLOT,
   TABLE_CONTENT_AREA,
@@ -13,12 +14,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-} from '../../hooks/usePageSizeFromHeight'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import {
   buildEmployeesWithLwopReport,
@@ -27,6 +24,7 @@ import {
   type EmployeesWithLwopReport,
   type LwopEmployeeSummary,
 } from '../../mocks/employeesWithLwop'
+import { compareEmployeeNumber } from '../../utils/sort'
 
 type GroupFilter = 'ALL' | string
 type SortKey = 'employeeNumber' | 'totalLwopDays'
@@ -50,29 +48,14 @@ function formatGeneratedAt(date: Date): string {
   })
 }
 
-function compareEmployeeNumber(a: string, b: string): number {
-  const numA = Number(a)
-  const numB = Number(b)
-  if (Number.isFinite(numA) && Number.isFinite(numB)) {
-    return numA - numB
-  }
-  return a.localeCompare(b)
-}
-
 export function EmployeesWithLwopPage() {
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize(
-    {
-      availableSlotRef,
-      sectionHeaderRef,
-      paginationRef,
-      tableAreaRef,
-    },
-    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
-  )
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
 
   const [year, setYear] = useState<number | null>(DEFAULT_YEAR)
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
@@ -233,7 +216,7 @@ export function EmployeesWithLwopPage() {
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search employee name or number"
                       disabled={!report}
-                      className={`w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 ${FILTER_CONTROL_H}`}
+                      className={`${TABLE_SEARCH_INPUT_BASE_CLASS} disabled:cursor-not-allowed disabled:opacity-60 ${FILTER_CONTROL_H}`}
                     />
                   </span>
                 </label>
@@ -371,40 +354,6 @@ function EmployeeRow({ row }: { row: LwopEmployeeSummary }) {
         {formatDays(row.totalLwopDays)}
       </td>
     </tr>
-  )
-}
-
-function SortableHeader({
-  label,
-  active,
-  direction,
-  onToggle,
-  align = 'left',
-}: {
-  label: string
-  active: boolean
-  direction: SortDir
-  onToggle: () => void
-  align?: 'left' | 'center'
-}) {
-  return (
-    <div
-      className={`flex items-center gap-1.5 ${align === 'center' ? 'justify-center' : ''}`}
-    >
-      <span>{label}</span>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
-        aria-label={`Sort ${label} ${active && direction === 'desc' ? 'ascending' : 'descending'}`}
-      >
-        {active && direction === 'asc' ? (
-          <ArrowUp className="size-3.5" aria-hidden="true" />
-        ) : (
-          <ArrowDown className="size-3.5" aria-hidden="true" />
-        )}
-      </button>
-    </div>
   )
 }
 

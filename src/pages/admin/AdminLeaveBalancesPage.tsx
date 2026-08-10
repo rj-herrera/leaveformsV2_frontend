@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, ArrowDown, ArrowUp } from 'lucide-react'
 import { EmploymentStatusPill } from '../../components/admin/EmploymentStatusPill'
@@ -20,12 +20,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-} from '../../hooks/usePageSizeFromHeight'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -40,20 +36,12 @@ import {
   getLeaveBalanceGroups,
 } from '../../mocks/leaveBalances'
 import { distributionEmployeesPath } from '../../utils/distributionPaths'
+import { compareEmployeeNumber } from '../../utils/sort'
 
 type DepartmentFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
 type EmploymentStatusFilter = 'ALL' | EmploymentStatus
 type EmployeeNumberSort = 'asc' | 'desc'
-
-function compareEmployeeNumber(a: string, b: string): number {
-  const numA = Number(a)
-  const numB = Number(b)
-  if (Number.isFinite(numA) && Number.isFinite(numB)) {
-    return numA - numB
-  }
-  return a.localeCompare(b)
-}
 
 const EMPLOYMENT_STATUS_OPTIONS: Array<{
   value: EmploymentStatusFilter
@@ -70,19 +58,13 @@ const ADJUST_TOOLTIP =
 
 export function AdminLeaveBalancesPage() {
   const navigate = useNavigate()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize(
-    {
-      availableSlotRef,
-      sectionHeaderRef,
-      paginationRef,
-      tableAreaRef,
-    },
-    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
-  )
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const showSkeleton = shouldShowDataSkeleton()
 
   const [search, setSearch] = useState('')
@@ -190,7 +172,7 @@ export function AdminLeaveBalancesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className={TABLE_SEARCH_INPUT_CLASS}
                 />
               </label>
 

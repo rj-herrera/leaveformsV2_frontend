@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
@@ -18,7 +18,7 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -30,8 +30,7 @@ import {
   VACATION_LEAVE_THEME,
   type SelectableLeaveType,
 } from '../../constants/leaveTypeTheme'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import { TABLE_ROW_HEIGHT_CLASS } from '../../hooks/usePageSizeFromHeight'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -59,16 +58,13 @@ const MOCK_SL_AVAILABLE = 14
 
 export function DashboardPage() {
   const { user, mockPersona } = useAuth()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize({
+  const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-  })
+    pageSize,
+  } = useContentSizedTableRefs()
   const showSkeleton = shouldShowDataSkeleton()
 
   const [isLeaveTypeOpen, setIsLeaveTypeOpen] = useState(false)

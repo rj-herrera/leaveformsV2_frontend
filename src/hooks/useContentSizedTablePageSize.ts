@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState, type RefObject } from 'react'
 import { computePageSizeFromHeight } from './usePageSizeFromHeight'
 
-/** Matches `TABLE_ROW_HEIGHT_CLASS` (`h-[50px]`) when no body row is measurable yet. */
+/** Matches `TABLE_ROW_HEIGHT_CLASS` in tableStyles (`h-[50px]`) when no body row is measurable yet. */
 const FALLBACK_ROW_HEIGHT = 50
 const FALLBACK_THEAD_HEIGHT = 44
 /** Matches Pagination outer padding + controls when not yet mounted / measurable. */

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { FilterSelect } from '../../components/ui/FilterSelect'
@@ -12,13 +12,12 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import { TABLE_ROW_HEIGHT_CLASS } from '../../hooks/usePageSizeFromHeight'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import {
   formatActivityTimestamp,
@@ -32,16 +31,13 @@ type TimestampSort = 'desc' | 'asc'
 
 export function ActivityLogPage() {
   const { user } = useAuth()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize({
+  const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-  })
+    pageSize,
+  } = useContentSizedTableRefs()
   const showSkeleton = shouldShowDataSkeleton()
 
   const [leaveTypeFilter, setLeaveTypeFilter] =

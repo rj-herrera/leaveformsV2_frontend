@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
@@ -13,9 +13,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import { TABLE_ROW_HEIGHT_CLASS } from '../../hooks/usePageSizeFromHeight'
+import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -31,16 +30,13 @@ type GroupFilter = 'ALL' | string
 export function UpcomingApprovedLeavesPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize({
+  const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-  })
+    pageSize,
+  } = useContentSizedTableRefs()
   const today = todayISO()
   const showSkeleton = shouldShowDataSkeleton()
 
@@ -128,7 +124,7 @@ export function UpcomingApprovedLeavesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className={TABLE_SEARCH_INPUT_CLASS}
                 />
               </label>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
@@ -14,12 +14,8 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-} from '../../hooks/usePageSizeFromHeight'
+import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -46,19 +42,13 @@ function formatEffectiveDate(iso: string): string {
 
 export function ParentalDistributionReviewPage() {
   const navigate = useNavigate()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize(
-    {
-      availableSlotRef,
-      sectionHeaderRef,
-      paginationRef,
-      tableAreaRef,
-    },
-    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
-  )
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const showSkeleton = shouldShowDataSkeleton()
 
   const [confirmOpen, setConfirmOpen] = useState(false)

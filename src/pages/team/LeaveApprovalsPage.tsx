@@ -1,10 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowDown, ArrowUp, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useAuth } from '../../auth/AuthContext'
 import { FilterSelect } from '../../components/ui/FilterSelect'
+import { ListTabButton } from '../../components/ui/ListTabButton'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
+import { SortableHeader } from '../../components/ui/SortableHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import {
   TABLE_AVAILABLE_SLOT,
@@ -14,16 +16,12 @@ import {
   TABLE_PAGINATION_PLACEHOLDER,
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
-import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS } from '../../components/ui/tableStyles'
+import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
 } from '../../constants/leaveStatus'
-import { useContentSizedTablePageSize } from '../../hooks/useContentSizedTablePageSize'
-import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-} from '../../hooks/usePageSizeFromHeight'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -37,37 +35,23 @@ import {
   type ListReturnState,
   type ListTab,
 } from '../../utils/listTab'
+import { compareEmployeeNumber } from '../../utils/sort'
 
 type LeaveTypeFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
 
-function compareEmployeeNumber(a: string, b: string): number {
-  const numA = Number(a)
-  const numB = Number(b)
-  if (Number.isFinite(numA) && Number.isFinite(numB)) {
-    return numA - numB
-  }
-  return a.localeCompare(b)
-}
-
 export function LeaveApprovalsPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const availableSlotRef = useRef<HTMLDivElement>(null)
-  const sectionHeaderRef = useRef<HTMLDivElement>(null)
-  const paginationRef = useRef<HTMLDivElement>(null)
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = useContentSizedTablePageSize(
-    {
-      availableSlotRef,
-      sectionHeaderRef,
-      paginationRef,
-      tableAreaRef,
-    },
-    { fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT },
-  )
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const showSkeleton = shouldShowDataSkeleton()
 
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
@@ -190,13 +174,13 @@ export function LeaveApprovalsPage() {
       <h1 className="shrink-0 text-h1 text-text-black">Leave Approvals</h1>
 
       <div className="flex shrink-0 gap-6 border-b border-border">
-        <TabButton
+        <ListTabButton
           active={tab === 'pending'}
           onClick={() => setTab('pending')}
           label="Pending Approvals"
           badge={pendingItems.length}
         />
-        <TabButton
+        <ListTabButton
           active={tab === 'all'}
           onClick={() => setTab('all')}
           label="All Leave Requests"
@@ -223,7 +207,7 @@ export function LeaveApprovalsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className="h-[2.125rem] w-full rounded-md border border-border bg-surface pr-3 pl-9 text-small text-text-black outline-none placeholder:text-text-gray focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className={TABLE_SEARCH_INPUT_CLASS}
                 />
               </label>
 
@@ -387,67 +371,6 @@ export function LeaveApprovalsPage() {
         </section>
       </div>
     </div>
-  )
-}
-
-function SortableHeader({
-  label,
-  active,
-  direction,
-  onToggle,
-}: {
-  label: string
-  active: boolean
-  direction: SortDir
-  onToggle: () => void
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span>{label}</span>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
-        aria-label={`Sort ${label} ${active && direction === 'desc' ? 'ascending' : 'descending'}`}
-      >
-        {active && direction === 'asc' ? (
-          <ArrowUp className="size-3.5" aria-hidden="true" />
-        ) : (
-          <ArrowDown className="size-3.5" aria-hidden="true" />
-        )}
-      </button>
-    </div>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  label,
-  badge,
-}: {
-  active: boolean
-  onClick: () => void
-  label: string
-  badge?: number
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`-mb-px inline-flex items-center gap-2 border-b-2 pb-2.5 text-body transition-colors ${
-        active
-          ? 'border-primary font-medium text-primary'
-          : 'border-transparent text-text-gray hover:text-text-black'
-      }`}
-    >
-      <span>{label}</span>
-      {typeof badge === 'number' ? (
-        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-small font-semibold text-white">
-          {badge}
-        </span>
-      ) : null}
-    </button>
   )
 }
 
