@@ -1,28 +1,40 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowDown, ArrowUp, Search } from 'lucide-react'
-import { useAuth } from '../../auth/AuthContext'
+import type { ApprovalsListStatus } from '../../api/approvals'
+import type { ApprovalInboxRow } from '../../api/types'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { TABLE_ACTION_BUTTON_CLASS } from '../../components/ui/tableStyles'
+import type { LeaveRequestStatus } from '../../constants/leaveStatus'
 import {
-  STATUS_FILTER_OPTIONS,
-  type StatusFilter,
-} from '../../constants/leaveStatus'
+  SICK_LEAVE_THEME,
+  VACATION_LEAVE_THEME,
+} from '../../constants/leaveTypeTheme'
+import { useApprovals } from '../../hooks/api/useApprovals'
+import { usePendingApprovals } from '../../hooks/api/usePendingApprovals'
 import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
   usePageSizeFromHeight,
 } from '../../hooks/usePageSizeFromHeight'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
-  getApproverQueue,
-  getApproverVisibleRequests,
-  type ApproverListItem,
-} from '../../mocks/leaveRequests'
+  formatDateTime,
+  formatDurationDays,
+  formatLeavePeriod,
+  getApprovalProgressLabel,
+  getApprovalProgressPercent,
+  mapApiLeaveStatusToUi,
+} from '../../utils/leaveDisplay'
 import {
   LIST_TAB_QUERY_KEY,
   parseListTab,
@@ -30,10 +42,45 @@ import {
   type ListTab,
 } from '../../utils/listTab'
 
-type LeaveTypeFilter = 'ALL' | string
+type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
+type ApprovalsStatusFilter = 'ALL' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+
+type ApprovalRowView = {
+  id: number
+  employeeNumber: string
+  requesterName: string
+  groupLabel: string
+  leaveType: string
+  leaveTypeCode: string
+  period: string
+  duration: string
+  filedOnDate: string
+  filedOnLabel: string
+  status: LeaveRequestStatus
+  progressLabel: string
+  progressPercent: number
+}
+
+const LEAVE_TYPE_FILTER_OPTIONS = [
+  { value: 'ALL' as const, label: 'All Leave Types' },
+  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
+  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
+]
+
+const APPROVALS_STATUS_FILTER_OPTIONS: {
+  value: 'ALL' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+  label: string
+}[] = [
+  { value: 'ALL', label: 'All statuses' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'CONVERTED', label: 'Converted to SL' },
+]
+
+const PAGE_SIZE_DEBOUNCE_MS = 150
 
 function compareEmployeeNumber(a: string, b: string): number {
   const numA = Number(a)
@@ -44,110 +91,259 @@ function compareEmployeeNumber(a: string, b: string): number {
   return a.localeCompare(b)
 }
 
+function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
+  const employee = row.employee
+  return {
+    id: row.id,
+    employeeNumber: employee?.employee_number ?? '—',
+    requesterName: employee?.name?.trim() || '—',
+    groupLabel:
+      employee?.group?.abbreviation?.trim() ||
+      employee?.group?.name?.trim() ||
+      '—',
+    leaveType: row.leave_type.name,
+    leaveTypeCode: row.leave_type.code,
+    period: formatLeavePeriod(row.start_date, row.end_date),
+    duration: formatDurationDays(row.duration),
+    filedOnDate: row.created_at ?? '',
+    filedOnLabel: formatDateTime(row.created_at),
+    status: mapApiLeaveStatusToUi(row.status),
+    progressLabel: getApprovalProgressLabel(
+      row.approvals_completed,
+      row.approvals_required,
+    ),
+    progressPercent: getApprovalProgressPercent(
+      row.approvals_completed,
+      row.approvals_required,
+    ),
+  }
+}
+
+function toApiStatus(
+  filter: ApprovalsStatusFilter,
+): ApprovalsListStatus | undefined {
+  switch (filter) {
+    case 'APPROVED':
+      return 'confirmed'
+    case 'REJECTED':
+      return 'rejected'
+    case 'CONVERTED':
+      return 'converted_to_sl'
+    default:
+      return undefined
+  }
+}
+
+function matchesRowFilters(
+  item: ApprovalRowView,
+  query: string,
+  groupFilter: GroupFilter,
+  leaveTypeFilter: LeaveTypeFilter,
+): boolean {
+  const matchesSearch =
+    query.length === 0 ||
+    item.requesterName.toLowerCase().includes(query) ||
+    item.employeeNumber.toLowerCase().includes(query)
+
+  const matchesGroup =
+    groupFilter === 'ALL' || item.groupLabel === groupFilter
+
+  const matchesLeaveType =
+    leaveTypeFilter === 'ALL' || item.leaveTypeCode === leaveTypeFilter
+
+  return matchesSearch && matchesGroup && matchesLeaveType
+}
+
+function sortRows(
+  items: ApprovalRowView[],
+  sortKey: SortKey,
+  sortDir: SortDir,
+): ApprovalRowView[] {
+  return [...items].sort((a, b) => {
+    const cmp =
+      sortKey === 'filedOn'
+        ? a.filedOnDate.localeCompare(b.filedOnDate)
+        : sortKey === 'period'
+          ? a.period.localeCompare(b.period)
+          : compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+}
+
+/** Debounce layout-derived page size so resize storms don't spam the API. */
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+
 export function LeaveApprovalsPage() {
-  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
+  const measuredPageSize = usePageSizeFromHeight(
     tableAreaRef,
     APPROVALS_TABLE_ROW_HEIGHT,
   )
-  const showSkeleton = shouldShowDataSkeleton()
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
+  const prevPageSizeRef = useRef<number | null>(null)
 
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState<LeaveTypeFilter>('ALL')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [statusFilter, setStatusFilter] = useState<ApprovalsStatusFilter>('ALL')
   const [sortKey, setSortKey] = useState<SortKey>('filedOn')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
-  const pendingItems = useMemo(() => getApproverQueue(user.id), [user.id])
-  const allItems = useMemo(
-    () => getApproverVisibleRequests(user.id),
-    [user.id],
+  /** All-tab server page; pending uses client `usePagination`. */
+  const [allPage, setAllPage] = useState(1)
+  const [awaitingAllReset, setAwaitingAllReset] = useState(false)
+  const skipAllResetSkeleton = useRef(true)
+
+  const {
+    data: pendingData,
+    error: pendingError,
+    isLoading: pendingLoading,
+  } = usePendingApprovals()
+
+  /** Server only sorts by created_at; other columns are client-sorted on the page. */
+  const apiSort = sortKey === 'filedOn' ? sortDir : ('desc' as const)
+
+  const allListParams = useMemo(
+    () => ({
+      status: toApiStatus(statusFilter),
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      sort: apiSort,
+      page: allPage,
+      per_page: pageSize,
+    }),
+    [statusFilter, leaveTypeFilter, apiSort, allPage, pageSize],
   )
 
-  const sourceItems = tab === 'pending' ? pendingItems : allItems
+  const {
+    data: allData,
+    error: allError,
+    isLoading: allLoading,
+    isValidating: allValidating,
+  } = useApprovals(tab === 'all' ? allListParams : null)
+
+  // All tab: server filter / filedOn sort → page 1 + skeleton until refetch settles.
+  useEffect(() => {
+    if (tab !== 'all') return
+    setAllPage(1)
+    if (skipAllResetSkeleton.current) {
+      skipAllResetSkeleton.current = false
+      return
+    }
+    setAwaitingAllReset(true)
+  }, [tab, statusFilter, leaveTypeFilter, apiSort])
+
+  // All tab: page-size change — keep approximate scroll position.
+  useEffect(() => {
+    if (tab !== 'all') return
+    const previous = prevPageSizeRef.current
+    prevPageSizeRef.current = pageSize
+    if (previous == null || previous === pageSize) return
+
+    setAllPage((page) => {
+      const firstVisibleIndex = (page - 1) * previous
+      return Math.max(1, Math.floor(firstVisibleIndex / pageSize) + 1)
+    })
+  }, [tab, pageSize])
+
+  useEffect(() => {
+    if (!awaitingAllReset) return
+    if (!allValidating) {
+      setAwaitingAllReset(false)
+    }
+  }, [awaitingAllReset, allValidating, allData, allError])
+
+  const pendingRows = useMemo(
+    () => (pendingData ?? []).map(toApprovalRowView),
+    [pendingData],
+  )
+
+  const allRows = useMemo(
+    () =>
+      awaitingAllReset
+        ? []
+        : (allData?.data ?? []).map(toApprovalRowView),
+    [allData, awaitingAllReset],
+  )
 
   const groupOptions = useMemo(() => {
     const groups = Array.from(
-      new Set(allItems.map((item) => item.groupLabel)),
+      new Set(
+        [...pendingRows, ...allRows]
+          .map((item) => item.groupLabel)
+          .filter((label) => label !== '—'),
+      ),
     ).sort((a, b) => a.localeCompare(b))
     return [
       { value: 'ALL' as const, label: 'All Groups' },
       ...groups.map((group) => ({ value: group, label: group })),
     ]
-  }, [allItems])
+  }, [pendingRows, allRows])
 
-  const leaveTypeOptions = useMemo(() => {
-    const types = Array.from(
-      new Set(allItems.map((item) => item.leaveType)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
-      { value: 'ALL' as const, label: 'All Leave Types' },
-      ...types.map((type) => ({ value: type, label: type })),
-    ]
-  }, [allItems])
+  const searchQuery = search.trim().toLowerCase()
 
-  const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase()
-
-    const filtered = sourceItems.filter((item) => {
-      const matchesSearch =
-        query.length === 0 ||
-        item.requesterName.toLowerCase().includes(query) ||
-        item.employeeNumber.toLowerCase().includes(query)
-
-      const matchesGroup =
-        groupFilter === 'ALL' || item.groupLabel === groupFilter
-
-      const matchesLeaveType =
-        leaveTypeFilter === 'ALL' || item.leaveType === leaveTypeFilter
-
-      const matchesStatus =
-        tab === 'pending' ||
-        statusFilter === 'ALL' ||
-        item.status === statusFilter
-
-      return (
-        matchesSearch && matchesGroup && matchesLeaveType && matchesStatus
-      )
-    })
-
-    return [...filtered].sort((a, b) => {
-      const cmp =
-        sortKey === 'filedOn'
-          ? a.filedOnDate.localeCompare(b.filedOnDate)
-          : sortKey === 'period'
-            ? a.period.localeCompare(b.period)
-            : compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
-      return sortDir === 'asc' ? cmp : -cmp
-    })
+  const filteredPending = useMemo(() => {
+    const filtered = pendingRows.filter((item) =>
+      matchesRowFilters(item, searchQuery, groupFilter, leaveTypeFilter),
+    )
+    return sortRows(filtered, sortKey, sortDir)
   }, [
-    sourceItems,
-    search,
+    pendingRows,
+    searchQuery,
     groupFilter,
     leaveTypeFilter,
-    statusFilter,
-    tab,
     sortKey,
     sortDir,
   ])
 
-  const filterResetKey = [
-    tab,
+  const pendingFilterResetKey = [
     search,
     groupFilter,
     leaveTypeFilter,
-    statusFilter,
     sortKey,
     sortDir,
   ].join('|')
 
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredItems, pageSize, filterResetKey)
+  const {
+    currentPage: pendingPage,
+    setCurrentPage: setPendingPage,
+    totalPages: pendingTotalPages,
+    paginatedItems: pendingPageItems,
+  } = usePagination(filteredPending, pageSize, pendingFilterResetKey)
+
+  // All tab: search/group (+ non-filedOn sort) on the current server page.
+  const displayAllRows = useMemo(() => {
+    const filtered = allRows.filter((item) =>
+      matchesRowFilters(item, searchQuery, groupFilter, 'ALL'),
+    )
+    if (sortKey === 'filedOn') return filtered
+    return sortRows(filtered, sortKey, sortDir)
+  }, [allRows, searchQuery, groupFilter, sortKey, sortDir])
+
+  const allTotalItems = awaitingAllReset
+    ? 0
+    : (allData?.meta?.total ?? displayAllRows.length)
+  const allTotalPages = awaitingAllReset
+    ? 1
+    : Math.max(1, allData?.meta?.last_page ?? 1)
+
+  useEffect(() => {
+    if (tab !== 'all' || awaitingAllReset) return
+    if (allPage > allTotalPages) {
+      setAllPage(allTotalPages)
+    }
+  }, [tab, awaitingAllReset, allPage, allTotalPages])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -169,6 +365,25 @@ export function LeaveApprovalsPage() {
     )
   }
 
+  const showPendingSkeleton = pendingLoading && !pendingData
+  const showAllSkeleton =
+    (allLoading && !allData) || awaitingAllReset
+  const showAllStale =
+    Boolean(allValidating && allData && !awaitingAllReset) && tab === 'all'
+
+  const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
+  const listError =
+    tab === 'pending'
+      ? pendingError && !pendingData
+      : allError && !allData
+  const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
+  const currentPage = tab === 'pending' ? pendingPage : allPage
+  const totalPages = tab === 'pending' ? pendingTotalPages : allTotalPages
+  const totalItems =
+    tab === 'pending' ? filteredPending.length : allTotalItems
+  const setCurrentPage =
+    tab === 'pending' ? setPendingPage : setAllPage
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <h1 className="shrink-0 text-h1 text-text-black">Leave Approvals</h1>
@@ -178,7 +393,7 @@ export function LeaveApprovalsPage() {
           active={tab === 'pending'}
           onClick={() => setTab('pending')}
           label="Pending Approvals"
-          badge={pendingItems.length}
+          badge={pendingRows.length}
         />
         <TabButton
           active={tab === 'all'}
@@ -216,8 +431,10 @@ export function LeaveApprovalsPage() {
               <FilterSelect
                 label="Filter by leave type"
                 value={leaveTypeFilter}
-                onChange={setLeaveTypeFilter}
-                options={leaveTypeOptions}
+                onChange={(value) =>
+                  setLeaveTypeFilter(value as LeaveTypeFilter)
+                }
+                options={LEAVE_TYPE_FILTER_OPTIONS}
                 selectHeight="h-[2.125rem]"
               />
 
@@ -225,8 +442,10 @@ export function LeaveApprovalsPage() {
                 <FilterSelect
                   label="Filter by status"
                   value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={STATUS_FILTER_OPTIONS}
+                  onChange={(value) =>
+                    setStatusFilter(value as ApprovalsStatusFilter)
+                  }
+                  options={APPROVALS_STATUS_FILTER_OPTIONS}
                   selectHeight="h-[2.125rem]"
                 />
               ) : null}
@@ -238,7 +457,12 @@ export function LeaveApprovalsPage() {
           ref={tableAreaRef}
           className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden"
         >
-          <table className="w-full min-w-[960px] table-fixed text-left">
+          <table
+            className={[
+              'w-full min-w-[960px] table-fixed text-left',
+              showAllStale ? 'opacity-80' : '',
+            ].join(' ')}
+          >
             <colgroup>
               <col className="w-[10%]" />
               <col className="w-[14%]" />
@@ -260,9 +484,15 @@ export function LeaveApprovalsPage() {
                     onToggle={() => toggleSort('employeeNumber')}
                   />
                 </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Employee Name</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Group</th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Employee Name
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Group
+                </th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Leave Type
+                </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   <SortableHeader
                     label="Leave Period"
@@ -271,7 +501,9 @@ export function LeaveApprovalsPage() {
                     onToggle={() => toggleSort('period')}
                   />
                 </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">Duration</th>
+                <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                  Duration
+                </th>
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   <SortableHeader
                     label="Date Filed"
@@ -283,7 +515,9 @@ export function LeaveApprovalsPage() {
                 <th className="px-5 py-3 font-bold uppercase tracking-wide">
                   {tab === 'pending' ? 'Approval Progress' : 'Status'}
                 </th>
-                <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">Action</th>
+                <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -293,7 +527,16 @@ export function LeaveApprovalsPage() {
                   cols={9}
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
-              ) : paginatedItems.length === 0 ? (
+              ) : listError ? (
+                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
+                  <td
+                    colSpan={9}
+                    className="px-5 text-center text-body text-status-rejected"
+                  >
+                    Unable to load leave requests. Please try again.
+                  </td>
+                </tr>
+              ) : pageItems.length === 0 ? (
                 <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                   <td
                     colSpan={9}
@@ -303,7 +546,7 @@ export function LeaveApprovalsPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((item) => (
+                pageItems.map((item) => (
                   <ApprovalRow
                     key={item.id}
                     item={item}
@@ -325,7 +568,7 @@ export function LeaveApprovalsPage() {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={filteredItems.length}
+          totalItems={totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
         />
@@ -402,7 +645,7 @@ function ApprovalRow({
   actionTo,
   listTab,
 }: {
-  item: ApproverListItem
+  item: ApprovalRowView
   showStatus: boolean
   actionLabel: string
   actionTo: string

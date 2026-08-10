@@ -13,6 +13,24 @@ export type LeaveTypeRef = {
   name: string
 }
 
+/** Group or department nest on `employee`. */
+export type LeaveOrgRef = {
+  id: number
+  abbreviation: string | null
+  name: string | null
+}
+
+/**
+ * Person-on-leave nest from `EmployeeNest` (leave detail + approval rows).
+ */
+export type LeaveEmployee = {
+  id: number
+  employee_number: string
+  name: string | null
+  group: LeaveOrgRef | null
+  department: LeaveOrgRef | null
+}
+
 export type LeaveApprovalHistory = {
   approver_emp_id: number
   /** Present on detail responses when the employee can be resolved. */
@@ -88,6 +106,7 @@ export type LeaveDetail = {
   has_attachment: boolean
   attachment_url: string | null
   cancellation_reason: string | null
+  employee: LeaveEmployee | null
   approval_requirements: LeaveApprovalRequirement[]
   eligible_approvers: EligibleApprover[]
   conversion: LeaveDetailConversion | null

@@ -12,6 +12,11 @@ export type {
   LeaveActivityResource,
 } from './activity'
 
+export type {
+  ApprovalInboxEmployee,
+  ApprovalInboxRow,
+} from './approval'
+
 export type { LeaveBalanceResource } from './balance'
 
 export type { HolidayResource } from './holiday'
@@ -29,6 +34,8 @@ export type {
   LeaveApprovalRequirement,
   LeaveDetail,
   LeaveDetailConversion,
+  LeaveEmployee,
+  LeaveOrgRef,
   LeaveResource,
   LeaveSummary,
   LeaveTypeRef,

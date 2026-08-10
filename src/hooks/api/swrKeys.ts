@@ -1,5 +1,6 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
 import type { ListActivitiesParams } from '../../api/activities'
+import type { ListApprovalsParams } from '../../api/approvals'
 
 /** Stable SWR cache keys — use these with `mutate(key)` after writes. */
 export const swrKeys = {
@@ -26,6 +27,18 @@ export const swrKeys = {
       params?.page ?? null,
     ] as const,
 
+  pendingApprovals: ['approvals', 'pending'] as const,
+
+  approvals: (params?: ListApprovalsParams) =>
+    [
+      'approvals',
+      params?.status ?? null,
+      params?.code ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
   holidays: (params: { from?: string; to?: string; year?: number }) =>
     [
       'holidays',
@@ -33,8 +46,6 @@ export const swrKeys = {
       params.to ?? null,
       params.year ?? null,
     ] as const,
-
-  pendingApprovals: ['approvals', 'pending'] as const,
 
   pendingConversions: ['conversions', 'pending'] as const,
 }
@@ -49,5 +60,14 @@ export function isLeaveListKey(key: unknown): boolean {
     Array.isArray(key) &&
     key[0] === 'leaves' &&
     key.length === 4
+  )
+}
+
+/** True for paginated All Approvals keys `['approvals', status, code, sort, per_page, page]`. */
+export function isApprovalsListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'approvals' &&
+    key.length === 6
   )
 }
