@@ -34,6 +34,7 @@ import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
+  formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 
@@ -181,7 +182,7 @@ export function LeaveRequestDetailsPage() {
       ? {
           originalLeaveType: conversion.from_leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
-          originalDateFiled: formatDateTime(detail.created_at),
+          originalDateFiled: formatShortDate(detail.created_at),
           originalLeavePeriod: formatLeavePeriod(
             detail.start_date,
             detail.end_date,
@@ -193,7 +194,7 @@ export function LeaveRequestDetailsPage() {
           originalReason: detail.leave_reason,
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type.name,
-          conversionRequestDate: formatDateTime(conversion.created_at),
+          conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.remarks?.trim() || '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
@@ -371,7 +372,7 @@ export function LeaveRequestDetailsPage() {
             <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
               <LeaveInfoRow
                 label="Date Filed"
-                value={formatDateTime(detail.created_at)}
+                value={formatShortDate(detail.created_at)}
               />
               <LeaveInfoRow
                 label="Leave Period"

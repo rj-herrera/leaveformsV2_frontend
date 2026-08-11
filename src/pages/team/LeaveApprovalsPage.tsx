@@ -36,9 +36,9 @@ import { usePendingApprovals } from '../../hooks/api/usePendingApprovals'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import {
-  formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
+  formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
@@ -102,7 +102,7 @@ function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
     period: formatLeavePeriod(row.start_date, row.end_date),
     duration: formatDurationDays(row.duration),
     filedOnDate: row.created_at ?? '',
-    filedOnLabel: formatDateTime(row.created_at),
+    filedOnLabel: formatShortDate(row.created_at),
     status: mapApiLeaveStatusToUi(row.status),
   }
 }

@@ -24,8 +24,10 @@ export function mapApiLeaveStatusToUi(
   }
 }
 
-export function formatShortDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T00:00:00`)
+export function formatShortDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—'
+  const datePart = isoDate.slice(0, 10)
+  const date = new Date(`${datePart}T00:00:00`)
   if (Number.isNaN(date.getTime())) return isoDate
   return date.toLocaleDateString('en-US', {
     month: 'short',
@@ -34,11 +36,19 @@ export function formatShortDate(isoDate: string): string {
   })
 }
 
-/** Formats an ISO datetime (or date) for display. */
+/** Formats an ISO datetime for display (date + time). */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const datePart = iso.slice(0, 10)
-  return formatShortDate(datePart)
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 export function formatLeavePeriod(startDate: string, endDate: string): string {

@@ -24,6 +24,7 @@ import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
+  formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
@@ -330,7 +331,7 @@ export function LeaveRequestReviewPage() {
           <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
             <LeaveInfoRow
               label="Date Filed"
-              value={formatDateTime(detail.created_at)}
+              value={formatShortDate(detail.created_at)}
             />
             <LeaveInfoRow
               label="Leave Period"
