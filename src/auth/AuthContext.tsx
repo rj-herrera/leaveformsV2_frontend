@@ -29,6 +29,8 @@ export type UserGender = 'male' | 'female'
 export type AuthUser = {
   id: string
   name: string
+  firstName: string
+  lastName: string
   email: string
   employeeNumber: string
   gender: UserGender
@@ -58,6 +60,8 @@ const DEFAULT_COOKIE_NAME = 'userID'
 const FALLBACK_USER: AuthUser = {
   id: '',
   name: '',
+  firstName: '',
+  lastName: '',
   email: '',
   employeeNumber: '',
   gender: 'female',
@@ -77,6 +81,8 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
   return {
     id: String(me.id),
     name: me.full_name,
+    firstName: me.firstname ?? '',
+    lastName: me.surname ?? '',
     email: me.email ?? '',
     employeeNumber: String(me.id),
     // TODO: use real gender from API when available

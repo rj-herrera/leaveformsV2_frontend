@@ -4,6 +4,7 @@ import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from './ui/Button'
 import { NAV_SECTIONS, type NavChildItem, type NavItem } from '../nav/navConfig'
+import { userInitials, userRoleLabel } from '../utils/userDisplay'
 
 const COLLAPSED_ICON_BUTTON =
   'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors'
@@ -325,9 +326,30 @@ function SectionLabel({
   )
 }
 
+function SidebarUserAvatar({
+  initials,
+  tooltip,
+}: {
+  initials: string
+  tooltip?: string
+}) {
+  return (
+    <span
+      className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-body font-semibold text-primary"
+      title={tooltip}
+      aria-label={tooltip}
+      aria-hidden={tooltip ? undefined : true}
+    >
+      {initials || '—'}
+    </span>
+  )
+}
+
 export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const initials = userInitials(user.firstName, user.lastName)
+  const roleLabel = userRoleLabel(user.roles)
 
   const visibleSections = NAV_SECTIONS.filter((section) =>
     canAccessSection(section.requires, user.roles),
@@ -395,7 +417,11 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
       </nav>
 
       {collapsed ? (
-        <div className="flex shrink-0 justify-center border-t border-white/15 p-2">
+        <div className="flex shrink-0 flex-col items-center gap-2 border-t border-white/15 p-2">
+          <SidebarUserAvatar
+            initials={initials}
+            tooltip={`${user.name} · ${roleLabel}`}
+          />
           <button
             type="button"
             title="Log out"
@@ -408,7 +434,16 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         </div>
       ) : (
         <div className="shrink-0 border-t border-white/15 px-3 py-3">
-          <div className="px-2">
+          <div className="flex flex-col gap-3 px-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <SidebarUserAvatar initials={initials} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-small font-medium text-white">
+                  {user.name}
+                </p>
+                <p className="truncate text-small text-white/70">{roleLabel}</p>
+              </div>
+            </div>
             <Button
               type="button"
               variant="secondary"
