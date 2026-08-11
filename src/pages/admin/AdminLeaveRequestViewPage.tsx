@@ -48,6 +48,7 @@ export function AdminLeaveRequestViewPage() {
       <LeaveDetailLoadingView
         backTo={backToList}
         backLabel="Back to Leave Requests"
+        infoLayout="admin-view"
       />
     )
   }

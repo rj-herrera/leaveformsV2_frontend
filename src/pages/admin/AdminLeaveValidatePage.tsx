@@ -53,6 +53,7 @@ export function AdminLeaveValidatePage() {
       <LeaveDetailLoadingView
         backTo={backToList}
         backLabel="Back to Leave Requests"
+        infoLayout="validate"
       />
     )
   }

@@ -257,6 +257,7 @@ export function LeaveRequestDetailsPage() {
       <LeaveDetailLoadingView
         backTo="/dashboard"
         backLabel="Back to Dashboard"
+        infoLayout="employee"
       />
     )
   }

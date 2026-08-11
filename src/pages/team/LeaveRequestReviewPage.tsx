@@ -267,6 +267,7 @@ export function LeaveRequestReviewPage() {
       <LeaveDetailLoadingView
         backTo={backToApprovals}
         backLabel="Back to Leave Approvals"
+        infoLayout="review"
       />
     )
   }
