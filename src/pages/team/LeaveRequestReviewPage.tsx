@@ -313,7 +313,7 @@ export function LeaveRequestReviewPage() {
         </div>
       ) : null}
 
-      <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-3">
+      <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
         <article className="rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>

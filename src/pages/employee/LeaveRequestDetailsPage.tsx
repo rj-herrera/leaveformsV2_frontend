@@ -364,7 +364,7 @@ export function LeaveRequestDetailsPage() {
           spacing="comfortable"
         />
       ) : (
-        <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-1">
           <article className="rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
