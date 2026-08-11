@@ -86,21 +86,3 @@ export function eligibleApproverPurpose(
   if (approverType === 'president') return 'President approval'
   return 'Leave approval'
 }
-
-export function getApprovalProgressLabel(
-  completed: number,
-  required: number,
-): string {
-  if (required <= 0) return 'No approval required'
-  if (completed >= required) return 'Approved'
-  return 'Awaiting Approval'
-}
-
-export function getApprovalProgressPercent(
-  completed: number,
-  required: number,
-): number {
-  if (required <= 0) return 0
-  if (completed >= required) return 100
-  return Math.round((completed / required) * 100)
-}

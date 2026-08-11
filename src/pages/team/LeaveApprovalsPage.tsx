@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import type { ApprovalsListStatus } from '../../api/approvals'
@@ -45,8 +39,6 @@ import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
-  getApprovalProgressLabel,
-  getApprovalProgressPercent,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
@@ -75,8 +67,6 @@ type ApprovalRowView = {
   filedOnDate: string
   filedOnLabel: string
   status: LeaveRequestStatus
-  progressLabel: string
-  progressPercent: number
 }
 
 const LEAVE_TYPE_FILTER_OPTIONS = [
@@ -114,14 +104,6 @@ function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
     filedOnDate: row.created_at ?? '',
     filedOnLabel: formatDateTime(row.created_at),
     status: mapApiLeaveStatusToUi(row.status),
-    progressLabel: getApprovalProgressLabel(
-      row.approvals_completed,
-      row.approvals_required,
-    ),
-    progressPercent: getApprovalProgressPercent(
-      row.approvals_completed,
-      row.approvals_required,
-    ),
   }
 }
 
@@ -536,9 +518,11 @@ export function LeaveApprovalsPage() {
                       onToggle={() => toggleSort('filedOn')}
                     />
                   </th>
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    {tab === 'pending' ? 'Approval Progress' : 'Status'}
-                  </th>
+                  {tab === 'all' ? (
+                    <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                      Status
+                    </th>
+                  ) : null}
                   <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">
                     Action
                   </th>
@@ -548,12 +532,12 @@ export function LeaveApprovalsPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
-                    cols={9}
+                    cols={tab === 'pending' ? 8 : 9}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : listError ? (
                   <TableEmptyRow
-                    colSpan={9}
+                    colSpan={tab === 'pending' ? 8 : 9}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
@@ -561,7 +545,7 @@ export function LeaveApprovalsPage() {
                   />
                 ) : pageItems.length === 0 ? (
                   <TableEmptyRow
-                    colSpan={9}
+                    colSpan={tab === 'pending' ? 8 : 9}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant={hasActiveFilters ? 'no-results' : 'no-data'}
@@ -626,32 +610,6 @@ function ApprovalRow({
   actionTo: string
   listTab: ListTab
 }) {
-  let statusOrProgress: ReactNode
-  if (showStatus) {
-    statusOrProgress = <StatusBadge status={item.status} />
-  } else {
-    statusOrProgress = (
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <span className="truncate text-small text-text-gray">
-          {item.progressLabel}
-        </span>
-        <div
-          className="h-1.5 overflow-hidden rounded-full bg-surface-muted"
-          role="progressbar"
-          aria-valuenow={item.progressPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={item.progressLabel}
-        >
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${item.progressPercent}%` }}
-          />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <tr
       className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${APPROVALS_TABLE_ROW_HEIGHT_CLASS}`}
@@ -671,7 +629,11 @@ function ApprovalRow({
       </td>
       <td className="px-5 whitespace-nowrap">{item.duration}</td>
       <td className="px-5 whitespace-nowrap">{item.filedOnLabel}</td>
-      <td className="px-5">{statusOrProgress}</td>
+      {showStatus ? (
+        <td className="px-5">
+          <StatusBadge status={item.status} />
+        </td>
+      ) : null}
       <td className="px-5 text-center">
         <Link
           to={actionTo}

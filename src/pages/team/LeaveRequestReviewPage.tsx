@@ -1,12 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
-import {
-  CheckCircle2,
-  Clock3,
-  TriangleAlert,
-  XCircle,
-} from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
 import { useAuth } from '../../auth/AuthContext'
@@ -25,13 +20,10 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../mocks/leaveRequests'
 import {
-  approvalRequirementLabel,
   eligibleApproverPurpose,
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
-  getApprovalProgressLabel,
-  getApprovalProgressPercent,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
@@ -105,11 +97,6 @@ export function LeaveRequestReviewPage() {
 
   const requirements = detail?.approval_requirements ?? []
   const eligibleApprovers = detail?.eligible_approvers ?? []
-  const approvalsRequired = requirements.length
-  const approvalsCompleted = useMemo(
-    () => requirements.filter((req) => req.is_satisfied).length,
-    [requirements],
-  )
 
   const historyByEmpId = useMemo(() => {
     const map = new Map<
@@ -194,19 +181,11 @@ export function LeaveRequestReviewPage() {
 
   const isReviewMode = routeWantsReview && canAct
 
-  const isRejected = detail?.status === 'rejected'
   const decisionSettled =
     detail?.status === 'confirmed' ||
     detail?.status === 'rejected' ||
     detail?.status === 'cancelled' ||
     detail?.status === 'converted_to_sl'
-  const progressPercent = getApprovalProgressPercent(
-    approvalsCompleted,
-    approvalsRequired,
-  )
-  const progressLabel = isRejected
-    ? 'Rejected'
-    : getApprovalProgressLabel(approvalsCompleted, approvalsRequired)
 
   const employee = detail?.employee ?? null
   const employeeNumber = employee?.employee_number ?? '—'
@@ -372,70 +351,6 @@ export function LeaveRequestReviewPage() {
               <LeaveInfoRow label="Attachment" value="None required" />
             )}
           </dl>
-        </article>
-
-        <article className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="text-h2 text-text-black">Approval Progress</h2>
-          <p className="mt-2 text-small text-text-gray">{progressLabel}</p>
-          <div
-            className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted"
-            role="progressbar"
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Approval progress"
-          >
-            <div
-              className={[
-                'h-full rounded-full transition-[width]',
-                isRejected ? 'bg-status-rejected' : 'bg-primary',
-              ].join(' ')}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <ul className="mt-3 space-y-2.5">
-            {requirements.map((requirement) => {
-              const completed = requirement.is_satisfied
-              const label = approvalRequirementLabel(requirement)
-              return (
-                <li
-                  key={requirement.display_order}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <span className="flex items-center gap-2 text-body text-text-black">
-                    {isRejected ? (
-                      <XCircle
-                        className="size-4 shrink-0 fill-status-rejected text-white"
-                        aria-hidden="true"
-                      />
-                    ) : completed ? (
-                      <CheckCircle2
-                        className="size-4 shrink-0 fill-status-approved text-white"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Clock3
-                        className="size-4 shrink-0 fill-status-pending-conversion text-white"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {label}
-                  </span>
-                  <span
-                    className={`text-small font-semibold ${
-                      isRejected
-                        ? 'text-status-rejected'
-                        : completed
-                          ? 'text-status-approved'
-                          : 'text-status-pending-conversion'
-                    }`}
-                  >
-                    {isRejected ? 'Rejected' : completed ? 'Completed' : 'Pending'}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
         </article>
       </section>
 
