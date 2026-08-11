@@ -17,6 +17,10 @@ import {
   isParentalLeaveType,
 } from './leaveBalances'
 import { MOCK_DATA_ENABLED } from './config'
+import {
+  formatDayTypeLabel,
+  inferDayTypeFromDuration,
+} from '../utils/leaveDates'
 
 export type LeaveRequestSummary = {
   id: string
@@ -35,10 +39,6 @@ export type LeaveRequestSummary = {
 
 export type ApproverListItem = LeaveRequestSummary & {
   department: string
-  approvalsCompleted: number
-  approvalsRequired: number
-  progressLabel: string
-  progressPercent: number
   needsAction: boolean
 }
 
@@ -54,14 +54,9 @@ export type ApproverRow = {
   purpose?: string
 }
 
-export type ApprovalRequirement = {
-  id: string
-  label: string
-  status: 'completed' | 'pending'
-}
-
 export type LeaveConversionInfo = {
   originalLeaveType: string
+  originalDayType: string
   originalDateFiled: string
   originalLeavePeriod: string
   filedBy: string
@@ -78,10 +73,6 @@ export type LeaveRequestDetail = LeaveRequestSummary & {
   leavePeriod: string
   reason: string
   department: string
-  approvalsCompleted: number
-  approvalsRequired: number
-  requirements: ApprovalRequirement[]
-  attachmentNote: string | null
   attachmentFileName: string | null
   approvers: ApproverRow[]
   conversion: LeaveConversionInfo | null
@@ -213,10 +204,6 @@ export function detailFromSummary(
     leavePeriod: extras.leavePeriod ?? summary.period,
     reason: extras.reason,
     department: extras.department ?? MOCK_GROUP.department,
-    approvalsCompleted: extras.approvalsCompleted,
-    approvalsRequired: extras.approvalsRequired,
-    requirements: extras.requirements,
-    attachmentNote: extras.attachmentNote,
     attachmentFileName: extras.attachmentFileName ?? null,
     approvers: extras.approvers,
     conversion: extras.conversion ?? null,
@@ -519,17 +506,11 @@ function applyConversionSubmission(
     ...base,
     status: 'PENDING_CONVERSION',
     leaveType: 'Vacation Leave',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      {
-        id: 'r1',
-        label: 'Admin validation',
-        status: 'pending',
-      },
-    ],
     conversion: {
       originalLeaveType: base.leaveType,
+      originalDayType: formatDayTypeLabel(
+        inferDayTypeFromDuration(base.duration),
+      ),
       originalDateFiled: base.dateFiled,
       originalLeavePeriod: base.leavePeriod,
       filedBy: base.requesterName,
@@ -575,28 +556,6 @@ export function canViewParentalLeaveCredits(
   )
 }
 
-export function getApproverInboxRequests(): LeaveRequestSummary[] {
-  return getApproverVisibleRequests(JORDAN.id)
-}
-
-export function getApprovalProgressLabel(
-  completed: number,
-  required: number,
-): string {
-  if (required <= 0) return 'No approval required'
-  if (completed >= required) return 'Approved'
-  return 'Awaiting Approval'
-}
-
-export function getApprovalProgressPercent(
-  completed: number,
-  required: number,
-): number {
-  if (required <= 0) return 0
-  if (completed >= required) return 100
-  return Math.round((completed / required) * 100)
-}
-
 export function hasFinalizingApproverAction(
   detail: LeaveRequestDetail,
 ): boolean {
@@ -639,16 +598,6 @@ function toApproverListItem(
     groupId: detail.groupId,
     groupLabel: detail.groupLabel,
     department: detail.department,
-    approvalsCompleted: detail.approvalsCompleted,
-    approvalsRequired: detail.approvalsRequired,
-    progressLabel: getApprovalProgressLabel(
-      detail.approvalsCompleted,
-      detail.approvalsRequired,
-    ),
-    progressPercent: getApprovalProgressPercent(
-      detail.approvalsCompleted,
-      detail.approvalsRequired,
-    ),
     needsAction,
   }
 }
@@ -771,12 +720,6 @@ const assignedGroupApprovers = (
 const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   'emp-1': detailFromSummary(EMPLOYEE_OWN_REQUESTS[0], {
     reason: 'Family trip',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'approved', 'Jun 16, 2026, 10:00 AM'),
       approverRow(APPROVER_2, 'no_action'),
@@ -786,12 +729,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'emp-2': detailFromSummary(EMPLOYEE_OWN_REQUESTS[1], {
     reason: 'Not feeling well after the fact — convertible VL',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'approved', 'Jul 8, 2026, 11:00 AM'),
       approverRow(APPROVER_2, 'no_action'),
@@ -801,13 +738,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'emp-3': detailFromSummary(EMPLOYEE_OWN_REQUESTS[2], {
     reason: 'Medical appointment',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: 'Medical certificate uploaded.',
-    attachmentFileName: 'Medical_certificate.jpg',
+    attachmentFileName: 'medcert.png, rx.png',
     approvers: [
       approverRow(JORDAN, 'approved', 'Jun 20, 2026, 9:30 AM'),
       approverRow(APPROVER_2, 'no_action'),
@@ -817,12 +748,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'emp-4': detailFromSummary(EMPLOYEE_OWN_REQUESTS[3], {
     reason: 'Long weekend travel',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'pending' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'no_action'),
       approverRow(APPROVER_2, 'no_action'),
@@ -832,12 +757,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'emp-5': detailFromSummary(EMPLOYEE_OWN_REQUESTS[4], {
     reason: 'Personal appointment',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(APPROVER_2, 'approved', 'Jul 1, 2026, 11:20 AM'),
       approverRow(JORDAN, 'no_action'),
@@ -847,12 +766,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'emp-6': detailFromSummary(EMPLOYEE_OWN_REQUESTS[5], {
     reason: 'Weekend getaway',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(
         JORDAN,
@@ -867,12 +780,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'apr-1': detailFromSummary(APPROVER_OWN_REQUESTS[0], {
     reason: 'Long weekend',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'pending' },
-    ],
-    attachmentNote: null,
     department: 'Solution',
     approvers: [
       approverRow(APPROVER_2, 'no_action'),
@@ -882,13 +789,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'apr-2': detailFromSummary(APPROVER_OWN_REQUESTS[1], {
     reason: 'Pedia appointment / newborn care',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
     attachmentFileName: 'Paternity_Form.pdf',
-    attachmentNote: null,
     department: 'Solution',
     approvers: [
       approverRow(APPROVER_2, 'approved', 'Jun 3, 2026'),
@@ -899,12 +800,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'apr-3': detailFromSummary(APPROVER_OWN_REQUESTS[2], {
     reason: 'Family emergency travel',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     department: 'Solution',
     approvers: [
       approverRow(
@@ -919,12 +814,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'adm-1': detailFromSummary(ADMIN_OWN_REQUESTS[0], {
     reason: 'Personal errands',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'pending' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'no_action'),
       approverRow(APPROVER_2, 'no_action'),
@@ -932,22 +821,10 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'adm-2': detailFromSummary(ADMIN_OWN_REQUESTS[1], {
     reason: 'Home emergency',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [approverRow(JORDAN, 'approved', 'May 30, 2026, 2:00 PM')],
   }),
   'adm-3': detailFromSummary(ADMIN_OWN_REQUESTS[2], {
     reason: 'Short personal trip',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(
         JORDAN,
@@ -960,14 +837,9 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   'org-cecile-1': detailFromSummary(OTHER_ORG_REQUESTS[0], {
     reason: 'Unexpected illness',
     department: 'Project',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Admin validation', status: 'pending' },
-    ],
-    attachmentNote: null,
     conversion: {
       originalLeaveType: 'Vacation Leave',
+      originalDayType: 'Whole day',
       originalDateFiled: 'July 1, 2026',
       originalLeavePeriod: 'July 1, 2026',
       filedBy: 'Approver 2',
@@ -1017,13 +889,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   'org-melissa-1': detailFromSummary(OTHER_ORG_REQUESTS[1], {
     reason: 'Maternity leave',
     department: 'Project',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Admin validation', status: 'pending' },
-    ],
     attachmentFileName: 'Maternity_docs.pdf',
-    attachmentNote: null,
     conversion: null,
     approvers: [
       approverRow(
@@ -1047,14 +913,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   'org-paul-1': detailFromSummary(OTHER_ORG_REQUESTS[2], {
     reason: 'Pedia appointment',
     department: 'Project',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-      { id: 'r2', label: 'Admin validation', status: 'completed' },
-    ],
     attachmentFileName: 'Paternity_Form.pdf',
-    attachmentNote: null,
     approvers: [
       approverRow(ADMIN, 'approved', 'June 3, 2026', null, 'admin'),
       approverRow(JORDAN, 'no_action'),
@@ -1063,12 +922,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'org-sam-1': detailFromSummary(OTHER_ORG_REQUESTS[3], {
     reason: 'Family event',
-    approvalsCompleted: 0,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'pending' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'no_action'),
       approverRow(APPROVER_2, 'no_action'),
@@ -1079,12 +932,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   'org-taylor-1': detailFromSummary(OTHER_ORG_REQUESTS[4], {
     reason: 'Urgent home repair',
     department: 'IT',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: [
       approverRow(JORDAN, 'approved', 'Jul 10, 2026, 4:00 PM'),
       approverRow(APPROVER_2, 'no_action'),
@@ -1092,22 +939,10 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
   }),
   'org-sally-1': detailFromSummary(OTHER_ORG_REQUESTS[5], {
     reason: 'Personal day',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: assignedGroupApprovers(JORDAN, 'Jul 6, 2026, 3:00 PM'),
   }),
   'org-emman-1': detailFromSummary(OTHER_ORG_REQUESTS[6], {
     reason: 'Out of town',
-    approvalsCompleted: 1,
-    approvalsRequired: 1,
-    requirements: [
-      { id: 'r1', label: 'Assigned group approver', status: 'completed' },
-    ],
-    attachmentNote: null,
     approvers: assignedGroupApprovers(APPROVER_2, 'Jul 7, 2026, 1:15 PM'),
   }),
 }

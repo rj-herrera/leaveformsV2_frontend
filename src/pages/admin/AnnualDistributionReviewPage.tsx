@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
@@ -7,10 +7,16 @@ import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
-} from '../../hooks/usePageSizeFromHeight'
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -36,11 +42,13 @@ function formatEffectiveDate(iso: string): string {
 
 export function AnnualDistributionReviewPage() {
   const navigate = useNavigate()
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
     tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
-  )
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const showSkeleton = shouldShowDataSkeleton()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -78,7 +86,7 @@ export function AnnualDistributionReviewPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={distributionEmployeesPath('annual')}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -106,140 +114,145 @@ export function AnnualDistributionReviewPage() {
         </dl>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-3">
-          <h2 className="text-h2 text-text-black">Selected recipients</h2>
-        </div>
-
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
         >
-          <table className="w-full min-w-[1100px] table-fixed text-left">
-            <colgroup>
-              <col className="w-[10%]" />
-              <col className="w-[14%]" />
-              <col className="w-[8%]" />
-              <col className="w-[12%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-            </colgroup>
-            <thead>
-              <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee No.
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee Name
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Group
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Years of Service
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  VL Before
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  VL To Add
-                </th>
-                <th className="px-3 py-3 text-center text-leave-vacation font-bold uppercase tracking-wide">
-                  VL After
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  SL Before
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  SL To Add
-                </th>
-                <th className="px-3 py-3 text-center text-leave-sick font-bold uppercase tracking-wide">
-                  SL After
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <TableBodySkeleton
-                  rows={pageSize}
-                  cols={10}
-                  rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
-                />
-              ) : paginatedItems.length === 0 ? (
-                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={10}
-                    className="px-5 text-center text-body text-text-gray"
-                  >
-                    No recipients selected.
-                  </td>
-                </tr>
-              ) : (
-                paginatedItems.map((row) => (
-                  <tr
-                    key={row.employee.id}
-                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
-                  >
-                    <td className="px-4 text-body text-text-black">
-                      {row.employee.employeeNumber}
-                    </td>
-                    <td
-                      className="truncate px-4 text-body text-text-black"
-                      title={row.employee.name}
-                    >
-                      {row.employee.name}
-                    </td>
-                    <td className="px-4 text-body text-text-black">
-                      {row.employee.groupLabel}
-                    </td>
-                    <td className="px-4 text-body text-text-black">
-                      {row.yearsOfServiceLabel}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.vlBefore)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.vlToAdd)}
-                    </td>
-                    <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
-                      {formatBalanceValue(row.vlAfter)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.slBefore)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.slToAdd)}
-                    </td>
-                    <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
-                      {formatBalanceValue(row.slAfter)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+          <div
+            ref={sectionHeaderRef}
+            className="shrink-0 border-b border-border px-5 py-3"
+          >
+            <h2 className="text-h2 text-text-black">Selected recipients</h2>
+          </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={reviewRows.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
-      </section>
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
+            <table className="w-full min-w-[1100px] table-fixed text-left">
+              <colgroup>
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="w-[8%]" />
+                <col className="w-[12%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[10%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee No.
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee Name
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Group
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Years of Service
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    VL Before
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    VL To Add
+                  </th>
+                  <th className="px-3 py-3 text-center text-leave-vacation font-bold uppercase tracking-wide">
+                    VL After
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    SL Before
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    SL To Add
+                  </th>
+                  <th className="px-3 py-3 text-center text-leave-sick font-bold uppercase tracking-wide">
+                    SL After
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {showSkeleton ? (
+                  <TableBodySkeleton
+                    rows={pageSize}
+                    cols={10}
+                    rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                  />
+                ) : paginatedItems.length === 0 ? (
+                  <TableEmptyRow
+                    colSpan={10}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                  />
+                ) : (
+                  paginatedItems.map((row) => (
+                    <tr
+                      key={row.employee.id}
+                      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
+                    >
+                      <td className="px-4 text-body text-text-black">
+                        {row.employee.employeeNumber}
+                      </td>
+                      <td
+                        className="truncate px-4 text-body text-text-black"
+                        title={row.employee.name}
+                      >
+                        {row.employee.name}
+                      </td>
+                      <td className="px-4 text-body text-text-black">
+                        {row.employee.groupLabel}
+                      </td>
+                      <td className="px-4 text-body text-text-black">
+                        {row.yearsOfServiceLabel}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatBalanceValue(row.vlBefore)}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatBalanceValue(row.vlToAdd)}
+                      </td>
+                      <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
+                        {formatBalanceValue(row.vlAfter)}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatBalanceValue(row.slBefore)}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatBalanceValue(row.slToAdd)}
+                      </td>
+                      <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
+                        {formatBalanceValue(row.slAfter)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={reviewRows.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <Link
-          to={distributionEmployeesPath('annual')}
-          className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
-          Back
-        </Link>
         <Button
           type="button"
           variant="primary"

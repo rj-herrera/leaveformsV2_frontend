@@ -115,6 +115,12 @@ export function inferDayTypeFromDuration(duration: string): DayType {
   return 'full'
 }
 
+export function formatDayTypeLabel(dayType: DayType): string {
+  if (dayType === 'half_am') return 'Half day (AM)'
+  if (dayType === 'half_pm') return 'Half day (PM)'
+  return 'Whole day'
+}
+
 function parseLocalISO(iso: string): Date | null {
   if (!iso) return null
   const date = new Date(`${iso}T00:00:00`)

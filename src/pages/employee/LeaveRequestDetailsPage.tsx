@@ -2,9 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import {
-  ArrowLeft,
   CheckCircle2,
-  Circle,
   Clock3,
   Pencil,
   RefreshCw,
@@ -15,14 +13,25 @@ import {
 import { ApiError } from '../../api/axios-client'
 import { cancelLeave } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
+import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
+import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
+import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
+import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { PageBackLink } from '../../components/ui/PageBackLink'
+import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
+import type {
+  ApproverRow,
+  LeaveConversionInfo,
+} from '../../mocks/leaveRequests'
+import { formatDayTypeLabel } from '../../utils/leaveDates'
 import {
   approvalRequirementLabel,
   eligibleApproverPurpose,
@@ -33,6 +42,9 @@ import {
   getApprovalProgressPercent,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
+
+const ATTACHMENT_LABEL = 'Attachment'
+const MED_CERT_LABEL = 'Medical certificate'
 
 function messageFromApiError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -100,10 +112,10 @@ export function LeaveRequestDetailsPage() {
    * Leave stages join `approval_requirements[].history`;
    * conversion stages join nested `conversion` review fields.
    */
-  const approverRows = useMemo(
+  const approverRows: ApproverRow[] = useMemo(
     () =>
       eligibleApprovers.map((approver) => {
-        let status: 'approved' | 'rejected' | 'no_action' = 'no_action'
+        let status: ApproverRow['status'] = 'no_action'
         let actionDate: string | null = null
         let remarks: string | null = null
 
@@ -170,6 +182,11 @@ export function LeaveRequestDetailsPage() {
     String(detail.emp_id) === String(user.id)
 
   const isRejected = detail?.status === 'rejected'
+  const decisionSettled =
+    detail?.status === 'confirmed' ||
+    detail?.status === 'rejected' ||
+    detail?.status === 'cancelled' ||
+    detail?.status === 'converted_to_sl'
   const progressPercent = getApprovalProgressPercent(
     approvalsCompleted,
     approvalsRequired,
@@ -177,6 +194,31 @@ export function LeaveRequestDetailsPage() {
   const progressLabel = isRejected
     ? 'Rejected'
     : getApprovalProgressLabel(approvalsCompleted, approvalsRequired)
+
+  const conversionPanels: LeaveConversionInfo | null =
+    isConversion && conversion
+      ? {
+          originalLeaveType: conversion.from_leave_type.name,
+          originalDayType: formatDayTypeLabel(detail.day_type),
+          originalDateFiled: formatDateTime(detail.created_at),
+          originalLeavePeriod: formatLeavePeriod(
+            detail.start_date,
+            detail.end_date,
+          ),
+          filedBy:
+            detail.filed_by_emp_id === detail.emp_id
+              ? 'Self'
+              : `Employee #${detail.filed_by_emp_id}`,
+          originalReason: detail.leave_reason,
+          originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
+          requestedLeaveType: conversion.to_leave_type.name,
+          conversionRequestDate: formatDateTime(conversion.created_at),
+          conversionReason: conversion.remarks?.trim() || '—',
+          conversionAttachment: conversion.has_med_cert
+            ? MED_CERT_LABEL
+            : null,
+        }
+      : null
 
   const notFound =
     !validId ||
@@ -187,6 +229,15 @@ export function LeaveRequestDetailsPage() {
     setPreviewFileName(fileName)
     setPreviewUrl(url)
     setPreviewOpen(true)
+  }
+
+  function openPreviewFromAttachmentLabel(value: string | null | undefined) {
+    if (!value || !detail) return
+    if (value === MED_CERT_LABEL) {
+      openPreview(MED_CERT_LABEL, conversion?.med_cert_url ?? null)
+      return
+    }
+    openPreview(ATTACHMENT_LABEL, detail.attachment_url)
   }
 
   async function handleCancelConfirm(reason: string) {
@@ -221,19 +272,18 @@ export function LeaveRequestDetailsPage() {
   }
 
   if (isLoading) {
-    return <DetailPageSkeleton />
+    return (
+      <LeaveDetailLoadingView
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+      />
+    )
   }
 
   if (notFound || !detail || !uiStatus) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4">
-        <Link
-          to="/dashboard"
-          className="text-body inline-flex w-fit items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Dashboard
-        </Link>
+        <PageBackLink to="/dashboard">Back to Dashboard</PageBackLink>
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Leave request not found</h1>
           <p className="text-body text-text-gray mt-2">
@@ -250,13 +300,7 @@ export function LeaveRequestDetailsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-      <Link
-        to="/dashboard"
-        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Dashboard
-      </Link>
+      <PageBackLink to="/dashboard">Back to Dashboard</PageBackLink>
 
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
@@ -332,101 +376,36 @@ export function LeaveRequestDetailsPage() {
         </div>
       ) : null}
 
-      {isConversion && conversion ? (
-        <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch">
-          <article className="flex flex-col justify-center rounded-lg border border-border bg-surface p-5">
-            <h2 className="text-h2 text-text-black">Original Leave Request</h2>
-            <dl className="mt-4 space-y-3">
-              <InfoRow
-                label="Leave Type"
-                value={conversion.from_leave_type.name}
-              />
-              <InfoRow
-                label="Date Filed"
-                value={formatDateTime(detail.created_at)}
-              />
-              <InfoRow
-                label="Actual Leave Period"
-                value={formatLeavePeriod(detail.start_date, detail.end_date)}
-              />
-              <InfoRow
-                label="Filed By"
-                value={
-                  detail.filed_by_emp_id === detail.emp_id
-                    ? 'Self'
-                    : `Employee #${detail.filed_by_emp_id}`
-                }
-              />
-              <InfoRow label="Reason" value={detail.leave_reason} />
-              <InfoRow
-                label="Attachment"
-                value={
-                  detail.has_attachment
-                    ? 'Attached'
-                    : 'No attachment'
-                }
-              />
-            </dl>
-          </article>
-
-          <article className="flex flex-col justify-center rounded-lg border border-border bg-surface p-5">
-            <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
-            <dl className="mt-4 space-y-3">
-              <InfoRow
-                label="Requested Leave Type"
-                value={conversion.to_leave_type.name}
-              />
-              <InfoRow
-                label="Date of Conversion Request"
-                value={formatDateTime(conversion.created_at)}
-              />
-              <InfoRow
-                label="Remarks"
-                value={conversion.remarks?.trim() || '—'}
-              />
-              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <dt className="text-body text-text-gray">Medical certificate</dt>
-                <dd className="flex items-center gap-2 sm:justify-end">
-                  <span className="text-body font-semibold text-text-black">
-                    {conversion.has_med_cert ? 'Uploaded' : '—'}
-                  </span>
-                  {conversion.has_med_cert && conversion.med_cert_url ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() =>
-                        openPreview(
-                          'Medical certificate',
-                          conversion.med_cert_url,
-                        )
-                      }
-                    >
-                      View
-                    </Button>
-                  ) : null}
-                </dd>
-              </div>
-            </dl>
-          </article>
-        </section>
+      {conversionPanels ? (
+        <LeaveConversionPanels
+          conversion={conversionPanels}
+          onPreview={openPreviewFromAttachmentLabel}
+          spacing="comfortable"
+        />
       ) : (
         <section className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-2">
           <article className="rounded-lg border border-border bg-surface p-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
-            <dl className="mt-4 space-y-3">
-              <InfoRow
+            <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
+              <LeaveInfoRow
                 label="Date Filed"
                 value={formatDateTime(detail.created_at)}
               />
-              <InfoRow
+              <LeaveInfoRow
                 label="Leave Period"
                 value={formatLeavePeriod(detail.start_date, detail.end_date)}
               />
-              <InfoRow
+              <LeaveInfoRow
                 label="Duration"
                 value={formatDurationDays(detail.duration)}
               />
-              <InfoRow label="Reason" value={detail.leave_reason} />
+              <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+              <LeaveAttachmentRow
+                value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+                onView={() =>
+                  openPreview(ATTACHMENT_LABEL, detail.attachment_url)
+                }
+              />
             </dl>
           </article>
 
@@ -507,118 +486,12 @@ export function LeaveRequestDetailsPage() {
         </section>
       )}
 
-      {!isConversion && (
-        <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
-          <h2 className="text-h2 text-text-black">Attachments</h2>
-          {detail.has_attachment && detail.attachment_url ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-body font-semibold text-text-black">
-                Attachment
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() =>
-                  openPreview('Attachment', detail.attachment_url)
-                }
-              >
-                View
-              </Button>
-            </div>
-          ) : (
-            <p className="text-body text-text-gray mt-3 italic">
-              No attachment required for this leave request.
-            </p>
-          )}
-        </article>
-      )}
-
-      <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-4">
-          <h2 className="text-h2 text-text-black">Approvers</h2>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[640px] text-left">
-            <thead className="sticky top-0 z-10">
-              <tr className="border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Approver
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Purpose
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Action Date
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Remarks
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {approverRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 py-6 text-center text-body text-text-gray"
-                  >
-                    No eligible approvers for this request.
-                  </td>
-                </tr>
-              ) : (
-                approverRows.map((approver) => (
-                  <tr
-                    key={`${approver.id}-${approver.purpose}`}
-                    className="border-b border-border/60 text-body text-text-black last:border-b-0"
-                  >
-                    <td className="px-5 py-3.5">{approver.name}</td>
-                    <td className="px-5 py-3.5 text-text-gray">
-                      {approver.purpose ??
-                        (approver.role === 'admin'
-                          ? 'Admin validation'
-                          : 'Leave approval')}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {approver.status === 'approved' ? (
-                        <span className="inline-flex items-center gap-1.5 text-status-approved">
-                          <CheckCircle2
-                            className="size-4 fill-status-approved text-white"
-                            aria-hidden="true"
-                          />
-                          Approved
-                        </span>
-                      ) : approver.status === 'rejected' ? (
-                        <span className="inline-flex items-center gap-1.5 text-status-rejected">
-                          <XCircle
-                            className="size-4 fill-status-rejected text-white"
-                            aria-hidden="true"
-                          />
-                          Rejected
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-text-gray">
-                          <Circle className="size-3.5" aria-hidden="true" />
-                          No Action Yet
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-text-gray">
-                      {approver.actionDate ?? '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-text-gray">
-                      {approver.remarks ?? '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </article>
+      <ApprovalDetailsTable
+        approvers={approverRows}
+        decisionSettled={Boolean(decisionSettled)}
+        showPurpose
+        headerClassName="shrink-0 border-b border-border px-5 py-4"
+      />
 
       <ConfirmReasonModal
         open={cancelOpen}
@@ -649,17 +522,6 @@ export function LeaveRequestDetailsPage() {
         fileName={previewFileName}
         previewUrl={previewUrl}
       />
-    </div>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">{label}</dt>
-      <dd className="text-body font-semibold text-text-black sm:text-right">
-        {value}
-      </dd>
     </div>
   )
 }

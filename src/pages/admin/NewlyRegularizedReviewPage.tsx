@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
@@ -7,10 +7,16 @@ import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import {
-  APPROVALS_TABLE_ROW_HEIGHT,
-  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
-} from '../../hooks/usePageSizeFromHeight'
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
@@ -37,11 +43,13 @@ function formatEffectiveDate(iso: string): string {
 
 export function NewlyRegularizedReviewPage() {
   const navigate = useNavigate()
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const pageSize = usePageSizeFromHeight(
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
     tableAreaRef,
-    APPROVALS_TABLE_ROW_HEIGHT,
-  )
+    pageSize,
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const showSkeleton = shouldShowDataSkeleton()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -80,7 +88,7 @@ export function NewlyRegularizedReviewPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={distributionEmployeesPath('newly-regularized')}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
@@ -108,15 +116,18 @@ export function NewlyRegularizedReviewPage() {
         </dl>
       </section>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-3">
-          <h2 className="text-h2 text-text-black">Selected recipients</h2>
-        </div>
-
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
         >
+          <div
+            ref={sectionHeaderRef}
+            className="shrink-0 border-b border-border px-5 py-3"
+          >
+            <h2 className="text-h2 text-text-black">Selected recipients</h2>
+          </div>
+
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
           <table className="w-full min-w-[960px] table-fixed text-left">
             <colgroup>
               <col className="w-[12%]" />
@@ -164,19 +175,17 @@ export function NewlyRegularizedReviewPage() {
                   rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                 />
               ) : paginatedItems.length === 0 ? (
-                <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={8}
-                    className="px-5 text-center text-body text-text-gray"
-                  >
-                    No recipients selected.
-                  </td>
-                </tr>
+                <TableEmptyRow
+                  colSpan={8}
+                  pageSize={pageSize}
+                  rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                  variant="no-data"
+                />
               ) : (
                 paginatedItems.map((row) => (
                   <tr
                     key={row.employee.id}
-                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} border-b border-border last:border-b-0`}
+                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                   >
                     <td className="px-4 text-body text-text-black">
                       {row.employee.employeeNumber}
@@ -212,24 +221,28 @@ export function NewlyRegularizedReviewPage() {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={reviewRows.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
-      </section>
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={reviewRows.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        <Link
-          to={distributionEmployeesPath('newly-regularized')}
-          className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
-        >
-          Back
-        </Link>
         <Button
           type="button"
           variant="primary"

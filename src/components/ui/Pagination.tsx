@@ -21,7 +21,7 @@ export function Pagination({
   const rangeEnd = Math.min(currentPage * pageSize, totalItems)
 
   return (
-    <div className="flex shrink-0 flex-col gap-3 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex shrink-0 flex-col gap-3 border-t border-border px-5 py-2 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-small text-text-gray">
         {totalItems === 0
           ? 'Showing 0 results'

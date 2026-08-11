@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { FileField } from '../../components/ui/form/FileField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 
@@ -242,7 +242,21 @@ export function ConvertLeaveRequestPage() {
   }
 
   if (isLoading) {
-    return <DetailPageSkeleton />
+    return (
+      <FormPageLoadingView
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+        title="Convert to Sick Leave"
+        sections={[
+          {
+            heading: 'Leave Conversion Request',
+            fields: [
+              { label: 'Medical certificate', span: 2 },
+            ],
+          },
+        ]}
+      />
+    )
   }
 
   if (notFound || !detail) {

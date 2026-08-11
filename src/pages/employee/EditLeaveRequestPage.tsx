@@ -13,7 +13,7 @@ import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
@@ -229,7 +229,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <p className="mt-1 text-small text-text-gray">
-              Vacation Leave only — leave type cannot be changed after filing.
+              Vacation Leave only â leave type cannot be changed after filing.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4">
@@ -356,13 +356,13 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
             disabled={!formValid || submitting}
             title={
               submitting
-                ? 'Saving…'
+                ? 'Savingâ¦'
                 : !isDirty
                   ? 'No changes to save'
                   : undefined
             }
           >
-            {submitting ? 'Saving…' : 'Confirm'}
+            {submitting ? 'Savingâ¦' : 'Confirm'}
           </Button>
         </div>
       </form>
@@ -407,7 +407,33 @@ export function EditLeaveRequestPage() {
     (!isLoading && !detail && error != null)
 
   if (isLoading) {
-    return <DetailPageSkeleton />
+    return (
+      <FormPageLoadingView
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+        title="Edit Leave Request"
+        sections={[
+          {
+            heading: 'Employee Information',
+            fields: [
+              { label: 'Employee No.' },
+              { label: 'Name' },
+            ],
+          },
+          {
+            heading: 'Leave Information',
+            fields: [
+              { label: 'Leave Type' },
+              { label: 'Day Type' },
+              { label: 'Start Date' },
+              { label: 'End Date' },
+              { label: 'Duration', span: 2 },
+              { label: 'Reason', span: 2 },
+            ],
+          },
+        ]}
+      />
+    )
   }
 
   if (notFound || !detail) {

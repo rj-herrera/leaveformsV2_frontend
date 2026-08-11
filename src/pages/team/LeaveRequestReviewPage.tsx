@@ -1,10 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import {
-  ArrowLeft,
   CheckCircle2,
-  Circle,
   Clock3,
   TriangleAlert,
   XCircle,
@@ -12,14 +10,20 @@ import {
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
 import { useAuth } from '../../auth/AuthContext'
+import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
+import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
+import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { DetailPageSkeleton } from '../../components/ui/Skeleton'
+import { PageBackLink } from '../../components/ui/PageBackLink'
+import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
+import type { ApproverRow } from '../../mocks/leaveRequests'
 import {
   approvalRequirementLabel,
   eligibleApproverPurpose,
@@ -34,6 +38,8 @@ import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
+
+const ATTACHMENT_LABEL = 'Leave attachment'
 
 function messageFromApiError(
   error: unknown,
@@ -122,10 +128,10 @@ export function LeaveRequestReviewPage() {
   const usesConversionReview =
     leaveStatus === 'pending_conversion' || leaveStatus === 'converted_to_sl'
 
-  const approverRows = useMemo(
+  const approverRows: ApproverRow[] = useMemo(
     () =>
       eligibleApprovers.map((approver) => {
-        let status: 'approved' | 'rejected' | 'no_action' = 'no_action'
+        let status: ApproverRow['status'] = 'no_action'
         let actionDate: string | null = null
         let remarks: string | null = null
 
@@ -161,6 +167,10 @@ export function LeaveRequestReviewPage() {
             approver.purpose,
             approver.approver_type,
           ),
+          role:
+            approver.approver_type === 'admin'
+              ? ('admin' as const)
+              : ('approver' as const),
           status,
           actionDate,
           remarks,
@@ -185,6 +195,11 @@ export function LeaveRequestReviewPage() {
   const isReviewMode = routeWantsReview && canAct
 
   const isRejected = detail?.status === 'rejected'
+  const decisionSettled =
+    detail?.status === 'confirmed' ||
+    detail?.status === 'rejected' ||
+    detail?.status === 'cancelled' ||
+    detail?.status === 'converted_to_sl'
   const progressPercent = getApprovalProgressPercent(
     approvalsCompleted,
     approvalsRequired,
@@ -269,19 +284,18 @@ export function LeaveRequestReviewPage() {
   }
 
   if (isLoading) {
-    return <DetailPageSkeleton />
+    return (
+      <LeaveDetailLoadingView
+        backTo={backToApprovals}
+        backLabel="Back to Leave Approvals"
+      />
+    )
   }
 
   if (notFound || !detail || !uiStatus) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-        <Link
-          to={backToApprovals}
-          className="text-body inline-flex w-fit items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Leave Approvals
-        </Link>
+        <PageBackLink to={backToApprovals}>Back to Leave Approvals</PageBackLink>
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Leave request not found</h1>
           <p className="mt-2 text-body text-text-gray">
@@ -298,13 +312,7 @@ export function LeaveRequestReviewPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-      <Link
-        to={backToApprovals}
-        className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-        Back to Leave Approvals
-      </Link>
+      <PageBackLink to={backToApprovals}>Back to Leave Approvals</PageBackLink>
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
@@ -329,30 +337,40 @@ export function LeaveRequestReviewPage() {
       <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-3">
         <article className="rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
-          <dl className="mt-3 space-y-2.5">
-            <InfoRow label="Employee No." value={employeeNumber} />
-            <InfoRow label="Employee Name" value={employeeName} />
-            <InfoRow label="Department" value={departmentLabel} />
-            <InfoRow label="Group" value={groupLabel} />
+          <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
+            <LeaveInfoRow label="Employee No." value={employeeNumber} />
+            <LeaveInfoRow label="Employee Name" value={employeeName} />
+            <LeaveInfoRow label="Department" value={departmentLabel} />
+            <LeaveInfoRow label="Group" value={groupLabel} />
           </dl>
         </article>
 
         <article className="rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Leave Request Summary</h2>
-          <dl className="mt-3 space-y-2.5">
-            <InfoRow
+          <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
+            <LeaveInfoRow
               label="Date Filed"
               value={formatDateTime(detail.created_at)}
             />
-            <InfoRow
+            <LeaveInfoRow
               label="Leave Period"
               value={formatLeavePeriod(detail.start_date, detail.end_date)}
             />
-            <InfoRow
+            <LeaveInfoRow
               label="Duration"
               value={formatDurationDays(detail.duration)}
             />
-            <InfoRow label="Reason" value={detail.leave_reason} />
+            <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+            {detail.has_attachment ? (
+              <LeaveAttachmentRow
+                value={ATTACHMENT_LABEL}
+                onView={() =>
+                  openPreview(ATTACHMENT_LABEL, detail.attachment_url)
+                }
+              />
+            ) : (
+              <LeaveInfoRow label="Attachment" value="None required" />
+            )}
           </dl>
         </article>
 
@@ -421,103 +439,13 @@ export function LeaveRequestReviewPage() {
         </article>
       </section>
 
-      <article className="shrink-0 rounded-lg border border-border bg-surface px-4 py-3">
-        <h2 className="text-h2 text-text-black">Attachments</h2>
-        {detail.has_attachment ? (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="text-body font-semibold text-text-black">
-              Leave attachment
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() =>
-                openPreview('Leave attachment', detail.attachment_url)
-              }
-            >
-              View
-            </Button>
-          </div>
-        ) : (
-          <p className="mt-2 text-body text-text-gray italic">
-            No attachment required for this leave request.
-          </p>
-        )}
-      </article>
-
-      <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div className="shrink-0 border-b border-border px-5 py-3">
-          <h2 className="text-h2 text-text-black">Approvers</h2>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[640px] text-left">
-            <thead className="sticky top-0 z-10 bg-surface-muted">
-              <tr className="border-b border-border text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Approver
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Purpose
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Action Date
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Remarks
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {approverRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-5 py-6 text-center text-body text-text-gray"
-                  >
-                    No eligible approvers for this stage.
-                  </td>
-                </tr>
-              ) : (
-                approverRows.map((approver) => {
-                  const isYou = approver.id === user.id
-                  return (
-                    <tr
-                      key={`${approver.id}-${approver.purpose}`}
-                      className="border-b border-border/60 text-body text-text-black last:border-b-0"
-                    >
-                      <td className="px-5 py-3.5">
-                        <span className="inline-flex flex-wrap items-center gap-2">
-                          {approver.name}
-                          {isYou ? (
-                            <span className="rounded bg-primary px-1.5 py-0.5 text-header tracking-[0.08em] text-white uppercase">
-                              You
-                            </span>
-                          ) : null}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {approver.purpose}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <ApproverStatusCell status={approver.status} />
-                      </td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {approver.actionDate ?? '—'}
-                      </td>
-                      <td className="px-5 py-3.5 text-text-gray">
-                        {approver.remarks ?? '—'}
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </article>
+      <ApprovalDetailsTable
+        approvers={approverRows}
+        decisionSettled={Boolean(decisionSettled)}
+        showPurpose
+        currentUserId={String(user.id)}
+        youBadgeVariant="primary"
+      />
 
       {isReviewMode ? (
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -548,7 +476,9 @@ export function LeaveRequestReviewPage() {
       <ConfirmReasonModal
         open={rejectOpen}
         onClose={() => setRejectOpen(false)}
-        onConfirm={handleRejectConfirm}
+        onConfirm={(reason) => {
+          void handleRejectConfirm(reason)
+        }}
         title="Reject leave request"
         description="Please provide a reason for rejecting this leave request."
         reasonLabel="Rejection reason"
@@ -592,52 +522,6 @@ export function LeaveRequestReviewPage() {
         fileName={previewFileName}
         previewUrl={previewUrl}
       />
-    </div>
-  )
-}
-
-function ApproverStatusCell({
-  status,
-}: {
-  status: 'approved' | 'rejected' | 'no_action'
-}): ReactNode {
-  if (status === 'approved') {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-status-approved">
-        <CheckCircle2
-          className="size-4 fill-status-approved text-white"
-          aria-hidden="true"
-        />
-        Approved
-      </span>
-    )
-  }
-  if (status === 'rejected') {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-status-rejected">
-        <XCircle
-          className="size-4 fill-status-rejected text-white"
-          aria-hidden="true"
-        />
-        Rejected
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 text-text-gray">
-      <Circle className="size-3.5" aria-hidden="true" />
-      No Action Yet
-    </span>
-  )
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-      <dt className="text-body text-text-gray">{label}</dt>
-      <dd className="text-body font-semibold text-text-black sm:text-right">
-        {value}
-      </dd>
     </div>
   )
 }

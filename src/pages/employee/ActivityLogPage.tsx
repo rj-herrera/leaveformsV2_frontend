@@ -1,17 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
+import {
+  TABLE_AVAILABLE_SLOT,
+  TABLE_CONTENT_AREA,
+  TABLE_CONTENT_SECTION,
+  TABLE_PAGE_ROOT,
+  TABLE_PAGINATION_PLACEHOLDER,
+  TABLE_PAGINATION_WRAP,
+} from '../../components/ui/tableLayout'
+import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_ROW_HEIGHT,
+  TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
 import {
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
 import { useActivities } from '../../hooks/api/useActivities'
-import {
-  TABLE_ROW_HEIGHT_CLASS,
-  usePageSizeFromHeight,
-} from '../../hooks/usePageSizeFromHeight'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { formatDateTime } from '../../utils/leaveDisplay'
 
 type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
@@ -51,8 +63,13 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 
 export function ActivityLogPage() {
-  const tableAreaRef = useRef<HTMLDivElement>(null)
-  const measuredPageSize = usePageSizeFromHeight(tableAreaRef)
+  const {
+    availableSlotRef,
+    sectionHeaderRef,
+    paginationRef,
+    tableAreaRef,
+    pageSize: measuredPageSize,
+  } = useContentSizedTableRefs()
   const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
   const prevPageSizeRef = useRef<number | null>(null)
 
@@ -129,8 +146,14 @@ export function ActivityLogPage() {
     isValidating && data && !awaitingListReset,
   )
 
+  const hasActiveFilters = leaveTypeFilter !== 'ALL'
+
+  function clearFilters() {
+    setLeaveTypeFilter('ALL')
+  }
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-h1 text-text-black">Activity Log</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -143,135 +166,151 @@ export function ActivityLogPage() {
         </div>
       </div>
 
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
-        <div
-          ref={tableAreaRef}
-          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden"
+      <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
+        <section
+          className={`${TABLE_CONTENT_SECTION} rounded-lg border border-border bg-surface`}
         >
-          <table
-            className={[
-              'w-full min-w-[880px] table-fixed text-left',
-              showStaleWhilePaging ? 'opacity-80' : '',
-            ].join(' ')}
-          >
-            <colgroup>
-              <col className="w-[16%]" />
-              <col className="w-[20%]" />
-              <col className="w-[16%]" />
-              <col className="w-[18%]" />
-              <col className="w-[14%]" />
-              <col className="w-[16%]" />
-            </colgroup>
-            <thead>
-              <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  <div className="flex items-center gap-1.5">
-                    <span>Timestamp</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTimestampSort((sort) =>
-                          sort === 'desc' ? 'asc' : 'desc',
-                        )
-                      }
-                      className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
-                      aria-label={`Sort timestamp ${timestampSort === 'desc' ? 'ascending' : 'descending'}`}
-                    >
-                      {timestampSort === 'desc' ? (
-                        <ArrowDown className="size-3.5" aria-hidden="true" />
-                      ) : (
-                        <ArrowUp className="size-3.5" aria-hidden="true" />
-                      )}
-                    </button>
-                  </div>
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Activity
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Leave Type
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Balance Impact
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Performed By
-                </th>
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Remarks
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <TableBodySkeleton rows={pageSize} cols={6} />
-              ) : error && !data ? (
-                <tr className={TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={6}
-                    className="px-5 text-center text-body text-status-rejected"
-                  >
-                    Unable to load activity. Please try again.
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr className={TABLE_ROW_HEIGHT_CLASS}>
-                  <td
-                    colSpan={6}
-                    className="px-5 text-center text-body text-text-gray"
-                  >
-                    No activity matches the selected filters.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((entry) => {
-                  const leaveTypeName = entry.leave_type?.name ?? '—'
-                  const performedBy = entry.performed_by.name?.trim() || '—'
-                  return (
-                    <tr
-                      key={entry.id}
-                      className={`border-b border-border/60 text-body text-text-black last:border-b-0 ${TABLE_ROW_HEIGHT_CLASS}`}
-                    >
-                      <td className="px-5 whitespace-nowrap">
-                        {formatActivityTimestamp(entry.timestamp)}
-                      </td>
-                      <td className="truncate px-5" title={entry.activity}>
-                        {entry.activity}
-                      </td>
-                      <td className="truncate px-5" title={leaveTypeName}>
-                        {leaveTypeName}
-                      </td>
-                      <td
-                        className="truncate px-5"
-                        title={entry.balance_impact}
-                      >
-                        {entry.balance_impact}
-                      </td>
-                      <td className="truncate px-5" title={performedBy}>
-                        {performedBy}
-                      </td>
-                      <td
-                        className="truncate px-5 text-text-gray"
-                        title={entry.remarks ?? undefined}
-                      >
-                        {entry.remarks?.trim() || '—'}
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+          {/* No in-card header; ref unused so measured chrome height is 0. */}
+          <div ref={sectionHeaderRef} className="hidden" aria-hidden="true" />
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-        />
-      </section>
+          <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
+            <table
+              className={[
+                'w-full min-w-[880px] table-fixed text-left',
+                showStaleWhilePaging ? 'opacity-80' : '',
+              ].join(' ')}
+            >
+              <colgroup>
+                <col className="w-[16%]" />
+                <col className="w-[20%]" />
+                <col className="w-[16%]" />
+                <col className="w-[18%]" />
+                <col className="w-[14%]" />
+                <col className="w-[16%]" />
+              </colgroup>
+              <thead>
+                <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    <div className="flex items-center gap-1.5">
+                      <span>Timestamp</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTimestampSort((sort) =>
+                            sort === 'desc' ? 'asc' : 'desc',
+                          )
+                        }
+                        className="inline-flex rounded p-0.5 text-text-gray transition-colors hover:bg-background hover:text-text-black"
+                        aria-label={`Sort timestamp ${timestampSort === 'desc' ? 'ascending' : 'descending'}`}
+                      >
+                        {timestampSort === 'desc' ? (
+                          <ArrowDown className="size-3.5" aria-hidden="true" />
+                        ) : (
+                          <ArrowUp className="size-3.5" aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Activity
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Leave Type
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Balance Impact
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Performed By
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Remarks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {showSkeleton ? (
+                  <TableBodySkeleton rows={pageSize} cols={6} />
+                ) : error && !data ? (
+                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
+                    <td
+                      colSpan={6}
+                      className="px-5 text-center text-body text-status-rejected"
+                    >
+                      Unable to load activity. Please try again.
+                    </td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={TABLE_ROW_HEIGHT}
+                    variant={hasActiveFilters ? 'no-results' : 'no-data'}
+                    action={
+                      hasActiveFilters ? (
+                        <ClearFiltersButton onClick={clearFilters} />
+                      ) : undefined
+                    }
+                  />
+                ) : (
+                  rows.map((entry) => {
+                    const leaveTypeName = entry.leave_type?.name ?? '—'
+                    const performedBy = entry.performed_by.name?.trim() || '—'
+                    return (
+                      <tr
+                        key={entry.id}
+                        className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
+                      >
+                        <td className="px-5 whitespace-nowrap">
+                          {formatActivityTimestamp(entry.timestamp)}
+                        </td>
+                        <td className="truncate px-5" title={entry.activity}>
+                          {entry.activity}
+                        </td>
+                        <td className="truncate px-5" title={leaveTypeName}>
+                          {leaveTypeName}
+                        </td>
+                        <td
+                          className="truncate px-5"
+                          title={entry.balance_impact}
+                        >
+                          {entry.balance_impact}
+                        </td>
+                        <td className="truncate px-5" title={performedBy}>
+                          {performedBy}
+                        </td>
+                        <td
+                          className="truncate px-5 text-text-gray"
+                          title={entry.remarks ?? undefined}
+                        >
+                          {entry.remarks?.trim() || '—'}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
+            {!showSkeleton ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+              />
+            ) : (
+              <div className={TABLE_PAGINATION_PLACEHOLDER} aria-hidden="true">
+                <p className="text-small text-transparent">Showing 0 results</p>
+                <div className="h-9.5" />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

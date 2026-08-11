@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Download, Printer } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { EmployeeMultiSelect } from '../../components/ui/EmployeeMultiSelect'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { MonthYearPickerField } from '../../components/ui/form/MonthYearPickerField'
@@ -332,9 +333,11 @@ export function MonthlyAttendanceReportPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-body text-text-gray">
-            Select a group and at least one employee to view the report.
-          </div>
+          <EmptyState
+            variant="no-data"
+            message="Select a group and at least one employee to view the report."
+            className="min-h-0 flex-1"
+          />
         )}
       </section>
     </div>
