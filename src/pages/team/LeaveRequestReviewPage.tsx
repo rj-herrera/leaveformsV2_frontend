@@ -340,16 +340,12 @@ export function LeaveRequestReviewPage() {
               value={formatDurationDays(detail.duration)}
             />
             <LeaveInfoRow label="Reason" value={detail.leave_reason} />
-            {detail.has_attachment ? (
-              <LeaveAttachmentRow
-                value={ATTACHMENT_LABEL}
-                onView={() =>
-                  openPreview(ATTACHMENT_LABEL, detail.attachment_url)
-                }
-              />
-            ) : (
-              <LeaveInfoRow label="Attachment" value="None required" />
-            )}
+            <LeaveAttachmentRow
+              value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+              onView={() =>
+                openPreview(ATTACHMENT_LABEL, detail.attachment_url)
+              }
+            />
           </dl>
         </article>
       </section>

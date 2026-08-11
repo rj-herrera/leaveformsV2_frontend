@@ -470,15 +470,30 @@ export function LeaveApprovalsPage() {
               ].join(' ')}
             >
               <colgroup>
-                <col className="w-[10%]" />
-                <col className="w-[14%]" />
-                <col className="w-[8%]" />
-                <col className="w-[14%]" />
-                <col className="w-[13%]" />
-                <col className="w-[8%]" />
-                <col className="w-[11%]" />
-                <col className="w-[12%]" />
-                <col className="w-[10%]" />
+                {tab === 'pending' ? (
+                  <>
+                    <col className="w-[11%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[13%]" />
+                  </>
+                ) : (
+                  <>
+                    <col className="w-[10%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[10%]" />
+                  </>
+                )}
               </colgroup>
               <thead>
                 <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
