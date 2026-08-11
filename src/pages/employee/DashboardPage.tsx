@@ -20,7 +20,12 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_ROW_HEIGHT, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_ACTION_BUTTON_CLASS,
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_ROW_HEIGHT,
+  TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
 import {
   STATUS_FILTER_OPTIONS,
   type StatusFilter,
@@ -32,21 +37,25 @@ import {
   VACATION_LEAVE_THEME,
   type SelectableLeaveType,
 } from '../../constants/leaveTypeTheme'
+import { useMyBalances } from '../../hooks/api/useMyBalances'
+import { useMyLeaves } from '../../hooks/api/useMyLeaves'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
 } from '../../mocks/leaveBalances'
+import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
 import {
-  canViewParentalLeaveCredits,
-  getLeaveRequestsForRole,
-} from '../../mocks/leaveRequests'
+  formatDurationDays,
+  formatLeavePeriod,
+  formatShortDate,
+  mapApiLeaveStatusToUi,
+} from '../../utils/leaveDisplay'
 
 type LeaveTypeFilter = 'ALL' | string
 type FiledOnSort = 'desc' | 'asc'
 
-/** TODO(REPLACE): Leave balances — replace with API data when wired. */
+/** Other leave types (EL/PTB/parental) — keep mock until those APIs exist. */
 const MOCK_OTHER_BALANCES = {
   emergency: 3,
   ptb: 7,
@@ -54,12 +63,16 @@ const MOCK_OTHER_BALANCES = {
   paternity: 7,
 } as const
 
-const MOCK_VL_AVAILABLE = 12
-const MOCK_VL_RESERVED = 3
-const MOCK_SL_AVAILABLE = 14
+/** Format API decimal strings (e.g. `"12.00"`) for balance cards. */
+function formatBalanceDays(value: string | undefined): string {
+  if (value == null) return '—'
+  const n = Number(value)
+  if (Number.isNaN(n)) return '—'
+  return String(Number.parseFloat(n.toFixed(2)))
+}
 
 export function DashboardPage() {
-  const { user, mockPersona } = useAuth()
+  const { user } = useAuth()
   const {
     availableSlotRef,
     sectionHeaderRef,
@@ -67,7 +80,24 @@ export function DashboardPage() {
     tableAreaRef,
     pageSize,
   } = useContentSizedTableRefs()
-  const showSkeleton = shouldShowDataSkeleton()
+
+  const { data: balances, isLoading: balancesLoading } = useMyBalances()
+  const showBalanceSkeleton = balancesLoading
+
+  // Max API page size; filter/sort/paginate client-side for this slice.
+  const { data: leavesPage, isLoading: leavesLoading } = useMyLeaves({
+    per_page: 50,
+  })
+  const showTableSkeleton = leavesLoading
+
+  const vlBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'VL'),
+    [balances],
+  )
+  const slBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'SL'),
+    [balances],
+  )
 
   const [isLeaveTypeOpen, setIsLeaveTypeOpen] = useState(false)
   const [selectedLeaveType, setSelectedLeaveType] =
@@ -75,20 +105,9 @@ export function DashboardPage() {
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<LeaveTypeFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [filedOnSort, setFiledOnSort] = useState<FiledOnSort>('desc')
-  const [filterPersona, setFilterPersona] = useState(mockPersona)
 
-  // Reset filters when the preview persona changes (avoid setState-in-effect).
-  if (filterPersona !== mockPersona) {
-    setFilterPersona(mockPersona)
-    setLeaveTypeFilter('ALL')
-    setStatusFilter('ALL')
-    setSelectedLeaveType(null)
-  }
+  const leaveRequests = leavesPage?.data ?? []
 
-  const roleLeaveRequests = useMemo(
-    () => getLeaveRequestsForRole(mockPersona),
-    [mockPersona],
-  )
   const parentalLabel =
     user.gender === 'female' ? 'Maternity Leave' : 'Paternity Leave'
 
@@ -112,14 +131,14 @@ export function DashboardPage() {
 
   const leaveTypeFilterOptions = useMemo(() => {
     const types = Array.from(
-      new Set(roleLeaveRequests.map((request) => request.leaveType)),
+      new Set(leaveRequests.map((request) => request.leave_type.name)),
     ).sort((a, b) => a.localeCompare(b))
 
     return [
       { value: 'ALL' as const, label: 'All leave types' },
       ...types.map((type) => ({ value: type, label: type })),
     ]
-  }, [roleLeaveRequests])
+  }, [leaveRequests])
 
   const selectedOption = selectedLeaveType
     ? leaveTypeOptions.find((option) => option.id === selectedLeaveType)
@@ -140,26 +159,29 @@ export function DashboardPage() {
   })()
 
   const filteredRequests = useMemo(() => {
-    return roleLeaveRequests
+    return leaveRequests
       .filter((request) => {
+        const uiStatus = mapApiLeaveStatusToUi(request.status)
         const matchesType =
-          leaveTypeFilter === 'ALL' || request.leaveType === leaveTypeFilter
+          leaveTypeFilter === 'ALL' ||
+          request.leave_type.name === leaveTypeFilter
         const matchesStatus =
-          statusFilter === 'ALL' || request.status === statusFilter
+          statusFilter === 'ALL' || uiStatus === statusFilter
         return matchesType && matchesStatus
       })
       .sort((a, b) => {
-        const diff =
-          new Date(a.filedOnDate).getTime() - new Date(b.filedOnDate).getTime()
+        const aFiled = a.created_at ?? a.start_date
+        const bFiled = b.created_at ?? b.start_date
+        const diff = new Date(aFiled).getTime() - new Date(bFiled).getTime()
         return filedOnSort === 'asc' ? diff : -diff
       })
-  }, [roleLeaveRequests, leaveTypeFilter, statusFilter, filedOnSort])
+  }, [leaveRequests, leaveTypeFilter, statusFilter, filedOnSort])
 
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(
       filteredRequests,
       pageSize,
-      `${mockPersona}-${leaveTypeFilter}-${statusFilter}-${filedOnSort}`,
+      `employee-${leaveTypeFilter}-${statusFilter}-${filedOnSort}`,
     )
 
   const hasActiveFilters =
@@ -177,9 +199,9 @@ export function DashboardPage() {
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-5`}>
-      {/* Balance cards */}
+      {/* Balance cards — VL/SL from GET /balances; other types still mock */}
       <section className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
-        {showSkeleton ? (
+        {showBalanceSkeleton ? (
           <>
             <BalanceCardSkeleton
               label={VACATION_LEAVE_THEME.label}
@@ -200,129 +222,131 @@ export function DashboardPage() {
           </>
         ) : (
           <>
-        <article className="flex flex-col rounded-lg border border-border bg-white p-5">
-          <div className="flex items-center gap-2.5">
-            <LeaveTypeIconBadge
-              icon={VACATION_LEAVE_THEME.icon}
-              iconBgClass={VACATION_LEAVE_THEME.iconBgClass}
-            />
-            <h2 className="text-body font-semibold text-text-black">
-              {VACATION_LEAVE_THEME.label}
-            </h2>
-          </div>
-          <div className="mt-5 text-center">
-            <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
-              {MOCK_VL_AVAILABLE}
-            </p>
-            <p className="text-body text-text-gray mt-1.5">days available</p>
-          </div>
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-small font-semibold text-text-black">
-                  Reserved Credits
-                </p>
-                <p className="text-small text-text-gray mt-0.5">
-                  Subject for approval
-                </p>
+            <article className="flex flex-col rounded-lg border border-border bg-white p-5">
+              <div className="flex items-center gap-2.5">
+                <LeaveTypeIconBadge
+                  icon={VACATION_LEAVE_THEME.icon}
+                  iconBgClass={VACATION_LEAVE_THEME.iconBgClass}
+                />
+                <h2 className="text-body font-semibold text-text-black">
+                  {VACATION_LEAVE_THEME.label}
+                </h2>
               </div>
-              <p className="text-body font-semibold text-text-black">
-                {MOCK_VL_RESERVED} days
-              </p>
-            </div>
-          </div>
-        </article>
-
-        <article className="flex flex-col rounded-lg border border-border bg-white p-5">
-          <div className="flex items-center gap-2.5">
-            <LeaveTypeIconBadge
-              icon={SICK_LEAVE_THEME.icon}
-              iconBgClass={SICK_LEAVE_THEME.iconBgClass}
-            />
-            <h2 className="text-body font-semibold text-text-black">
-              {SICK_LEAVE_THEME.label}
-            </h2>
-          </div>
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-[2.5rem] leading-none font-bold text-text-black">
-              {MOCK_SL_AVAILABLE}
-            </p>
-            <p className="text-body text-text-gray mt-1.5">days available</p>
-          </div>
-        </article>
-
-        <article className="relative flex flex-col rounded-lg border border-border bg-white p-5">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 text-left"
-            aria-label="Select leave type"
-            aria-expanded={isLeaveTypeOpen}
-            aria-haspopup="listbox"
-            onClick={() => setIsLeaveTypeOpen((open) => !open)}
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <LeaveTypeIconBadge
-                icon={selectedLeaveTheme.icon}
-                iconBgClass={selectedLeaveTheme.iconBgClass}
-              />
-              <span className="text-body truncate font-semibold text-text-black">
-                {selectedOption?.label ?? SELECTABLE_LEAVE_DEFAULT.label}
-              </span>
-            </span>
-            <ChevronDown
-              className={`size-4 shrink-0 text-text-gray transition-transform ${
-                isLeaveTypeOpen ? 'rotate-180' : ''
-              }`}
-              aria-hidden="true"
-            />
-          </button>
-
-          {isLeaveTypeOpen && (
-            <ul
-              role="listbox"
-              className="absolute top-14 right-5 left-5 z-10 overflow-hidden rounded-md border border-border bg-white shadow-sm"
-            >
-              {leaveTypeOptions.map((option) => (
-                <li key={option.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selectedLeaveType === option.id}
-                    className={[
-                      'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-body transition-colors',
-                      selectedLeaveType === option.id
-                        ? 'bg-primary text-text-white'
-                        : 'text-text-black hover:bg-background',
-                    ].join(' ')}
-                    onClick={() => handleSelectLeaveType(option.id)}
-                  >
-                    <LeaveTypeIconBadge
-                      icon={option.icon}
-                      iconBgClass={option.iconBgClass}
-                    />
-                    {option.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            {selectedLeaveType === 'parental' &&
-            !canViewSelectedParentalCredits ? (
-              <p className="px-2 text-small text-text-gray">
-                {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
-              </p>
-            ) : (
-              <>
+              <div className="mt-5 text-center">
                 <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
-                  {selectedAvailableDays ?? '—'}
+                  {formatBalanceDays(vlBalance?.available)}
                 </p>
                 <p className="text-body text-text-gray mt-1.5">days available</p>
-              </>
-            )}
-          </div>
-        </article>
+              </div>
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-small font-semibold text-text-black">
+                      Reserved Credits
+                    </p>
+                    <p className="text-small text-text-gray mt-0.5">
+                      Subject for approval
+                    </p>
+                  </div>
+                  <p className="text-body font-semibold text-text-black">
+                    {formatBalanceDays(vlBalance?.reserved)} days
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            <article className="flex flex-col rounded-lg border border-border bg-white p-5">
+              <div className="flex items-center gap-2.5">
+                <LeaveTypeIconBadge
+                  icon={SICK_LEAVE_THEME.icon}
+                  iconBgClass={SICK_LEAVE_THEME.iconBgClass}
+                />
+                <h2 className="text-body font-semibold text-text-black">
+                  {SICK_LEAVE_THEME.label}
+                </h2>
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
+                <p className="text-[2.5rem] leading-none font-bold text-text-black">
+                  {formatBalanceDays(slBalance?.available)}
+                </p>
+                <p className="text-body text-text-gray mt-1.5">days available</p>
+              </div>
+            </article>
+
+            <article className="relative flex flex-col rounded-lg border border-border bg-white p-5">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 text-left"
+                aria-label="Select leave type"
+                aria-expanded={isLeaveTypeOpen}
+                aria-haspopup="listbox"
+                onClick={() => setIsLeaveTypeOpen((open) => !open)}
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <LeaveTypeIconBadge
+                    icon={selectedLeaveTheme.icon}
+                    iconBgClass={selectedLeaveTheme.iconBgClass}
+                  />
+                  <span className="text-body truncate font-semibold text-text-black">
+                    {selectedOption?.label ?? SELECTABLE_LEAVE_DEFAULT.label}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`size-4 shrink-0 text-text-gray transition-transform ${
+                    isLeaveTypeOpen ? 'rotate-180' : ''
+                  }`}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {isLeaveTypeOpen && (
+                <ul
+                  role="listbox"
+                  className="absolute top-14 right-5 left-5 z-10 overflow-hidden rounded-md border border-border bg-white shadow-sm"
+                >
+                  {leaveTypeOptions.map((option) => (
+                    <li key={option.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={selectedLeaveType === option.id}
+                        className={[
+                          'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-body transition-colors',
+                          selectedLeaveType === option.id
+                            ? 'bg-primary text-text-white'
+                            : 'text-text-black hover:bg-background',
+                        ].join(' ')}
+                        onClick={() => handleSelectLeaveType(option.id)}
+                      >
+                        <LeaveTypeIconBadge
+                          icon={option.icon}
+                          iconBgClass={option.iconBgClass}
+                        />
+                        {option.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
+                {selectedLeaveType === 'parental' &&
+                !canViewSelectedParentalCredits ? (
+                  <p className="px-2 text-small text-text-gray">
+                    {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
+                      {selectedAvailableDays ?? '—'}
+                    </p>
+                    <p className="text-body text-text-gray mt-1.5">
+                      days available
+                    </p>
+                  </>
+                )}
+              </div>
+            </article>
           </>
         )}
       </section>
@@ -365,7 +389,9 @@ export function DashboardPage() {
               </colgroup>
               <thead>
                 <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Type</th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Leave Type
+                  </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     <div className="flex items-center gap-1.5">
                       <span>Filed On</span>
@@ -387,14 +413,22 @@ export function DashboardPage() {
                       </button>
                     </div>
                   </th>
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">Leave Period</th>
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">Duration</th>
-                  <th className="px-5 py-3 font-bold uppercase tracking-wide">Status</th>
-                  <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">Action</th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Leave Period
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Duration
+                  </th>
+                  <th className="px-5 py-3 font-bold uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="px-5 py-3 text-center font-bold uppercase tracking-wide">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {showSkeleton ? (
+                {showTableSkeleton ? (
                   <TableBodySkeleton rows={pageSize} cols={6} />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
@@ -409,39 +443,51 @@ export function DashboardPage() {
                     }
                   />
                 ) : (
-                  paginatedItems.map((request) => (
-                    <tr
-                      key={request.id}
-                      className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
-                    >
-                      <td className="truncate px-5">{request.leaveType}</td>
-                      <td className="px-5 whitespace-nowrap">
-                        {request.filedOnLabel}
-                      </td>
-                      <td className="truncate px-5">{request.period}</td>
-                      <td className="px-5 whitespace-nowrap">
-                        {request.duration}
-                      </td>
-                      <td className="px-5">
-                        <StatusBadge status={request.status} />
-                      </td>
-                      <td className="px-5 text-center">
-                        <Link
-                          to={`/my-leave/requests/${request.id}`}
-                          className={TABLE_ACTION_BUTTON_CLASS}
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedItems.map((request) => {
+                    const uiStatus = mapApiLeaveStatusToUi(request.status)
+                    const filedOn = request.created_at
+                      ? formatShortDate(request.created_at.slice(0, 10))
+                      : '—'
+
+                    return (
+                      <tr
+                        key={request.id}
+                        className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
+                      >
+                        <td className="truncate px-5">
+                          {request.leave_type.name}
+                        </td>
+                        <td className="px-5 whitespace-nowrap">{filedOn}</td>
+                        <td className="truncate px-5">
+                          {formatLeavePeriod(
+                            request.start_date,
+                            request.end_date,
+                          )}
+                        </td>
+                        <td className="px-5 whitespace-nowrap">
+                          {formatDurationDays(request.duration)}
+                        </td>
+                        <td className="px-5">
+                          <StatusBadge status={uiStatus} />
+                        </td>
+                        <td className="px-5 text-center">
+                          <Link
+                            to={`/my-leave/requests/${request.id}`}
+                            className={TABLE_ACTION_BUTTON_CLASS}
+                          >
+                            View
+                          </Link>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
           <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
-            {!showSkeleton ? (
+            {!showTableSkeleton ? (
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}

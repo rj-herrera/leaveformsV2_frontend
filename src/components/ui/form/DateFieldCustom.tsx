@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { isWorkingDay } from '../../../utils/leaveDates'
 import {
-  fieldControlClassName,
-  fieldControlDisabledClassName,
-  fieldControlReadOnlyClassName,
+  fieldErrorMessageClassName,
   fieldLabelClassName,
+  fieldLabelErrorClassName,
   fieldShellClassName,
+  resolveFieldControlClassName,
 } from './fieldStyles'
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const
@@ -23,9 +23,20 @@ type DateFieldCustomProps = {
   name?: string
   id?: string
   hint?: string
+  /** Validation message — red outline + message below when set. */
+  error?: string | null
+  /** Force red outline/label without a message (e.g. shared date-range banner). */
+  invalid?: boolean
   className?: string
   /** When true, only working days can be selected (excludes weekends and non-working holidays). */
   weekdaysOnly?: boolean
+  /**
+   * ISO dates (`YYYY-MM-DD`) treated as non-working holidays.
+   * When omitted, falls back to the mock work calendar.
+   */
+  nonWorkingDates?: ReadonlySet<string>
+  /** Holiday display names keyed by ISO date — shown on hover for disabled holiday cells. */
+  holidayNames?: ReadonlyMap<string, string>
   min?: string
   max?: string
 }
@@ -77,18 +88,24 @@ export function DateFieldCustom({
   name,
   id,
   hint,
+  error = null,
+  invalid: invalidProp = false,
   className = '',
   weekdaysOnly = false,
+  nonWorkingDates,
+  holidayNames,
   min,
   max,
 }: DateFieldCustomProps) {
   const inputId = id ?? name ?? label.replace(/\s+/g, '-').toLowerCase()
+  const errorId = `${inputId}-error`
   const popoverId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState<PopoverPosition | null>(null)
   const isLocked = readOnly || disabled
+  const invalid = (Boolean(error) || invalidProp) && !isLocked
 
   const selected = parseISODate(value)
   const minDate = parseISODate(min ?? '')
@@ -98,11 +115,11 @@ export function DateFieldCustom({
     return new Date(d.getFullYear(), d.getMonth(), 1)
   })
 
-  const controlClass = readOnly
-    ? fieldControlReadOnlyClassName
-    : disabled
-      ? fieldControlDisabledClassName
-      : fieldControlClassName
+  const controlClass = resolveFieldControlClassName({
+    readOnly,
+    disabled,
+    invalid,
+  })
 
   useEffect(() => {
     if (isLocked) setOpen(false)
@@ -249,34 +266,45 @@ export function DateFieldCustom({
                   ? sameDay(cellDate, selected)
                   : false
                 const isToday = sameDay(cellDate, today)
-                const isNonWorking = !isWorkingDay(cellDate)
+                const isNonWorking = !isWorkingDay(cellDate, nonWorkingDates)
                 const beforeMin = minDate ? cellDate < minDate : false
                 const afterMax = maxDate ? cellDate > maxDate : false
                 const isDisabled =
                   (weekdaysOnly && isNonWorking) || beforeMin || afterMax
+                const holidayName = holidayNames?.get(iso)
 
                 return (
-                  <button
+                  <span
                     key={iso}
-                    type="button"
-                    disabled={isDisabled}
-                    onClick={() => {
-                      if (isDisabled) return
-                      onChange(iso)
-                      setOpen(false)
-                    }}
-                    className={`h-8 rounded-md text-small transition-colors ${
-                      isDisabled
-                        ? 'cursor-not-allowed text-text-gray/40'
-                        : isSelected
-                          ? 'bg-primary font-medium text-white'
-                          : isToday
-                            ? 'bg-primary/10 font-medium text-primary'
-                            : 'text-text-black hover:bg-surface-muted'
-                    }`}
+                    className="inline-flex"
+                    title={holidayName || undefined}
                   >
-                    {day}
-                  </button>
+                    <button
+                      type="button"
+                      disabled={isDisabled}
+                      aria-label={
+                        holidayName
+                          ? `${day}, ${holidayName}`
+                          : undefined
+                      }
+                      onClick={() => {
+                        if (isDisabled) return
+                        onChange(iso)
+                        setOpen(false)
+                      }}
+                      className={`h-8 w-8 rounded-md text-small transition-colors ${
+                        isDisabled
+                          ? 'cursor-not-allowed text-text-gray/40'
+                          : isSelected
+                            ? 'bg-primary font-medium text-white'
+                            : isToday
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'text-text-black hover:bg-surface-muted'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  </span>
                 )
               })}
             </div>
@@ -287,7 +315,10 @@ export function DateFieldCustom({
 
   return (
     <div className={`min-w-0 ${className}`}>
-      <label htmlFor={inputId} className={fieldLabelClassName}>
+      <label
+        htmlFor={inputId}
+        className={invalid ? fieldLabelErrorClassName : fieldLabelClassName}
+      >
         {label}
       </label>
       <div className={fieldShellClassName}>
@@ -296,6 +327,8 @@ export function DateFieldCustom({
           type="button"
           id={inputId}
           disabled={isLocked}
+          aria-invalid={invalid || undefined}
+          aria-describedby={error ? errorId : undefined}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? popoverId : undefined}
@@ -308,14 +341,21 @@ export function DateFieldCustom({
             {formatDisplay(value)}
           </span>
           <Calendar
-            className="size-4 shrink-0 text-text-gray"
+            className={`size-4 shrink-0 ${
+              invalid ? 'text-status-rejected' : 'text-text-gray'
+            }`}
             aria-hidden="true"
           />
         </button>
       </div>
 
-      {hint ? (
+      {hint && !error ? (
         <p className="mt-1 text-small text-text-gray">{hint}</p>
+      ) : null}
+      {error ? (
+        <p id={errorId} className={fieldErrorMessageClassName} role="alert">
+          {error}
+        </p>
       ) : null}
 
       {popover}

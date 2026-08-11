@@ -2,18 +2,21 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
+import { SwrProvider } from './providers/SwrProvider'
 import './index.css'
 import App from './App.tsx'
 
 /**
- * TODO(REPLACE): AuthProvider currently uses mock personas (see AuthContext.tsx).
- * Keep the provider wrapper; swap the mock implementation for cookie/session bootstrap.
+ * AuthProvider bootstraps from the portal userID cookie via GET /api/me.
+ * Dev sign-in: POST /api/dev/login (see AuthContext / EmployeeIdEntryPage).
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <SwrProvider>
+          <App />
+        </SwrProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

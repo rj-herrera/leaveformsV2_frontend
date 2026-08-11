@@ -1,10 +1,10 @@
 import { ChevronDown } from 'lucide-react'
 import {
-  fieldControlClassName,
-  fieldControlDisabledClassName,
-  fieldControlReadOnlyClassName,
+  fieldErrorMessageClassName,
   fieldLabelClassName,
+  fieldLabelErrorClassName,
   fieldShellClassName,
+  resolveFieldControlClassName,
 } from './fieldStyles'
 
 export type SelectOption = {
@@ -20,6 +20,8 @@ type SelectFieldProps = {
   placeholder?: string
   readOnly?: boolean
   disabled?: boolean
+  /** Validation message — red outline + message below when set. */
+  error?: string | null
   name?: string
   id?: string
   className?: string
@@ -33,22 +35,28 @@ export function SelectField({
   placeholder,
   readOnly = false,
   disabled = false,
+  error = null,
   name,
   id,
   className = '',
 }: SelectFieldProps) {
   const selectId = id ?? name ?? label.replace(/\s+/g, '-').toLowerCase()
   const isDisabled = disabled || readOnly
+  const invalid = Boolean(error) && !isDisabled
+  const errorId = `${selectId}-error`
 
-  const controlClass = readOnly
-    ? fieldControlReadOnlyClassName
-    : disabled
-      ? fieldControlDisabledClassName
-      : fieldControlClassName
+  const controlClass = resolveFieldControlClassName({
+    readOnly,
+    disabled,
+    invalid,
+  })
 
   return (
     <div className={`min-w-0 ${className}`}>
-      <label htmlFor={selectId} className={fieldLabelClassName}>
+      <label
+        htmlFor={selectId}
+        className={invalid ? fieldLabelErrorClassName : fieldLabelClassName}
+      >
         {label}
       </label>
       <div className={`relative ${fieldShellClassName}`}>
@@ -57,6 +65,8 @@ export function SelectField({
           name={name}
           value={value}
           disabled={isDisabled}
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? errorId : undefined}
           onChange={(e) => onChange(e.target.value)}
           className={`appearance-none pr-9 ${controlClass}`}
         >
@@ -72,10 +82,17 @@ export function SelectField({
           ))}
         </select>
         <ChevronDown
-          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-text-gray"
+          className={`pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 ${
+            invalid ? 'text-status-rejected' : 'text-text-gray'
+          }`}
           aria-hidden="true"
         />
       </div>
+      {error ? (
+        <p id={errorId} className={fieldErrorMessageClassName} role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

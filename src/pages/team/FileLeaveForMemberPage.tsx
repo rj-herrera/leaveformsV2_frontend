@@ -27,6 +27,7 @@ import {
   getTeamMembersForApprover,
   submitProxyLeaveRequest,
 } from '../../mocks/teamMembers'
+import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -57,6 +58,7 @@ function isAttachmentRequired(leaveType: string): boolean {
 export function FileLeaveForMemberPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const teamMembers = useMemo(
     () => getTeamMembersForApprover(user.id),
@@ -140,8 +142,13 @@ export function FileLeaveForMemberPage() {
     if (!startDate || !endDate) return 0
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
     if (dayType !== 'full') return 0
-    return countLeaveDurationDays(leaveType, startDate, endDate)
-  }, [dayType, startDate, endDate, leaveType])
+    return countLeaveDurationDays(
+      leaveType,
+      startDate,
+      endDate,
+      nonWorkingDates,
+    )
+  }, [dayType, startDate, endDate, leaveType, nonWorkingDates])
 
   const durationDays = useMemo(() => {
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
@@ -281,7 +288,10 @@ export function FileLeaveForMemberPage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    setEndDate(value)
+    // Keep end in range: first pick, half-day, or start moved past end.
+    if (dayType !== 'full' || !endDate || value > endDate) {
+      setEndDate(value)
+    }
   }
 
   function handleEndDateChange(value: string) {
@@ -355,15 +365,18 @@ export function FileLeaveForMemberPage() {
                 value={startDate}
                 onChange={handleStartDateChange}
                 weekdaysOnly={workingDaysOnly}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
                 disabled={!startDateEnabled}
-                max={endDate || undefined}
               />
               <DateFieldCustom
                 label="End Date"
                 value={endDate}
                 onChange={handleEndDateChange}
                 weekdaysOnly={workingDaysOnly}
-                disabled={!endDateEnabled}
+                nonWorkingDates={nonWorkingDates}
+                holidayNames={holidayNames}
+                disabled={!endDateEnabled || dayType !== 'full'}
                 min={startDate || undefined}
               />
               {parentalCreditsLocked ? (
