@@ -385,7 +385,7 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || submitting}
+            disabled={submitting}
             title={submitting ? 'Submitting…' : undefined}
           >
             {submitting ? 'Submitting…' : 'Submit Request'}

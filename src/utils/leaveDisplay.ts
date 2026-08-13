@@ -36,12 +36,27 @@ export function formatShortDate(isoDate: string | null | undefined): string {
   })
 }
 
+const PHT_TIME_ZONE = 'Asia/Manila'
+
+/** API datetimes are PHT wall-clock; ignore a trailing Z / offset. */
+function parseAsPht(iso: string): Date {
+  const trimmed = iso.trim()
+  const withoutOffset = trimmed
+    .replace(/Z$/i, '')
+    .replace(/[+-]\d{2}:?\d{2}$/, '')
+  const normalized = withoutOffset.includes('T')
+    ? withoutOffset
+    : withoutOffset.replace(' ', 'T')
+  return new Date(`${normalized}+08:00`)
+}
+
 /** Formats an ISO datetime for display (date + time). */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const date = new Date(iso)
+  const date = parseAsPht(iso)
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleString('en-US', {
+    timeZone: PHT_TIME_ZONE,
     month: 'short',
     day: 'numeric',
     year: 'numeric',

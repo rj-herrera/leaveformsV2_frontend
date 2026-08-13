@@ -263,7 +263,7 @@ export function AdminLeaveRequestsPage() {
             variant="primary"
             disabled={reminderSentToday || showSkeleton}
             onClick={() => setReminderConfirmOpen(true)}
-            className="shrink-0 bg-status-pending-conversion hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
+            className="shrink-0 bg-status-pending-conversion enabled:hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >
             <Send className="size-4" aria-hidden="true" />
             Send Reminder to All

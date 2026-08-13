@@ -68,8 +68,8 @@ export function ConfirmReasonModal({
 
   const confirmClass =
     confirmVariant === 'danger'
-      ? 'bg-status-rejected text-text-white hover:opacity-90 disabled:opacity-40'
-      : 'bg-primary text-text-white hover:opacity-90 disabled:opacity-40'
+      ? 'bg-status-rejected text-text-white enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'
+      : 'bg-primary text-text-white enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'
 
   return (
     <Modal
@@ -90,7 +90,7 @@ export function ConfirmReasonModal({
             type="button"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className={`rounded-md px-4 py-2 text-body font-medium transition-opacity ${confirmClass}`}
+            className={`rounded-md px-4 py-2 text-body font-medium enabled:transition-opacity ${confirmClass}`}
           >
             {confirmLabel}
           </button>

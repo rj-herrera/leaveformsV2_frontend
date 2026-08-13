@@ -7,7 +7,7 @@
  * that need the same visual style.
  */
 export const TABLE_ACTION_BUTTON_CLASS =
-  'inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-1.5 text-small font-medium text-text-black transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-1.5 text-small font-medium text-text-black transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:transition-none disabled:hover:bg-surface'
 
 /** Standard tbody row divider — matches thead / section borders. */
 export const TABLE_BODY_ROW_BORDER_CLASS =

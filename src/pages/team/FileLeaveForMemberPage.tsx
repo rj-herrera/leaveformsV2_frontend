@@ -496,16 +496,7 @@ export function FileLeaveForMemberPage() {
           <Button type="button" onClick={handleClear}>
             Clear
           </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!formValid}
-            title={
-              attachmentUploading
-                ? 'Wait for the attachment upload to finish.'
-                : undefined
-            }
-          >
+          <Button type="submit" variant="primary">
             Submit Request
           </Button>
         </div>

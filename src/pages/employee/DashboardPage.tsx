@@ -249,7 +249,8 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <p className="text-body font-semibold text-text-black">
-                    {formatBalanceDays(vlBalance?.reserved)} days
+                  {formatBalanceDays(vlBalance?.reserved)}{' '}
+                  {formatBalanceDays(vlBalance?.reserved) === '1' ? 'day' : 'days'}
                   </p>
                 </div>
               </div>
