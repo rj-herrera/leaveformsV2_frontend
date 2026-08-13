@@ -8,7 +8,17 @@ import {
   Plus,
   X,
 } from 'lucide-react'
-import type { AttachmentFile } from '../../utils/attachments'
+import {
+  fileNameFromContentDisposition,
+  fileNameFromUrl,
+  isImageFileName,
+  isImageMimeType,
+  isPdfFileName,
+  isPdfMimeType,
+  isSameOriginAttachmentUrl,
+  toSameOriginApiUrl,
+  type AttachmentFile,
+} from '../../utils/attachments'
 
 type AttachmentPreviewModalProps = {
   open: boolean
@@ -31,8 +41,10 @@ const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
 const ZOOM_STEP = 0.1
 
-function isImageFileName(name: string) {
-  return /\.(png|jpe?g|gif|webp)$/i.test(name)
+type LoadedAttachment = {
+  objectUrl: string
+  mime: string
+  downloadName: string
 }
 
 export function AttachmentPreviewModal({
@@ -53,6 +65,9 @@ export function AttachmentPreviewModal({
   const fileCount = resolvedFiles.length
   const [currentIndex, setCurrentIndex] = useState(0)
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
+  const [loaded, setLoaded] = useState<LoadedAttachment | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadingFile, setLoadingFile] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -93,16 +108,118 @@ export function AttachmentPreviewModal({
     }
   }, [open, onClose, fileCount])
 
-  if (!open) return null
-
   const current = resolvedFiles[currentIndex]
   const currentName = current?.name ?? 'Attachment'
-  const currentPreviewUrl = current?.previewUrl ?? null
+  const currentPreviewUrl = toSameOriginApiUrl(current?.previewUrl ?? null)
+
+  useEffect(() => {
+    if (!open || !currentPreviewUrl) {
+      setLoaded(null)
+      setLoadError(null)
+      setLoadingFile(false)
+      return
+    }
+
+    // External / signed URLs: use directly (no cookie fetch).
+    if (!isSameOriginAttachmentUrl(currentPreviewUrl)) {
+      setLoaded({
+        objectUrl: currentPreviewUrl,
+        mime: '',
+        downloadName:
+          fileNameFromUrl(currentPreviewUrl) ??
+          (isImageFileName(currentName) || isPdfFileName(currentName)
+            ? currentName
+            : `${currentName}`),
+      })
+      setLoadError(null)
+      setLoadingFile(false)
+      return
+    }
+
+    let cancelled = false
+    let objectUrl: string | null = null
+    setLoadingFile(true)
+    setLoadError(null)
+    setLoaded(null)
+
+    void (async () => {
+      try {
+        const response = await fetch(currentPreviewUrl, {
+          credentials: 'include',
+          headers: { Accept: '*/*' },
+        })
+        if (!response.ok) {
+          throw new Error(`Unable to load attachment (${response.status}).`)
+        }
+
+        const blob = await response.blob()
+        objectUrl = URL.createObjectURL(blob)
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
+
+        const headerName = fileNameFromContentDisposition(
+          response.headers.get('Content-Disposition'),
+        )
+        const urlName = fileNameFromUrl(currentPreviewUrl)
+        const hasExtension =
+          isImageFileName(currentName) || isPdfFileName(currentName)
+        const downloadName =
+          headerName ??
+          urlName ??
+          (hasExtension
+            ? currentName
+            : isPdfMimeType(blob.type)
+              ? `${currentName}.pdf`
+              : isImageMimeType(blob.type)
+                ? `${currentName}.${blob.type.split('/')[1] ?? 'img'}`
+                : currentName)
+
+        setLoaded({
+          objectUrl,
+          mime: blob.type,
+          downloadName,
+        })
+      } catch (error) {
+        if (cancelled) return
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load attachment.',
+        )
+        setLoaded(null)
+      } finally {
+        if (!cancelled) setLoadingFile(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [open, currentPreviewUrl, currentName, currentIndex])
+
+  if (!open) return null
+
+  const displayUrl = loaded?.objectUrl ?? null
   const showImage = Boolean(
-    currentName && isImageFileName(currentName) && currentPreviewUrl,
+    displayUrl &&
+      (isImageMimeType(loaded?.mime) ||
+        isImageFileName(loaded?.downloadName ?? '') ||
+        isImageFileName(currentName)),
   )
+  const showPdf = Boolean(
+    displayUrl &&
+      !showImage &&
+      (isPdfMimeType(loaded?.mime) ||
+        isPdfFileName(loaded?.downloadName ?? '') ||
+        isPdfFileName(currentName)),
+  )
+  /** Unknown type with a URL — embed so PDFs/images from extensionless API routes still show. */
+  const showEmbed = Boolean(displayUrl && !showImage && !showPdf)
   const hasMultiple = fileCount > 1
-  const canDownload = Boolean(currentPreviewUrl)
+  const canDownload = Boolean(displayUrl)
 
   function goPrevious() {
     setCurrentIndex((index) => Math.max(0, index - 1))
@@ -158,8 +275,8 @@ export function AttachmentPreviewModal({
           <div className="flex shrink-0 items-center gap-1.5">
             {canDownload ? (
               <a
-                href={currentPreviewUrl!}
-                download={currentName}
+                href={displayUrl!}
+                download={loaded?.downloadName ?? currentName}
                 className="inline-flex size-10 items-center justify-center rounded-md text-white transition-colors hover:bg-white/10"
                 aria-label={`Download ${currentName}`}
               >
@@ -171,7 +288,11 @@ export function AttachmentPreviewModal({
                 disabled
                 className="inline-flex size-10 items-center justify-center rounded-md text-white opacity-40"
                 aria-label="Download unavailable"
-                title="Download will be available when file content loads from the API"
+                title={
+                  loadingFile
+                    ? 'Loading file…'
+                    : 'Download unavailable — no file URL'
+                }
               >
                 <Download className="size-5" aria-hidden="true" />
               </button>
@@ -203,15 +324,45 @@ export function AttachmentPreviewModal({
 
           {fileCount === 0 ? (
             <p className="text-body text-white/80">No attachment to preview.</p>
+          ) : loadingFile ? (
+            <p className="text-body text-white/80">Loading attachment…</p>
+          ) : loadError ? (
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-lg bg-white/10 px-8 py-10 text-center">
+              <span className="flex size-16 items-center justify-center rounded-lg bg-white/15 text-white">
+                <FileText className="size-8" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-h2 text-white">{currentName}</p>
+                <p className="mt-1 text-body text-white/75">{loadError}</p>
+              </div>
+            </div>
+          ) : !currentPreviewUrl ? (
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-lg bg-white/10 px-8 py-10 text-center">
+              <span className="flex size-16 items-center justify-center rounded-lg bg-white/15 text-white">
+                <FileText className="size-8" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-h2 text-white">{currentName}</p>
+                <p className="mt-1 text-body text-white/75">
+                  No file URL is available for this attachment.
+                </p>
+              </div>
+            </div>
           ) : showImage ? (
             <div className="flex h-full max-h-full w-full max-w-full items-center justify-center overflow-auto">
               <img
-                src={currentPreviewUrl!}
+                src={displayUrl!}
                 alt={currentName}
                 className="max-h-full max-w-full object-contain transition-transform duration-150"
                 style={{ transform: `scale(${zoom})` }}
               />
             </div>
+          ) : showPdf || showEmbed ? (
+            <iframe
+              src={displayUrl!}
+              title={currentName}
+              className="h-full w-full rounded-md bg-white"
+            />
           ) : (
             <div className="flex max-w-md flex-col items-center gap-3 rounded-lg bg-white/10 px-8 py-10 text-center">
               <span className="flex size-16 items-center justify-center rounded-lg bg-white/15 text-white">
@@ -220,7 +371,8 @@ export function AttachmentPreviewModal({
               <div>
                 <p className="text-h2 text-white">{currentName}</p>
                 <p className="mt-1 text-body text-white/75">
-                  Preview placeholder — file content will load from the API later.
+                  Preview is unavailable for this file type. Use Download
+                  instead.
                 </p>
               </div>
             </div>

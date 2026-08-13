@@ -11,11 +11,9 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
-        // Do not force Content-Type — multipart uploads (e.g. med_cert) need
-        // the browser/Axios boundary. JSON requests set Content-Type via Axios.
-        headers: {
-          Accept: 'application/json',
-        },
+        // Do not force Content-Type or Accept — multipart uploads and binary
+        // downloads (attachment / med-cert) need the browser/Axios headers.
+        // JSON requests already set Accept/Content-Type via Axios.
       },
     },
   },
