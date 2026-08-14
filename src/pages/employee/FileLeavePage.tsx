@@ -37,7 +37,6 @@ const DAY_TYPE_OPTIONS = [
 
 /** Only VL is supported by POST /leaves for now. */
 const LEAVE_TYPE_OPTIONS = [
-  { value: '', label: 'Select Leave Type' },
   { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
 ]
 
@@ -244,6 +243,7 @@ export function FileLeavePage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
+                placeholder="Select Leave Type"
                 options={LEAVE_TYPE_OPTIONS}
                 error={
                   triedSubmit && leaveTypeMissing
