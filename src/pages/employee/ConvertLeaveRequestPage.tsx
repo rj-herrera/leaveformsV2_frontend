@@ -8,16 +8,17 @@ import type { LeaveDetail } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { FileField } from '../../components/ui/form/FileField'
+import { DropzoneFileField } from '../../components/ui/form/DropzoneFileField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 
-/** API: pdf / jpg / jpeg / png, max 5120 KB. */
+/** API: pdf / jpg / jpeg / png. */
 const MED_CERT_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
-const MED_CERT_MAX_BYTES = 5120 * 1024
+// File size validation disabled for now; re-enable if API enforces a max again:
+// const MED_CERT_MAX_BYTES = 5120 * 1024
 
 function messageFromApiError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -63,12 +64,8 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
 
   const medCert = attachments[0] ?? null
   const attachmentMissing = medCert == null
-  const fileTooLarge = medCert != null && medCert.size > MED_CERT_MAX_BYTES
   const canSubmit =
-    !attachmentMissing &&
-    !fileTooLarge &&
-    !attachmentUploading &&
-    !submitting
+    !attachmentMissing && !attachmentUploading && !submitting
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -122,33 +119,29 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
           Convert to Sick Leave
         </h1>
 
-        <section className="shrink-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
-          <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
-          <p className="mt-1 text-small text-text-gray">
-            Upload a medical certificate. Admin validation is required before
-            the leave becomes Sick Leave.
-          </p>
-          <div className="mt-4 grid gap-4">
-            <FileField
-              label="Medical certificate"
+        <section className="flex min-h-0 flex-[0_1_auto] flex-col overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
+            <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5">
+            <DropzoneFileField
+              label="Supporting Files"
               files={attachments}
               onChange={setAttachments}
               onUploadingChange={setAttachmentUploading}
               accept={MED_CERT_ACCEPT}
               required
               multiple={false}
-              hint="Required. PDF, JPG, or PNG — max 5 MB."
+              className="min-h-0"
               error={
                 triedSubmit && attachmentMissing
                   ? 'A medical certificate is required to submit a conversion request.'
-                  : triedSubmit && fileTooLarge
-                    ? 'File must be 5 MB or smaller.'
-                    : null
+                  : null
               }
             />
             {submitError ? (
               <div
-                className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+                className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
                 role="alert"
               >
                 <TriangleAlert
@@ -182,9 +175,7 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
                   ? 'Wait for the attachment upload to finish.'
                   : attachmentMissing
                     ? 'Upload a medical certificate before confirming.'
-                    : fileTooLarge
-                      ? 'File must be 5 MB or smaller.'
-                      : undefined
+                    : undefined
             }
           >
             {submitting ? 'Submitting…' : 'Confirm'}
