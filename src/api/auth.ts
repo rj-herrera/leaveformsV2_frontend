@@ -5,11 +5,18 @@ export type DevLoginResponse = {
   cookie: string
 }
 
+/** Group nest on `/me` (`group` and `role.pic_groups[]`). */
+export type MeGroupRef = {
+  id: number
+  abbreviation: string | null
+  name: string | null
+}
+
 export type MeRole = {
   approval_level: number | null
   is_president: boolean
   is_admin: boolean
-  pic_groups: string[]
+  pic_groups: MeGroupRef[]
 }
 
 export type MeResponse = {
@@ -20,11 +27,7 @@ export type MeResponse = {
   email: string | null
   username: string | null
   group_id: number | null
-  group: {
-    id: number
-    abbreviation: string | null
-    name: string | null
-  } | null
+  group: MeGroupRef | null
   date_hired: string | null
   role: MeRole
 }

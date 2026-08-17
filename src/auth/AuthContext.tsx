@@ -18,6 +18,7 @@ import { ApiError } from '../api/axios-client'
 import {
   fetchCurrentUser,
   loginWithEmployeeId,
+  type MeGroupRef,
   type MeResponse,
 } from '../api/auth'
 import { clearCookie, getCookie, setCookie } from '../utils/cookies'
@@ -32,6 +33,8 @@ export type AuthUser = {
   email: string
   employeeNumber: string
   gender: UserGender
+  /** PIC groups from `/me` `role.pic_groups`. Empty if not a PIC. */
+  picGroups: MeGroupRef[]
   /** Employee access is always true for authenticated users */
   roles: {
     employee: true
@@ -61,6 +64,7 @@ const FALLBACK_USER: AuthUser = {
   email: '',
   employeeNumber: '',
   gender: 'female',
+  picGroups: [],
   roles: { employee: true, approver: false, admin: false },
 }
 
@@ -81,6 +85,7 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
     employeeNumber: String(me.id),
     // TODO: use real gender from API when available
     gender: 'female',
+    picGroups: me.role.pic_groups ?? [],
     roles: rolesFromMe(me),
   }
 }

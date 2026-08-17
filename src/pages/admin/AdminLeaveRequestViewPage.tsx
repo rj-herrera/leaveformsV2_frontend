@@ -13,8 +13,8 @@ import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   canSendApproverReminder,
   getLeaveRequestDetail,
-  type ApproverRow,
 } from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
 import {
   attachmentFilesFromNames,
   type AttachmentFile,

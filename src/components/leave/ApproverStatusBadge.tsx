@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, XCircle } from 'lucide-react'
-import type { ApproverRowStatus } from '../../mocks/leaveRequests'
+import type { ApproverRowStatus } from '../../types/approverRow'
 
 export function ApproverStatusBadge({
   status,

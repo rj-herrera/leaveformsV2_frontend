@@ -7,6 +7,12 @@ export const swrKeys = {
   balances: (code?: string) =>
     code ? (['balances', code] as const) : (['balances'] as const),
 
+  /** GET /balances?emp_id= — on-behalf remaining leave. */
+  memberBalances: (empId: number, code?: string) =>
+    ['balances', empId, code ?? null] as const,
+
+  groupMembers: (groupId: number) => ['group-members', groupId] as const,
+
   leaves: (params?: ListMyLeavesParams) =>
     [
       'leaves',

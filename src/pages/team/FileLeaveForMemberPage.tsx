@@ -1,33 +1,26 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
 import { TriangleAlert } from 'lucide-react'
+import type { MeGroupRef } from '../../api/auth'
+import { createLeave } from '../../api/leaves'
+import type { DayType as ApiDayType } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
-import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { SuccessDialog } from '../../components/ui/SuccessDialog'
-import {
-  getSelectableLeaveThemes,
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
-import {
-  PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
-  isParentalLeaveType,
-} from '../../mocks/leaveBalances'
-import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
-import {
-  getRemainingLeaveDays,
-  getRemainingLeaveLabel,
-  getTeamMemberById,
-  getTeamMembersForApprover,
-  submitProxyLeaveRequest,
-} from '../../mocks/teamMembers'
+import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
+import { useGroupMembers } from '../../hooks/api/useGroupMembers'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
+import { useMemberBalances } from '../../hooks/api/useMemberBalances'
+import {
+  isApprovalsListKey,
+  swrKeys,
+} from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -35,6 +28,11 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import {
+  clearLeaveFormApiErrors,
+  parseLeaveFormApiError,
+  type LeaveFormApiErrors,
+} from '../../utils/leaveFormApiErrors'
 import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
@@ -42,6 +40,12 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
+
+/** Only VL is supported by POST /leaves for now. */
+const LEAVE_TYPE_OPTIONS = [
+  { value: '', label: 'Select Leave Type' },
+  { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
+]
 
 const EMPTY_LEAVE = {
   leaveType: '',
@@ -51,92 +55,92 @@ const EMPTY_LEAVE = {
   reason: '',
 }
 
-function isAttachmentRequired(leaveType: string): boolean {
-  return leaveType !== '' && leaveType !== VACATION_LEAVE_THEME.label
+function groupOptionLabel(group: MeGroupRef): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
+
+function remainingLeaveLabel(available: string | undefined): string {
+  if (available == null) return '0 day(s)'
+  const n = Number(available)
+  if (Number.isNaN(n)) return '0 day(s)'
+  return `${Number.parseFloat(n.toFixed(2))} day(s)`
 }
 
 export function FileLeaveForMemberPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { mutate } = useSWRConfig()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
-  const teamMembers = useMemo(
-    () => getTeamMembersForApprover(user.id),
-    [user.id],
-  )
-
+  const [groupId, setGroupId] = useState('')
   const [employeeId, setEmployeeId] = useState('')
   const [leaveType, setLeaveType] = useState(EMPTY_LEAVE.leaveType)
   const [dayType, setDayType] = useState<'' | DayType>(EMPTY_LEAVE.dayType)
   const [startDate, setStartDate] = useState(EMPTY_LEAVE.startDate)
   const [endDate, setEndDate] = useState(EMPTY_LEAVE.endDate)
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
-  const [attachments, setAttachments] = useState<File[]>([])
-  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [successOpen, setSuccessOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
+    clearLeaveFormApiErrors,
+  )
+
+  const selectedGroupId = groupId === '' ? null : Number(groupId)
+  const selectedEmpId = employeeId === '' ? null : Number(employeeId)
+
+  const {
+    data: members = [],
+    isLoading: membersLoading,
+    error: membersError,
+  } = useGroupMembers(selectedGroupId)
+
+  const { data: balances, isLoading: balancesLoading } = useMemberBalances(
+    selectedEmpId,
+    'VL',
+  )
 
   const selectedMember = useMemo(
-    () => (employeeId ? getTeamMemberById(employeeId) : null),
-    [employeeId],
+    () => members.find((member) => member.id === selectedEmpId) ?? null,
+    [members, selectedEmpId],
   )
 
-  const parentalLabel =
-    selectedMember?.gender === 'female'
-      ? 'Maternity Leave'
-      : 'Paternity Leave'
-
-  const leaveTypeOptions = useMemo(() => {
-    const gender = selectedMember?.gender ?? 'male'
-    const selectable = getSelectableLeaveThemes(parentalLabel, gender)
-    return [
-      { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
-      { value: SICK_LEAVE_THEME.label, label: SICK_LEAVE_THEME.label },
-      {
-        value: selectable.emergency.label,
-        label: selectable.emergency.label,
-      },
-      { value: selectable.ptb.label, label: selectable.ptb.label },
-      {
-        value: selectable.parental.label,
-        label: selectable.parental.label,
-      },
-    ]
-  }, [parentalLabel, selectedMember?.gender])
+  const groupOptions = useMemo(
+    () =>
+      user.picGroups.map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
+    [user.picGroups],
+  )
 
   const employeeOptions = useMemo(
-    () => [
-      ...teamMembers.map((member) => ({
-        value: member.id,
+    () =>
+      members.map((member) => ({
+        value: String(member.id),
         label: member.name,
       })),
-    ],
-    [teamMembers],
+    [members],
   )
 
-  const attachmentRequired = isAttachmentRequired(leaveType)
-  const leaveFieldsEnabled = employeeId !== ''
+  const leaveFieldsEnabled = selectedMember != null
   const dayTypeEnabled = leaveFieldsEnabled && leaveType !== ''
   const startDateEnabled =
     leaveFieldsEnabled && leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
 
-  const remainingDays = useMemo(
-    () => getRemainingLeaveDays(employeeId, leaveType),
-    [employeeId, leaveType],
+  const vlBalance = useMemo(
+    () => balances?.find((row) => row.code === 'VL'),
+    [balances],
   )
 
-  const parentalCreditsLocked =
-    employeeId !== '' &&
-    isParentalLeaveType(leaveType) &&
-    !canViewParentalLeaveCredits(employeeId, leaveType)
-
+  const remainingDays = Number(vlBalance?.available ?? NaN)
   const remainingLabel = useMemo(() => {
     if (!leaveType) return '0 day(s)'
-    if (parentalCreditsLocked) return 'Unavailable'
-    return getRemainingLeaveLabel(employeeId, leaveType)
-  }, [employeeId, leaveType, parentalCreditsLocked])
+    if (balancesLoading && vlBalance == null) return '—'
+    return remainingLeaveLabel(vlBalance?.available)
+  }, [balancesLoading, leaveType, vlBalance])
 
   const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
@@ -165,10 +169,9 @@ export function FileLeaveForMemberPage() {
   }, [dayType, startDate, endDate, leaveDuration])
 
   const mayBeLwop =
-    !parentalCreditsLocked &&
     leaveType !== '' &&
     durationDays > 0 &&
-    remainingDays >= 0 &&
+    Number.isFinite(remainingDays) &&
     durationDays > remainingDays
 
   const leadTimeValidation = useMemo(
@@ -185,24 +188,29 @@ export function FileLeaveForMemberPage() {
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
+  const groupMissing = groupId === ''
   const employeeMissing = employeeId === ''
   const leaveTypeMissing = leaveType === ''
   const dayTypeMissing = dayType === ''
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = attachmentRequired && attachments.length === 0
 
   const formValid =
+    !groupMissing &&
     !employeeMissing &&
+    selectedMember != null &&
     !leaveTypeMissing &&
     !dayTypeMissing &&
     !startMissing &&
     !endMissing &&
     !reasonMissing &&
-    !attachmentMissing &&
-    !attachmentUploading &&
-    leadTimeValidation.ok
+    leadTimeValidation.ok &&
+    leaveType === VACATION_LEAVE_THEME.label
+
+  function clearApiErrors() {
+    setApiErrors(clearLeaveFormApiErrors())
+  }
 
   function resetLeaveFields() {
     setLeaveType(EMPTY_LEAVE.leaveType)
@@ -210,13 +218,20 @@ export function FileLeaveForMemberPage() {
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     setReason(EMPTY_LEAVE.reason)
-    setAttachments([])
-    setAttachmentUploading(false)
+  }
+
+  function handleGroupChange(value: string) {
+    setGroupId(value)
+    setEmployeeId('')
+    resetLeaveFields()
+    setTriedSubmit(false)
+    clearApiErrors()
   }
 
   function handleEmployeeChange(value: string) {
     setEmployeeId(value)
     resetLeaveFields()
+    clearApiErrors()
   }
 
   function handleLeaveTypeChange(value: string) {
@@ -224,61 +239,66 @@ export function FileLeaveForMemberPage() {
     setDayType(EMPTY_LEAVE.dayType)
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
-    if (!isAttachmentRequired(value)) {
-      setAttachments([])
-      setAttachmentUploading(false)
-    }
+    clearApiErrors()
   }
 
   function handleDayTypeChange(value: string) {
     setDayType(value as '' | DayType)
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
+    clearApiErrors()
   }
 
   function handleClear() {
+    setGroupId('')
     setEmployeeId('')
     resetLeaveFields()
     setTriedSubmit(false)
+    clearApiErrors()
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
+    clearApiErrors()
     if (!formValid) return
     setConfirmOpen(true)
   }
 
-  function handleConfirmSubmit() {
-    // TODO(REPLACE): POST proxy leave request via API
-    if (!selectedMember) return
-
-    submitProxyLeaveRequest({
-      filedOnBehalfOf: {
-        id: selectedMember.id,
-        name: selectedMember.name,
-        employeeNumber: selectedMember.employeeNumber,
-      },
-      filedBy: {
-        id: user.id,
-        name: user.name,
-      },
-      submittedAt: new Date().toISOString(),
-      leaveType,
-      dayType,
-      startDate,
-      endDate,
-      duration: durationLabel,
-      remainingLeave: remainingLabel,
-      reason: reason.trim(),
-      attachmentFileName:
-        attachments.length > 0
-          ? attachments.map((file) => file.name).join(', ')
-          : null,
-    })
+  async function handleConfirmSubmit() {
+    if (
+      selectedEmpId == null ||
+      dayType === '' ||
+      leaveType !== VACATION_LEAVE_THEME.label
+    ) {
+      return
+    }
 
     setConfirmOpen(false)
-    setSuccessOpen(true)
+    setSubmitting(true)
+    clearApiErrors()
+
+    try {
+      await createLeave({
+        emp_id: selectedEmpId,
+        start_date: startDate,
+        end_date: endDate,
+        day_type: dayType as ApiDayType,
+        leave_reason: reason.trim(),
+      })
+
+      await Promise.all([
+        mutate(swrKeys.memberBalances(selectedEmpId, 'VL')),
+        mutate(swrKeys.pendingApprovals),
+        mutate(isApprovalsListKey, undefined, { revalidate: true }),
+      ])
+
+      setSuccessOpen(true)
+    } catch (error) {
+      setApiErrors(parseLeaveFormApiError(error))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleSuccessClose() {
@@ -288,15 +308,24 @@ export function FileLeaveForMemberPage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    // Keep end in range: first pick, half-day, or start moved past end.
     if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
+    clearApiErrors()
   }
 
   function handleEndDateChange(value: string) {
     setEndDate(value)
+    clearApiErrors()
   }
+
+  function handleReasonChange(value: string) {
+    setReason(value)
+    if (apiErrors.reason || apiErrors.form) clearApiErrors()
+  }
+
+  const employeeSelectDisabled =
+    groupMissing || membersLoading || Boolean(membersError)
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
@@ -311,23 +340,54 @@ export function FileLeaveForMemberPage() {
         <section className="shrink-0 overflow-visible rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <TextField
-              label="Employee No."
-              value={selectedMember?.employeeNumber ?? ''}
-              placeholder="Employee No."
-              readOnly
+            <SelectField
+              label="Group"
+              value={groupId}
+              onChange={handleGroupChange}
+              placeholder="Select Group"
+              options={groupOptions}
+              error={
+                triedSubmit && groupMissing ? 'Please select a group.' : null
+              }
             />
             <SelectField
               label="Employee Name"
               value={employeeId}
               onChange={handleEmployeeChange}
-              placeholder="Select Employee"
+              placeholder={
+                membersLoading ? 'Loading employees…' : 'Select Employee'
+              }
               options={employeeOptions}
+              disabled={employeeSelectDisabled}
+              error={
+                triedSubmit && !groupMissing && employeeMissing
+                  ? 'Please select an employee.'
+                  : null
+              }
+            />
+            <TextField
+              label="Employee No."
+              value={selectedMember ? String(selectedMember.id) : ''}
+              placeholder="Employee No."
+              readOnly
             />
           </div>
-          {triedSubmit && employeeMissing ? (
+          {user.picGroups.length === 0 ? (
+            <p className="mt-2 text-small text-text-gray">
+              You are not assigned to any PIC groups.
+            </p>
+          ) : null}
+          {membersError ? (
             <p className="mt-2 text-small text-status-rejected" role="alert">
-              Please select an employee.
+              Unable to load members for this group. Please try again.
+            </p>
+          ) : null}
+          {!membersLoading &&
+          !membersError &&
+          !groupMissing &&
+          members.length === 0 ? (
+            <p className="mt-2 text-small text-text-gray">
+              No members you can file leave for in this group.
             </p>
           ) : null}
         </section>
@@ -335,6 +395,10 @@ export function FileLeaveForMemberPage() {
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
+            <p className="mt-1 text-small text-text-gray">
+              Only Vacation Leave can be filed online for now. Other leave types
+              will be available when their APIs are ready.
+            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2">
@@ -342,9 +406,13 @@ export function FileLeaveForMemberPage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
-                placeholder="Select Leave Type"
-                options={leaveTypeOptions}
+                options={LEAVE_TYPE_OPTIONS}
                 disabled={!leaveFieldsEnabled}
+                error={
+                  triedSubmit && leaveFieldsEnabled && leaveTypeMissing
+                    ? 'Please select a leave type.'
+                    : null
+                }
               />
               <TextField
                 label="Remaining Leave"
@@ -358,6 +426,11 @@ export function FileLeaveForMemberPage() {
                 placeholder="Select Day Type"
                 options={[...DAY_TYPE_OPTIONS]}
                 disabled={!dayTypeEnabled}
+                error={
+                  triedSubmit && dayTypeEnabled && dayTypeMissing
+                    ? 'Please select a day type.'
+                    : (apiErrors.dayType ?? null)
+                }
               />
               <TextField label="Duration" value={durationLabel} readOnly />
               <DateFieldCustom
@@ -368,6 +441,12 @@ export function FileLeaveForMemberPage() {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 disabled={!startDateEnabled}
+                invalid={Boolean(apiErrors.dates) && !startMissing}
+                error={
+                  triedSubmit && startDateEnabled && startMissing
+                    ? 'Please select a start date.'
+                    : null
+                }
               />
               <DateFieldCustom
                 label="End Date"
@@ -378,17 +457,24 @@ export function FileLeaveForMemberPage() {
                 holidayNames={holidayNames}
                 disabled={!endDateEnabled || dayType !== 'full'}
                 min={startDate || undefined}
+                invalid={Boolean(apiErrors.dates) && !endMissing}
+                error={
+                  triedSubmit && endDateEnabled && endMissing
+                    ? 'Please select an end date.'
+                    : null
+                }
               />
-              {parentalCreditsLocked ? (
+              {apiErrors.dates ? (
                 <div
-                  className="rounded-md border border-status-pending/50 bg-status-pending/10 px-3 py-2.5 sm:col-span-2"
-                  role="status"
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
                 >
-                  <p className="text-small font-semibold text-text-black">
-                    Credits not available yet
-                  </p>
-                  <p className="mt-1 text-small text-text-black">
-                    {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    {apiErrors.dates}
                   </p>
                 </div>
               ) : null}
@@ -441,72 +527,46 @@ export function FileLeaveForMemberPage() {
               <TextAreaField
                 label="Reason"
                 value={reason}
-                onChange={setReason}
+                onChange={handleReasonChange}
                 placeholder="Enter reason for leave"
                 className="sm:col-span-2"
                 rows={2}
                 disabled={!leaveFieldsEnabled}
+                error={
+                  triedSubmit && leaveFieldsEnabled && reasonMissing
+                    ? 'Reason is required.'
+                    : (apiErrors.reason ?? null)
+                }
               />
-              {triedSubmit && reasonMissing ? (
-                <p
-                  className="-mt-1 text-small text-status-rejected sm:col-span-2"
+              {apiErrors.form ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
                   role="alert"
                 >
-                  Reason is required.
-                </p>
-              ) : null}
-              {attachmentRequired ? (
-                <FileField
-                  label="Supporting attachment"
-                  files={attachments}
-                  onChange={setAttachments}
-                  onUploadingChange={setAttachmentUploading}
-                  accept="image/*,.pdf"
-                  required
-                  multiple
-                  maxFiles={5}
-                  className="sm:col-span-2"
-                  hint="Required for this leave type (e.g. medical certificate or supporting document). You can attach up to 5 files."
-                  error={
-                    triedSubmit && attachmentMissing
-                      ? 'An attachment is required for this leave type.'
-                      : null
-                  }
-                />
-              ) : null}
-              {triedSubmit &&
-              leaveFieldsEnabled &&
-              (leaveTypeMissing ||
-                dayTypeMissing ||
-                startMissing ||
-                endMissing) ? (
-                <p
-                  className="text-small text-status-rejected sm:col-span-2"
-                  role="alert"
-                >
-                  Please complete Leave Type, Day Type, Start Date, and End
-                  Date.
-                </p>
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    {apiErrors.form}
+                  </p>
+                </div>
               ) : null}
             </div>
           </div>
         </section>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <Button type="button" onClick={handleClear}>
+          <Button type="button" onClick={handleClear} disabled={submitting}>
             Clear
           </Button>
           <Button
             type="submit"
             variant="primary"
-            disabled={!formValid}
-            title={
-              attachmentUploading
-                ? 'Wait for the attachment upload to finish.'
-                : undefined
-            }
+            disabled={!leadTimeValidation.ok || submitting}
+            title={submitting ? 'Submitting…' : undefined}
           >
-            Submit Request
+            {submitting ? 'Submitting…' : 'Submit Request'}
           </Button>
         </div>
       </form>
@@ -514,7 +574,9 @@ export function FileLeaveForMemberPage() {
       <ConfirmReasonModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmSubmit}
+        onConfirm={() => {
+          void handleConfirmSubmit()
+        }}
         title="Confirm leave request"
         description={`Submit this leave request on behalf of ${selectedMember?.name ?? 'the selected employee'}?`}
         requireReason={false}

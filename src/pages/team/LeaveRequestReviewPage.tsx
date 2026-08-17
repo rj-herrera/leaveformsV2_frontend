@@ -20,7 +20,7 @@ import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
-import type { ApproverRow } from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
 import {
   eligibleApproverPurpose,
   formatDateTime,
