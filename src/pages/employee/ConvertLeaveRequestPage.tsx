@@ -9,8 +9,8 @@ import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DropzoneFileField } from '../../components/ui/form/DropzoneFileField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 
@@ -46,13 +46,12 @@ function canRequestConversion(
 
 type ConvertLeaveFormProps = {
   detail: LeaveDetail
-  /** Called after a successful API submit (parent owns success dialog). */
-  onSubmitted: () => void
 }
 
-function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
+function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
   const navigate = useNavigate()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const detailsPath = `/my-leave/requests/${detail.id}`
 
   const [attachments, setAttachments] = useState<File[]>([])
@@ -85,15 +84,14 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
     try {
       await requestConversion(detail.id, medCert)
 
-      // Signal success first so parent keeps success UI even after detail
-      // revalidates to pending_conversion (convertible becomes false).
-      onSubmitted()
-
       await Promise.all([
         mutate(swrKeys.leave(detail.id)),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
       ])
+
+      toast.success('Leave conversion submitted successfully.')
+      navigate('/dashboard')
     } catch (error) {
       setSubmitError(messageFromApiError(error))
     } finally {
@@ -190,11 +188,12 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
           void handleConfirmConversion()
         }}
         title="Confirm leave conversion"
-        description="Are you sure you want to convert this confirmed Vacation Leave to Sick Leave? Admin validation will be required."
+        description="Are you sure you want to convert this confirmed leave request?"
         requireReason={false}
         confirmLabel="Submit conversion"
-        cancelLabel="Go back"
+        cancelLabel="Cancel"
         confirmVariant="primary"
+        iconVariant="conversion"
       />
     </div>
   )
@@ -202,7 +201,6 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
 
 export function ConvertLeaveRequestPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
-  const navigate = useNavigate()
   const { user } = useAuth()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -210,8 +208,6 @@ export function ConvertLeaveRequestPage() {
   const { data: detail, error, isLoading } = useLeaveDetail(
     validId ? leaveId : null,
   )
-
-  const [successOpen, setSuccessOpen] = useState(false)
 
   const convertible = useMemo(() => {
     if (!detail) return false
@@ -226,11 +222,6 @@ export function ConvertLeaveRequestPage() {
     !validId ||
     (error instanceof ApiError && error.status === 404) ||
     (!isLoading && !detail && error != null)
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate(detailsPath)
-  }
 
   if (isLoading) {
     return (
@@ -270,21 +261,6 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
-  // Success owns the screen after submit — even when leave is no longer convertible.
-  if (successOpen) {
-    return (
-      <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-        <SuccessDialog
-          open={successOpen}
-          onClose={handleSuccessClose}
-          title="Conversion submitted"
-          message="Your leave conversion request has been submitted successfully and is awaiting Admin validation."
-          confirmLabel="Back to request"
-        />
-      </div>
-    )
-  }
-
   if (!convertible) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -306,10 +282,5 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
-  return (
-    <ConvertLeaveForm
-      detail={detail}
-      onSubmitted={() => setSuccessOpen(true)}
-    />
-  )
+  return <ConvertLeaveForm detail={detail} />
 }

@@ -20,7 +20,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
@@ -59,6 +59,7 @@ export function LeaveRequestDetailsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
 
@@ -67,7 +68,6 @@ export function LeaveRequestDetailsPage() {
   )
 
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -240,17 +240,13 @@ export function LeaveRequestDetailsPage() {
         mutate(swrKeys.balances()),
       ])
 
-      setSuccessOpen(true)
+      toast.success('Leave request cancelled successfully.')
+      navigate('/dashboard')
     } catch (err) {
       setCancelError(messageFromApiError(err))
     } finally {
       setCancelling(false)
     }
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate('/dashboard')
   }
 
   if (isLoading) {
@@ -325,6 +321,7 @@ export function LeaveRequestDetailsPage() {
 
           <Button
             type="button"
+            variant="dangerOutline"
             disabled={!canCancel || cancelling}
             onClick={() => {
               setCancelError(null)
@@ -338,7 +335,7 @@ export function LeaveRequestDetailsPage() {
                   : undefined
             }
           >
-            <Trash2 className="size-4" aria-hidden="true" />
+            <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
             {cancelling ? 'Cancelling…' : 'Cancel Request'}
           </Button>
         </div>
@@ -410,18 +407,11 @@ export function LeaveRequestDetailsPage() {
         title="Cancel leave request"
         description="This will cancel the leave request. Please provide a cancellation reason."
         reasonLabel="Cancellation reason"
-        reasonPlaceholder="Why are you cancelling this request?"
-        confirmLabel="Cancel request"
-        cancelLabel="Keep request"
+        reasonPlaceholder="Enter cancellation reason..."
+        confirmLabel="Cancel Request"
+        cancelLabel="Keep Request"
         confirmVariant="danger"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Request cancelled"
-        message="Your leave request has been cancelled successfully."
-        confirmLabel="Back to dashboard"
+        iconVariant="cancel"
       />
 
       <AttachmentPreviewModal

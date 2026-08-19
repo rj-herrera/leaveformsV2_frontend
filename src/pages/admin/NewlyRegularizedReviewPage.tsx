@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
+import { TOAST_NEWLY_REGULARIZED_DISTRIBUTION_APPLIED } from '../../constants/toastMessages'
 import {
   TABLE_AVAILABLE_SLOT,
   TABLE_CONTENT_AREA,
@@ -43,6 +44,7 @@ function formatEffectiveDate(iso: string): string {
 
 export function NewlyRegularizedReviewPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const {
     availableSlotRef,
     sectionHeaderRef,
@@ -53,7 +55,6 @@ export function NewlyRegularizedReviewPage() {
   const showSkeleton = shouldShowDataSkeleton()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
 
   const draft = useMemo(() => getNewlyRegularizedDraft(), [])
   const reviewRows = useMemo(
@@ -79,11 +80,7 @@ export function NewlyRegularizedReviewPage() {
   function handleConfirmApply() {
     applyNewlyRegularizedDistribution(draft!.selectedEmployeeIds)
     setConfirmOpen(false)
-    setSuccessOpen(true)
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
+    toast.success(TOAST_NEWLY_REGULARIZED_DISTRIBUTION_APPLIED)
     navigate(leaveBalancesLandingPath())
   }
 
@@ -261,14 +258,7 @@ export function NewlyRegularizedReviewPage() {
         title="Confirm distribution"
         description="Apply this newly regularized leave credit distribution?"
         confirmLabel="Apply"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Distribution applied"
-        message="Leave credits have been distributed to the selected newly regularized employees."
-        confirmLabel="Back to Leave Balances"
+        cancelLabel="Cancel"
       />
     </div>
   )

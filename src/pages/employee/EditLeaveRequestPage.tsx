@@ -12,7 +12,7 @@ import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
@@ -53,6 +53,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const detailsPath = `/my-leave/requests/${detail.id}`
@@ -64,7 +65,6 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const [reason, setReason] = useState(detail.leave_reason)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
     clearLeaveFormApiErrors,
@@ -179,7 +179,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
         mutate(swrKeys.balances()),
       ])
 
-      setSuccessOpen(true)
+      toast.success('Leave request updated successfully.')
+      navigate(detailsPath)
     } catch (error) {
       setApiErrors(
         parseLeaveFormApiError(
@@ -190,11 +191,6 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate(detailsPath)
   }
 
   return (
@@ -356,13 +352,13 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
             disabled={!formValid || submitting}
             title={
               submitting
-                ? 'Savingâ¦'
+                ? 'Saving…'
                 : !isDirty
                   ? 'No changes to save'
                   : undefined
             }
           >
-            {submitting ? 'Savingâ¦' : 'Confirm'}
+            {submitting ? 'Saving…' : 'Confirm'}
           </Button>
         </div>
       </form>
@@ -377,16 +373,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
         description="Are you sure you want to save these changes to the leave request?"
         requireReason={false}
         confirmLabel="Save changes"
-        cancelLabel="Go back"
+        cancelLabel="Cancel"
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Changes saved"
-        message="Your leave request has been updated successfully."
-        confirmLabel="Back to request"
       />
     </div>
   )

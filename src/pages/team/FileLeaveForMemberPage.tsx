@@ -9,7 +9,7 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import {
   getSelectableLeaveThemes,
   SICK_LEAVE_THEME,
@@ -58,6 +58,7 @@ function isAttachmentRequired(leaveType: string): boolean {
 export function FileLeaveForMemberPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const teamMembers = useMemo(
@@ -75,7 +76,6 @@ export function FileLeaveForMemberPage() {
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
 
   const selectedMember = useMemo(
     () => (employeeId ? getTeamMemberById(employeeId) : null),
@@ -278,11 +278,7 @@ export function FileLeaveForMemberPage() {
     })
 
     setConfirmOpen(false)
-    setSuccessOpen(true)
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
+    toast.success('Leave request filed for member successfully.')
     navigate('/team/leave-approvals')
   }
 
@@ -506,20 +502,21 @@ export function FileLeaveForMemberPage() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmSubmit}
-        title="Confirm leave request"
-        description={`Submit this leave request on behalf of ${selectedMember?.name ?? 'the selected employee'}?`}
+        title="Confirm Leave Request"
+        description={
+          <>
+            Submit this leave request on behalf of{' '}
+            <span className="font-semibold text-primary">
+              {selectedMember?.name ?? 'the selected employee'}
+            </span>
+            ?
+          </>
+        }
         requireReason={false}
-        confirmLabel="Submit request"
-        cancelLabel="Go back"
+        confirmLabel="Submit"
+        cancelLabel="Cancel"
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Request submitted"
-        message="The leave request has been filed on behalf of the employee successfully."
-        confirmLabel="Back to Leave Approvals"
+        iconVariant="submit"
       />
     </div>
   )

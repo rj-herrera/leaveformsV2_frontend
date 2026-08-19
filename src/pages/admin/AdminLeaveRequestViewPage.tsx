@@ -8,7 +8,8 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
+import { TOAST_REMINDER_SENT_TO_APPROVER } from '../../constants/toastMessages'
 import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
   canSendApproverReminder,
@@ -41,7 +42,7 @@ export function AdminLeaveRequestViewPage() {
   const [reminderTarget, setReminderTarget] = useState<ApproverRow | null>(
     null,
   )
-  const [reminderSuccessOpen, setReminderSuccessOpen] = useState(false)
+  const toast = useToast()
 
   if (showSkeleton) {
     return (
@@ -84,7 +85,7 @@ export function AdminLeaveRequestViewPage() {
   function handleReminderConfirm() {
     // TODO(REPLACE): POST reminder email to reminderTarget
     setReminderTarget(null)
-    setReminderSuccessOpen(true)
+    toast.success(TOAST_REMINDER_SENT_TO_APPROVER)
   }
 
   return (
@@ -126,19 +127,16 @@ export function AdminLeaveRequestViewPage() {
         title="Send Reminder"
         description={
           reminderTarget
-            ? `Send a reminder to ${reminderTarget.name} that this leave request still needs their action?`
+            ? 
+            <>
+              Send a reminder to <span className="font-semibold text-status-pending-conversion">{reminderTarget.name}</span> that this leave request still needs their action?
+            </>
             : 'Send a reminder to this approver?'
         }
         confirmLabel="Send Reminder"
         cancelLabel="Cancel"
-        confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={reminderSuccessOpen}
-        onClose={() => setReminderSuccessOpen(false)}
-        title="Reminder sent"
-        message="The reminder email has been queued for the selected approver."
+        confirmVariant="reminder"
+        iconVariant="reminder"
       />
 
       <AttachmentPreviewModal

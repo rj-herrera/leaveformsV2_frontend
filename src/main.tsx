@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
+import { ToastProvider } from './components/ui/ToastProvider'
 import { SwrProvider } from './providers/SwrProvider'
 import './index.css'
 import App from './App.tsx'
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <SwrProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </SwrProvider>
       </AuthProvider>
     </BrowserRouter>

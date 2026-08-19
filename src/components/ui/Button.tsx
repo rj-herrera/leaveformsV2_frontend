@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'ghost'
 type ButtonSize = 'sm' | 'md'
 
 const BASE =
@@ -13,6 +13,8 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     'border border-border bg-surface text-text-black enabled:hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-primary/20',
   danger:
     'bg-status-rejected text-white enabled:hover:bg-status-rejected/90 focus:outline-none focus:ring-2 focus:ring-status-rejected/30',
+  dangerOutline:
+    'border border-border bg-surface text-status-rejected enabled:hover:bg-status-rejected/10 focus:outline-none focus:ring-2 focus:ring-status-rejected/30',
   ghost:
     'bg-transparent text-text-black enabled:hover:bg-surface-muted focus:outline-none focus:ring-2 focus:ring-primary/20',
 }
