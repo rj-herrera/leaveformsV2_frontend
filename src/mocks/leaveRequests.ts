@@ -12,6 +12,7 @@
  */
 import type { UserRole } from '../auth/AuthContext'
 import type { LeaveRequestStatus } from '../constants/leaveStatus'
+import type { ApproverRow, ApproverRowStatus } from '../types/approverRow'
 import {
   hasFiledParentalLeaveRequest,
   isParentalLeaveType,
@@ -21,6 +22,8 @@ import {
   formatDayTypeLabel,
   inferDayTypeFromDuration,
 } from '../utils/leaveDates'
+
+export type { ApproverRow, ApproverRowStatus }
 
 export type LeaveRequestSummary = {
   id: string
@@ -40,18 +43,6 @@ export type LeaveRequestSummary = {
 export type ApproverListItem = LeaveRequestSummary & {
   department: string
   needsAction: boolean
-}
-
-export type ApproverRowStatus = 'approved' | 'no_action' | 'rejected'
-
-export type ApproverRow = {
-  id: string
-  name: string
-  status: ApproverRowStatus
-  actionDate: string | null
-  remarks: string | null
-  role: 'approver' | 'admin'
-  purpose?: string
 }
 
 export type LeaveConversionInfo = {

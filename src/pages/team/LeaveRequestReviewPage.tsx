@@ -4,6 +4,8 @@ import { useSWRConfig } from 'swr'
 import { Check, TriangleAlert, X } from 'lucide-react'
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
+import { conversionMedCertPath } from '../../api/conversions'
+import { leaveAttachmentPath } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
@@ -22,7 +24,7 @@ import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
-import type { ApproverRow } from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
 import {
   eligibleApproverPurpose,
   formatDateTime,
@@ -37,6 +39,7 @@ import {
 } from '../../utils/listTab'
 
 const ATTACHMENT_LABEL = 'Leave attachment'
+const MED_CERT_LABEL = 'Medical certificate'
 
 function messageFromApiError(
   error: unknown,
@@ -195,6 +198,28 @@ export function LeaveRequestReviewPage() {
   const departmentLabel = orgLabel(employee?.department)
   const groupLabel = orgLabel(employee?.group)
 
+  /** SL and VL→SL conversion always show the Attachment row. */
+  const showAttachmentField =
+    detail?.leave_type.code.toUpperCase() === 'SL' ||
+    detail?.status === 'pending_conversion' ||
+    detail?.status === 'converted_to_sl'
+
+  /** Conversion med cert / leave attachment — same-origin `/api/...` paths for cookie auth. */
+  const attachmentValue = conversion
+    ? conversion.has_med_cert
+      ? MED_CERT_LABEL
+      : null
+    : detail?.has_attachment
+      ? ATTACHMENT_LABEL
+      : null
+  const attachmentUrl = conversion
+    ? conversion.has_med_cert
+      ? conversionMedCertPath(conversion.id)
+      : null
+    : detail?.has_attachment
+      ? leaveAttachmentPath(detail.id)
+      : null
+
   const notFound =
     !validId ||
     (error instanceof ApiError &&
@@ -339,10 +364,9 @@ export function LeaveRequestReviewPage() {
             />
             <LeaveInfoRow label="Reason" value={detail.leave_reason} />
             <LeaveAttachmentRow
-              value={detail.has_attachment ? ATTACHMENT_LABEL : null}
-              onView={() =>
-                openPreview(ATTACHMENT_LABEL, detail.attachment_url)
-              }
+              value={attachmentValue}
+              alwaysShow={showAttachmentField}
+              onView={() => openPreview(attachmentValue ?? '', attachmentUrl)}
             />
           </dl>
         </article>

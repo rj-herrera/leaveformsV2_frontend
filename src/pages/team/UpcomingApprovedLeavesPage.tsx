@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
+import type { TeamCalendarEntry } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
@@ -15,19 +16,64 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, TABLE_ROW_HEIGHT, TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_CLASS,
+  TABLE_ROW_HEIGHT,
+  TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import {
+  SICK_LEAVE_THEME,
+  VACATION_LEAVE_THEME,
+} from '../../constants/leaveTypeTheme'
+import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
-  filterCalendarEntries,
-  getTeamCalendarEntries,
-  getUpcomingApprovedLeaves,
-} from '../../mocks/teamLeaveCalendar'
+  formatDurationDays,
+  formatLeavePeriod,
+} from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
+import { addDaysIso } from '../../utils/teamCalendarGrid'
 
-type LeaveTypeFilter = 'ALL' | string
+type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
+
+const LEAVE_TYPE_FILTER_OPTIONS = [
+  { value: 'ALL' as const, label: 'All Leave Types' },
+  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
+  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
+]
+
+function groupOptionLabel(group: {
+  abbreviation: string | null
+  name: string | null
+  id: number
+}): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
+
+function employeeName(entry: TeamCalendarEntry): string {
+  return entry.employee?.name?.trim() || '—'
+}
+
+function employeeNumber(entry: TeamCalendarEntry): string {
+  return entry.employee?.employee_number ?? '—'
+}
+
+function leaveTypeLabel(entry: TeamCalendarEntry): string {
+  return entry.leave_type.name
+}
+
+function groupLabel(entry: TeamCalendarEntry): string {
+  const group = entry.employee?.group
+  if (!group) return '—'
+  return group.abbreviation?.trim() || group.name?.trim() || '—'
+}
+
+function calendarEntryDuration(entry: TeamCalendarEntry): string {
+  return formatDurationDays(entry.duration)
+}
 
 export function UpcomingApprovedLeavesPage() {
   const { user } = useAuth()
@@ -40,50 +86,51 @@ export function UpcomingApprovedLeavesPage() {
     pageSize,
   } = useContentSizedTableRefs()
   const today = todayISO()
-  const showSkeleton = shouldShowDataSkeleton()
 
   const [search, setSearch] = useState('')
   const [leaveTypeFilter, setLeaveTypeFilter] = useState<LeaveTypeFilter>('ALL')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
 
-  const allItems = useMemo(() => {
-    const entries = getTeamCalendarEntries(user.id)
-    return getUpcomingApprovedLeaves(entries, today)
-  }, [user.id, today])
+  const calendarParams = useMemo(
+    () => ({
+      from: addDaysIso(today, 1),
+      to: addDaysIso(today, 61),
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      group_id: groupFilter === 'ALL' ? undefined : Number(groupFilter),
+    }),
+    [today, leaveTypeFilter, groupFilter],
+  )
 
-  const leaveTypeOptions = useMemo(() => {
-    const types = Array.from(
-      new Set(allItems.map((item) => item.leaveType)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
-      { value: 'ALL' as const, label: 'All Leave Types' },
-      ...types.map((type) => ({ value: type, label: type })),
-    ]
-  }, [allItems])
+  const { data, error, isLoading } = useTeamCalendar(calendarParams)
 
-  const groupOptions = useMemo(() => {
-    const groups = Array.from(
-      new Set(allItems.map((item) => item.groupLabel)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
+  const groupOptions = useMemo(
+    () => [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...groups.map((group) => ({ value: group, label: group })),
-    ]
-  }, [allItems])
+      ...user.picGroups.map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
+    ],
+    [user.picGroups],
+  )
+
+  const allItems = useMemo(() => {
+    if (!data) return []
+    return [...data]
+      .filter((entry) => entry.start_date > today)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+  }, [data, today])
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return filterCalendarEntries(allItems, {
-      leaveType: leaveTypeFilter,
-      group: groupFilter,
-    }).filter((item) => {
-      if (query.length === 0) return true
-      return (
-        item.employeeName.toLowerCase().includes(query) ||
-        item.employeeNumber.toLowerCase().includes(query)
-      )
+    if (query.length === 0) return allItems
+
+    return allItems.filter((entry) => {
+      const name = employeeName(entry).toLowerCase()
+      const number = employeeNumber(entry).toLowerCase()
+      return name.includes(query) || number.includes(query)
     })
-  }, [allItems, leaveTypeFilter, groupFilter, search])
+  }, [allItems, search])
 
   const { currentPage, setCurrentPage, totalPages, paginatedItems } =
     usePagination(
@@ -91,6 +138,8 @@ export function UpcomingApprovedLeavesPage() {
       pageSize,
       `upcoming-${user.id}-${search}-${leaveTypeFilter}-${groupFilter}`,
     )
+
+  const showSkeleton = isLoading && !data
 
   const hasActiveFilters =
     search.trim().length > 0 ||
@@ -145,7 +194,7 @@ export function UpcomingApprovedLeavesPage() {
                 label="Filter by leave type"
                 value={leaveTypeFilter}
                 onChange={setLeaveTypeFilter}
-                options={leaveTypeOptions}
+                options={LEAVE_TYPE_FILTER_OPTIONS}
                 selectHeight="h-[2.125rem]"
               />
               <FilterSelect
@@ -185,6 +234,15 @@ export function UpcomingApprovedLeavesPage() {
               <tbody>
                 {showSkeleton ? (
                   <TableBodySkeleton rows={pageSize} cols={6} />
+                ) : error && !data ? (
+                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
+                    <td
+                      colSpan={6}
+                      className="px-5 text-center text-body text-status-rejected"
+                    >
+                      Unable to load upcoming leaves. Please try again.
+                    </td>
+                  </tr>
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
                     colSpan={6}
@@ -198,39 +256,39 @@ export function UpcomingApprovedLeavesPage() {
                     }
                   />
                 ) : (
-                  paginatedItems.map((item) => (
+                  paginatedItems.map((entry) => (
                     <tr
-                      key={item.id}
+                      key={entry.id}
                       role="link"
                       tabIndex={0}
                       onClick={() =>
-                        navigate(`/team/leave-requests/${item.id}`)
+                        navigate(`/team/leave-requests/${entry.id}`)
                       }
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          navigate(`/team/leave-requests/${item.id}`)
+                          navigate(`/team/leave-requests/${entry.id}`)
                         }
                       }}
                       className={`cursor-pointer ${TABLE_BODY_ROW_BORDER_CLASS} transition-colors hover:bg-surface-muted ${TABLE_ROW_HEIGHT_CLASS}`}
                     >
                       <td className="px-5 text-body text-text-black">
-                        {item.periodLabel}
+                        {formatLeavePeriod(entry.start_date, entry.end_date)}
                       </td>
                       <td className="px-5 text-body text-text-black">
-                        {item.employeeNumber}
+                        {employeeNumber(entry)}
                       </td>
                       <td className="px-5 text-body text-text-black">
-                        {item.employeeName}
+                        {employeeName(entry)}
                       </td>
                       <td className="px-5 text-body text-text-black">
-                        {item.leaveType}
+                        {leaveTypeLabel(entry)}
                       </td>
                       <td className="px-5 text-body text-text-black">
-                        {item.duration}
+                        {calendarEntryDuration(entry)}
                       </td>
                       <td className="px-5 text-body text-text-black">
-                        {item.groupLabel}
+                        {groupLabel(entry)}
                       </td>
                     </tr>
                   ))

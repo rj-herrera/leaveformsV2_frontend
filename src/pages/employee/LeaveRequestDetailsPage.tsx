@@ -24,10 +24,8 @@ import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
-import type {
-  ApproverRow,
-  LeaveConversionInfo,
-} from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
+import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import {
   eligibleApproverPurpose,

@@ -1,6 +1,6 @@
 import { Button } from '../ui/Button'
 import { TABLE_BODY_ROW_BORDER_CLASS } from '../ui/tableStyles'
-import type { ApproverRow } from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
 import { ApproverStatusBadge } from './ApproverStatusBadge'
 
 type YouBadgeVariant = 'primary' | 'muted'

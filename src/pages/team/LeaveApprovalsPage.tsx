@@ -53,7 +53,12 @@ type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
-type ApprovalsStatusFilter = 'ALL' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+type ApprovalsStatusFilter =
+  | 'ALL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PENDING_CONVERSION'
+  | 'CONVERTED'
 
 type ApprovalRowView = {
   id: number
@@ -76,12 +81,13 @@ const LEAVE_TYPE_FILTER_OPTIONS = [
 ]
 
 const APPROVALS_STATUS_FILTER_OPTIONS: {
-  value: 'ALL' | 'APPROVED' | 'REJECTED' | 'CONVERTED'
+  value: ApprovalsStatusFilter
   label: string
 }[] = [
   { value: 'ALL', label: 'All statuses' },
   { value: 'APPROVED', label: 'Approved' },
   { value: 'REJECTED', label: 'Rejected' },
+  { value: 'PENDING_CONVERSION', label: 'Pending conversion' },
   { value: 'CONVERTED', label: 'Converted to SL' },
 ]
 
@@ -115,6 +121,8 @@ function toApiStatus(
       return 'confirmed'
     case 'REJECTED':
       return 'rejected'
+    case 'PENDING_CONVERSION':
+      return 'pending_conversion'
     case 'CONVERTED':
       return 'converted_to_sl'
     default:
@@ -202,8 +210,8 @@ export function LeaveApprovalsPage() {
     isLoading: pendingLoading,
   } = usePendingApprovals()
 
-  /** Server only sorts by created_at; other columns are client-sorted on the page. */
-  const apiSort = sortKey === 'filedOn' ? sortDir : ('desc' as const)
+  /** All tab: API sorts by created_at only (Date Filed). */
+  const apiSort = sortDir
 
   const allListParams = useMemo(
     () => ({
@@ -223,7 +231,16 @@ export function LeaveApprovalsPage() {
     isValidating: allValidating,
   } = useApprovals(tab === 'all' ? allListParams : null)
 
-  // All tab: server filter / filedOn sort → page 1 + skeleton until refetch settles.
+  // All tab: only Date Filed is sortable — drop column-local sort keys from Pending.
+  useEffect(() => {
+    if (tab !== 'all') return
+    if (sortKey !== 'filedOn') {
+      setSortKey('filedOn')
+      setSortDir('desc')
+    }
+  }, [tab, sortKey])
+
+  // All tab: server filter / Date Filed sort → page 1 + skeleton until refetch settles.
   useEffect(() => {
     if (tab !== 'all') return
     setAllPage(1)
@@ -312,14 +329,14 @@ export function LeaveApprovalsPage() {
     paginatedItems: pendingPageItems,
   } = usePagination(filteredPending, pageSize, pendingFilterResetKey)
 
-  // All tab: search/group (+ non-filedOn sort) on the current server page.
-  const displayAllRows = useMemo(() => {
-    const filtered = allRows.filter((item) =>
-      matchesRowFilters(item, searchQuery, groupFilter, 'ALL'),
-    )
-    if (sortKey === 'filedOn') return filtered
-    return sortRows(filtered, sortKey, sortDir)
-  }, [allRows, searchQuery, groupFilter, sortKey, sortDir])
+  // All tab: search/group on the current server page (order comes from API).
+  const displayAllRows = useMemo(
+    () =>
+      allRows.filter((item) =>
+        matchesRowFilters(item, searchQuery, groupFilter, 'ALL'),
+      ),
+    [allRows, searchQuery, groupFilter],
+  )
 
   const allTotalItems = awaitingAllReset
     ? 0
@@ -349,6 +366,9 @@ export function LeaveApprovalsPage() {
   }
 
   function toggleSort(key: SortKey) {
+    // All tab: only Date Filed (server sort). Other columns are Pending-only.
+    if (tab === 'all' && key !== 'filedOn') return
+
     if (sortKey === key) {
       setSortDir((dir) => (dir === 'desc' ? 'asc' : 'desc'))
       return
@@ -498,12 +518,16 @@ export function LeaveApprovalsPage() {
               <thead>
                 <tr className="h-11 bg-surface-muted border-b border-border text-small text-text-gray">
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    <SortableHeader
-                      label="Employee No."
-                      active={sortKey === 'employeeNumber'}
-                      direction={sortDir}
-                      onToggle={() => toggleSort('employeeNumber')}
-                    />
+                    {tab === 'pending' ? (
+                      <SortableHeader
+                        label="Employee No."
+                        active={sortKey === 'employeeNumber'}
+                        direction={sortDir}
+                        onToggle={() => toggleSort('employeeNumber')}
+                      />
+                    ) : (
+                      'Employee No.'
+                    )}
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     Employee Name
@@ -515,12 +539,16 @@ export function LeaveApprovalsPage() {
                     Leave Type
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    <SortableHeader
-                      label="Leave Period"
-                      active={sortKey === 'period'}
-                      direction={sortDir}
-                      onToggle={() => toggleSort('period')}
-                    />
+                    {tab === 'pending' ? (
+                      <SortableHeader
+                        label="Leave Period"
+                        active={sortKey === 'period'}
+                        direction={sortDir}
+                        onToggle={() => toggleSort('period')}
+                      />
+                    ) : (
+                      'Leave Period'
+                    )}
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     Duration

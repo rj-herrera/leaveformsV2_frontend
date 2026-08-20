@@ -1,26 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { TeamCalendarEntry } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
+import { CalendarGridSkeleton, SidePanelListSkeleton } from '../../components/ui/Skeleton'
 import {
-  CalendarGridSkeleton,
-  SidePanelListSkeleton,
-} from '../../components/ui/Skeleton'
-import { shouldShowDataSkeleton } from '../../mocks/config'
-import {
-  filterCalendarEntries,
-  getEntriesOnDate,
   getLeaveTypeChipClasses,
-  getTeamCalendarEntries,
-  getUpcomingApprovedLeaves,
-  type TeamCalendarEntry,
-} from '../../mocks/teamLeaveCalendar'
+  SICK_LEAVE_THEME,
+  VACATION_LEAVE_THEME,
+} from '../../constants/leaveTypeTheme'
+import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
+import { formatLeavePeriod } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
 import {
   addDaysIso,
@@ -30,16 +22,52 @@ import {
   getMonthSelectOptions,
   getMonthWeekdayWeeks,
   getWeekdayWeek,
+  indexCalendarEntriesByDate,
   monthValue,
   parseMonthValue,
+  rangeFromCells,
   startOfWeekMonday,
   WEEKDAY_LABELS,
   type CalendarDayCell,
 } from '../../utils/teamCalendarGrid'
 
 type CalendarView = 'month' | 'week'
-type LeaveTypeFilter = 'ALL' | string
+type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
+
+const LEAVE_TYPE_FILTER_OPTIONS = [
+  { value: 'ALL' as const, label: 'All Leave Types' },
+  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
+  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
+]
+
+function groupOptionLabel(group: {
+  abbreviation: string | null
+  name: string | null
+  id: number
+}): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
+
+function employeeName(entry: TeamCalendarEntry): string {
+  return entry.employee?.name?.trim() || '—'
+}
+
+function leaveTypeLabel(entry: TeamCalendarEntry): string {
+  return entry.leave_type.name
+}
+
+function groupLabel(entry: TeamCalendarEntry): string {
+  const group = entry.employee?.group
+  if (!group) return '—'
+  return group.abbreviation?.trim() || group.name?.trim() || '—'
+}
+
+function halfDayHint(entry: TeamCalendarEntry): string {
+  if (entry.day_type === 'half_am') return ' (AM)'
+  if (entry.day_type === 'half_pm') return ' (PM)'
+  return ''
+}
 
 export function TeamLeaveCalendarPage() {
   const { user } = useAuth()
@@ -55,7 +83,6 @@ export function TeamLeaveCalendarPage() {
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [monthMenuOpen, setMonthMenuOpen] = useState(false)
   const monthMenuRef = useRef<HTMLDivElement>(null)
-  const showSkeleton = shouldShowDataSkeleton()
 
   const parsed = parseMonthValue(viewMonth) ?? {
     year: initialNow.getFullYear(),
@@ -67,38 +94,15 @@ export function TeamLeaveCalendarPage() {
     [initialNow],
   )
 
-  const allEntries = useMemo(
-    () => getTeamCalendarEntries(user.id),
-    [user.id],
-  )
-
-  const leaveTypeOptions = useMemo(() => {
-    const types = Array.from(
-      new Set(allEntries.map((entry) => entry.leaveType)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
-      { value: 'ALL' as const, label: 'All Leave Types' },
-      ...types.map((type) => ({ value: type, label: type })),
-    ]
-  }, [allEntries])
-
-  const groupOptions = useMemo(() => {
-    const groups = Array.from(
-      new Set(allEntries.map((entry) => entry.groupLabel)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
+  const groupOptions = useMemo(
+    () => [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...groups.map((group) => ({ value: group, label: group })),
-    ]
-  }, [allEntries])
-
-  const entries = useMemo(
-    () =>
-      filterCalendarEntries(allEntries, {
-        leaveType: leaveTypeFilter,
-        group: groupFilter,
-      }),
-    [allEntries, leaveTypeFilter, groupFilter],
+      ...user.picGroups.map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
+    ],
+    [user.picGroups],
   )
 
   const monthWeeks = useMemo(
@@ -111,15 +115,72 @@ export function TeamLeaveCalendarPage() {
     [weekMonday, today],
   )
 
-  const onLeaveToday = useMemo(
-    () => getEntriesOnDate(entries, today),
-    [entries, today],
+  const visibleRange = useMemo(
+    () =>
+      view === 'month' ? rangeFromCells(monthWeeks) : rangeFromCells(weekDays),
+    [view, monthWeeks, weekDays],
   )
 
-  const upcoming = useMemo(
-    () => getUpcomingApprovedLeaves(entries, today).slice(0, 5),
-    [entries, today],
+  const listParams = useMemo(() => {
+    if (!visibleRange) return null
+    return {
+      from: visibleRange.from,
+      to: visibleRange.to,
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      group_id: groupFilter === 'ALL' ? undefined : Number(groupFilter),
+    }
+  }, [visibleRange, leaveTypeFilter, groupFilter])
+
+  const todayParams = useMemo(
+    () => ({
+      from: today,
+      to: today,
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      group_id: groupFilter === 'ALL' ? undefined : Number(groupFilter),
+    }),
+    [today, leaveTypeFilter, groupFilter],
   )
+
+  const upcomingParams = useMemo(
+    () => ({
+      from: addDaysIso(today, 1),
+      to: addDaysIso(today, 61),
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      group_id: groupFilter === 'ALL' ? undefined : Number(groupFilter),
+    }),
+    [today, leaveTypeFilter, groupFilter],
+  )
+
+  const { data, error, isLoading, isValidating } = useTeamCalendar(listParams)
+  const {
+    data: todayData,
+    error: todayError,
+    isLoading: todayLoading,
+  } = useTeamCalendar(todayParams)
+  const {
+    data: upcomingData,
+    error: upcomingError,
+    isLoading: upcomingLoading,
+  } = useTeamCalendar(upcomingParams)
+
+  const entries = data ?? []
+  const entriesByDate = useMemo(
+    () => indexCalendarEntriesByDate(entries),
+    [entries],
+  )
+  const onLeaveToday = todayData ?? []
+  const upcomingLeaves = useMemo(() => {
+    if (!upcomingData) return []
+    return [...upcomingData]
+      .filter((entry) => entry.start_date > today)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+      .slice(0, 5)
+  }, [upcomingData, today])
+
+  const showSkeleton = isLoading && !data
+  const showStale = Boolean(isValidating && data && !showSkeleton)
+  const showTodaySkeleton = todayLoading && !todayData
+  const showUpcomingSkeleton = upcomingLoading && !upcomingData
 
   useEffect(() => {
     if (!monthMenuOpen) return
@@ -178,8 +239,8 @@ export function TeamLeaveCalendarPage() {
           <FilterSelect
             label="Leave type"
             value={leaveTypeFilter}
-            onChange={setLeaveTypeFilter}
-            options={leaveTypeOptions}
+            onChange={(value) => setLeaveTypeFilter(value as LeaveTypeFilter)}
+            options={LEAVE_TYPE_FILTER_OPTIONS}
           />
           <FilterSelect
             label="Group"
@@ -298,13 +359,31 @@ export function TeamLeaveCalendarPage() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+          <div
+            className={[
+              'flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4',
+              showStale ? 'opacity-80' : '',
+            ].join(' ')}
+          >
             {showSkeleton ? (
               <CalendarGridSkeleton />
+            ) : error && !data ? (
+              <EmptyState
+                variant="no-data"
+                icon={CalendarDays}
+                message="Unable to load the team calendar. Please try again."
+                className="min-h-0 flex-1"
+              />
             ) : view === 'month' ? (
-              <MonthCalendarGrid weeks={monthWeeks} entries={entries} />
+              <MonthCalendarGrid
+                weeks={monthWeeks}
+                entriesByDate={entriesByDate}
+              />
             ) : (
-              <WeekCalendarGrid days={weekDays} entries={entries} />
+              <WeekCalendarGrid
+                days={weekDays}
+                entriesByDate={entriesByDate}
+              />
             )}
           </div>
         </section>
@@ -316,8 +395,15 @@ export function TeamLeaveCalendarPage() {
               {formatLongDateLabel(today)}
             </p>
 
-            {showSkeleton ? (
+            {showTodaySkeleton ? (
               <SidePanelListSkeleton rows={3} />
+            ) : todayError && !todayData ? (
+              <EmptyState
+                variant="no-data"
+                icon={CalendarDays}
+                message="Unable to load who is on leave today."
+                className="mt-4 min-h-0 flex-1 px-2 py-3"
+              />
             ) : onLeaveToday.length === 0 ? (
               <EmptyState
                 variant="no-data"
@@ -342,9 +428,16 @@ export function TeamLeaveCalendarPage() {
           <article className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface p-4 sm:p-5">
             <h2 className="shrink-0 text-h2 text-text-black">Upcoming Leaves</h2>
 
-            {showSkeleton ? (
-              <SidePanelListSkeleton rows={4} />
-            ) : upcoming.length === 0 ? (
+            {showUpcomingSkeleton ? (
+              <SidePanelListSkeleton rows={3} />
+            ) : upcomingError && !upcomingData ? (
+              <EmptyState
+                variant="no-data"
+                icon={CalendarDays}
+                message="Unable to load upcoming leaves."
+                className="mt-4 min-h-0 flex-1 px-2 py-3"
+              />
+            ) : upcomingLeaves.length === 0 ? (
               <EmptyState
                 variant="no-data"
                 icon={CalendarDays}
@@ -353,20 +446,22 @@ export function TeamLeaveCalendarPage() {
               />
             ) : (
               <ul className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto">
-                {upcoming.map((entry) => (
+                {upcomingLeaves.map((entry) => (
                   <li
                     key={entry.id}
                     className="border-b border-border/60 pb-2 last:border-b-0 last:pb-0"
                   >
                     <SidePanelLeaveRow
                       entry={entry}
-                      periodTooltip={entry.periodLabel}
+                      periodLabel={formatLeavePeriod(
+                        entry.start_date,
+                        entry.end_date,
+                      )}
                     />
                   </li>
                 ))}
               </ul>
             )}
-
             <Link
               to="/team/leave-calendar/upcoming"
               className="mt-3 inline-flex shrink-0 items-center gap-1 text-small font-semibold text-primary transition-colors hover:text-primary/80"
@@ -408,10 +503,10 @@ function ViewToggle({
 
 function MonthCalendarGrid({
   weeks,
-  entries,
+  entriesByDate,
 }: {
   weeks: CalendarDayCell[][]
-  entries: TeamCalendarEntry[]
+  entriesByDate: Map<string, TeamCalendarEntry[]>
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
@@ -442,7 +537,7 @@ function MonthCalendarGrid({
                 key={cell.iso}
                 cell={cell}
                 entries={
-                  cell.inMonth ? getEntriesOnDate(entries, cell.iso) : []
+                  cell.inMonth ? (entriesByDate.get(cell.iso) ?? []) : []
                 }
                 isLastCol={colIndex === week.length - 1}
               />
@@ -456,10 +551,10 @@ function MonthCalendarGrid({
 
 function WeekCalendarGrid({
   days,
-  entries,
+  entriesByDate,
 }: {
   days: CalendarDayCell[]
-  entries: TeamCalendarEntry[]
+  entriesByDate: Map<string, TeamCalendarEntry[]>
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
@@ -479,7 +574,7 @@ function WeekCalendarGrid({
           <DayCell
             key={cell.iso}
             cell={cell}
-            entries={getEntriesOnDate(entries, cell.iso)}
+            entries={entriesByDate.get(cell.iso) ?? []}
             isLastCol={colIndex === days.length - 1}
           />
         ))}
@@ -529,18 +624,22 @@ function DayCell({
 }
 
 function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
-  const tone = getLeaveTypeChipClasses(entry.leaveType)
+  const typeLabel = leaveTypeLabel(entry)
+  const name = employeeName(entry)
+  const tone = getLeaveTypeChipClasses(typeLabel)
+  const halfHint = halfDayHint(entry)
 
   return (
     <div
       className={`rounded-md border-l-4 px-1.5 py-1 ${tone}`}
-      title={`${entry.employeeName} · ${entry.leaveType}`}
+      title={`${name} · ${typeLabel}${halfHint}`}
     >
       <p className="truncate text-small font-semibold leading-tight text-text-black">
-        {entry.employeeName}
+        {name}
       </p>
       <p className="truncate text-[0.65rem] leading-tight text-text-gray">
-        {entry.leaveType}
+        {typeLabel}
+        {halfHint}
       </p>
     </div>
   )
@@ -548,21 +647,28 @@ function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
 
 function SidePanelLeaveRow({
   entry,
-  periodTooltip,
+  periodLabel,
 }: {
   entry: TeamCalendarEntry
-  periodTooltip?: string
+  periodLabel?: string
 }) {
-  const initials = entry.employeeName
+  const name = employeeName(entry)
+  const typeLabel = leaveTypeLabel(entry)
+  const group = groupLabel(entry)
+  const halfHint = halfDayHint(entry)
+  const initials = name
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
+  const tooltip = periodLabel
+    ? `${name} · ${typeLabel}${halfHint} · ${periodLabel}`
+    : `${name} · ${typeLabel}${halfHint}`
 
   return (
     <div
       className="flex items-center gap-3 rounded-md px-1 py-2"
-      title={periodTooltip}
+      title={tooltip}
     >
       <span
         className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-small font-semibold text-text-gray"
@@ -572,10 +678,11 @@ function SidePanelLeaveRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-body font-semibold text-text-black">
-          {entry.employeeName}
+          {name}
         </span>
         <span className="block truncate text-small text-text-gray">
-          {entry.groupLabel} · {entry.leaveType}
+          {group} · {typeLabel}
+          {halfHint}
         </span>
       </span>
     </div>

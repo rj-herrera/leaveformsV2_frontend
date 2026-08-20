@@ -19,6 +19,11 @@ export type {
 
 export type { LeaveBalanceResource } from './balance'
 
+export type {
+  TeamCalendarEmployee,
+  TeamCalendarEntry,
+} from './calendar'
+
 export type { HolidayResource } from './holiday'
 
 export type {

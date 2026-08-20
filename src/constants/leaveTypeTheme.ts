@@ -58,3 +58,25 @@ export function getSelectableLeaveThemes(
     },
   }
 }
+
+/** Left-border chip colors for Team Leave Calendar bars. */
+export function getLeaveTypeChipClasses(leaveType: string): string {
+  switch (leaveType.trim().toLowerCase()) {
+    case 'vl':
+    case 'vacation leave':
+      return 'border-l-leave-vacation bg-leave-vacation/15'
+    case 'sl':
+    case 'sick leave':
+      return 'border-l-leave-sick bg-leave-sick/15'
+    case 'emergency leave':
+      return 'border-l-leave-emergency bg-leave-emergency/20'
+    case 'ptb leave':
+      return 'border-l-leave-ptb bg-leave-ptb/15'
+    case 'maternity leave':
+      return 'border-l-leave-maternity bg-leave-maternity/15'
+    case 'paternity leave':
+      return 'border-l-leave-paternity bg-leave-paternity/15'
+    default:
+      return 'border-l-primary bg-primary/10'
+  }
+}
