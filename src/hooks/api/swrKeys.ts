@@ -1,6 +1,7 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
 import type { ListActivitiesParams } from '../../api/activities'
 import type { ListApprovalsParams } from '../../api/approvals'
+import type { ListTeamCalendarParams } from '../../api/calendar'
 
 /** Stable SWR cache keys — use these with `mutate(key)` after writes. */
 export const swrKeys = {
@@ -54,6 +55,15 @@ export const swrKeys = {
     ] as const,
 
   pendingConversions: ['conversions', 'pending'] as const,
+
+  teamCalendar: (params: ListTeamCalendarParams) =>
+    [
+      'team-calendar',
+      params.from,
+      params.to,
+      params.code ?? null,
+      params.group_id ?? null,
+    ] as const,
 }
 
 /**

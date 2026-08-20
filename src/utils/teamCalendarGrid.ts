@@ -169,3 +169,29 @@ export function parseMonthValue(value: string): {
 export function monthValue(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`
 }
+
+/** Inclusive `from`/`to` covering every cell in a weekday grid. */
+export function rangeFromCells(
+  cells: CalendarDayCell[] | CalendarDayCell[][],
+): { from: string; to: string } | null {
+  const flat = Array.isArray(cells[0])
+    ? (cells as CalendarDayCell[][]).flat()
+    : (cells as CalendarDayCell[])
+  if (flat.length === 0) return null
+  return { from: flat[0].iso, to: flat[flat.length - 1].iso }
+}
+
+/** Index calendar bars by workday ISO so cells paint from `dates[]`. */
+export function indexCalendarEntriesByDate<T extends { dates: string[] }>(
+  entries: T[],
+): Map<string, T[]> {
+  const byDate = new Map<string, T[]>()
+  for (const entry of entries) {
+    for (const iso of entry.dates) {
+      const list = byDate.get(iso)
+      if (list) list.push(entry)
+      else byDate.set(iso, [entry])
+    }
+  }
+  return byDate
+}

@@ -20,24 +20,7 @@ export type TeamCalendarEntry = {
   status: LeaveRequestStatus
 }
 
-export function getLeaveTypeChipClasses(leaveType: string): string {
-  switch (leaveType) {
-    case 'Vacation Leave':
-      return 'border-l-leave-vacation bg-leave-vacation/15'
-    case 'Sick Leave':
-      return 'border-l-leave-sick bg-leave-sick/15'
-    case 'Emergency Leave':
-      return 'border-l-leave-emergency bg-leave-emergency/20'
-    case 'PTB Leave':
-      return 'border-l-leave-ptb bg-leave-ptb/15'
-    case 'Maternity Leave':
-      return 'border-l-leave-maternity bg-leave-maternity/15'
-    case 'Paternity Leave':
-      return 'border-l-leave-paternity bg-leave-paternity/15'
-    default:
-      return 'border-l-primary bg-primary/10'
-  }
-}
+export { getLeaveTypeChipClasses } from '../constants/leaveTypeTheme'
 
 const TEAM_CALENDAR_ENTRIES: TeamCalendarEntry[] = [
   {
