@@ -1,5 +1,5 @@
 import type { ConversionStatus, LeaveStatus } from './enums'
-import type { LeaveTypeRef } from './leave'
+import type { LeaveEmployee, LeaveTypeRef } from './leave'
 
 /** Nested leave summary on a conversion resource. */
 export type ConversionLeaveSummary = {
@@ -12,6 +12,8 @@ export type ConversionLeaveSummary = {
   end_date: string
   leave_reason: string
   leave_type: LeaveTypeRef | null
+  /** Person on leave — same nest as GET /leaves/{id} and GET /approvals. */
+  employee: LeaveEmployee | null
 }
 
 /**
