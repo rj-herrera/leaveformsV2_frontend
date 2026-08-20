@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { Menu } from 'lucide-react'
-import { useAuth } from '../auth/AuthContext'
 import { NotificationPanel } from './ui/NotificationPanel'
 import {
   getNotifications,
@@ -18,7 +17,6 @@ export function TopHeader({
   sidebarCollapsed,
   onToggleSidebar,
 }: TopHeaderProps) {
-  const { user } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notifications, setNotifications] = useState(getNotifications)
   const bellRef = useRef<HTMLButtonElement>(null)
@@ -45,43 +43,33 @@ export function TopHeader({
         <Menu className="size-5" strokeWidth={2} aria-hidden="true" />
       </button>
 
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="relative">
-          <button
-            ref={bellRef}
-            type="button"
-            className="relative rounded-md p-2 text-text-gray hover:bg-background hover:text-text-black"
-            aria-label="Notifications"
-            aria-haspopup="dialog"
-            aria-expanded={notificationsOpen}
-            onClick={() => setNotificationsOpen((prev) => !prev)}
-          >
-            <BellIcon />
-            {unreadCount > 0 ? (
-              <span
-                className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary"
-                aria-hidden="true"
-              />
-            ) : null}
-          </button>
+      <div className="relative">
+        <button
+          ref={bellRef}
+          type="button"
+          className="relative rounded-md p-2 text-text-gray hover:bg-background hover:text-text-black"
+          aria-label="Notifications"
+          aria-haspopup="dialog"
+          aria-expanded={notificationsOpen}
+          onClick={() => setNotificationsOpen((prev) => !prev)}
+        >
+          <BellIcon />
+          {unreadCount > 0 ? (
+            <span
+              className="absolute top-1.5 right-1.5 size-2 rounded-full bg-secondary"
+              aria-hidden="true"
+            />
+          ) : null}
+        </button>
 
-          <NotificationPanel
-            open={notificationsOpen}
-            onClose={() => setNotificationsOpen(false)}
-            notifications={notifications}
-            onMarkRead={handleMarkRead}
-            onMarkAllRead={handleMarkAllRead}
-            anchorRef={bellRef}
-          />
-        </div>
-        <div
-          className="h-6 w-px bg-border"
-          role="separator"
-          aria-hidden="true"
+        <NotificationPanel
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          notifications={notifications}
+          onMarkRead={handleMarkRead}
+          onMarkAllRead={handleMarkAllRead}
+          anchorRef={bellRef}
         />
-        <p className="text-[17.5px] text-text-gray">
-          Hello, <span className="font-semibold text-primary">{user.name}</span>
-        </p>
       </div>
     </header>
   )

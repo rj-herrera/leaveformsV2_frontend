@@ -6,7 +6,8 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
+import { TOAST_CONTRACTUAL_DISTRIBUTION_APPLIED } from '../../constants/toastMessages'
 import {
   TABLE_AVAILABLE_SLOT,
   TABLE_CONTENT_AREA,
@@ -43,6 +44,7 @@ function formatEffectiveDate(iso: string): string {
 
 export function ContractualDistributionReviewPage() {
   const navigate = useNavigate()
+  const toast = useToast()
   const { user } = useAuth()
   const {
     availableSlotRef,
@@ -54,7 +56,6 @@ export function ContractualDistributionReviewPage() {
   const showSkeleton = shouldShowDataSkeleton()
 
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
 
   const draft = useMemo(() => getContractualDistributionDraft(), [])
   const reviewRows = useMemo(
@@ -84,11 +85,7 @@ export function ContractualDistributionReviewPage() {
       performedBy: user.name,
     })
     setConfirmOpen(false)
-    setSuccessOpen(true)
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
+    toast.success(TOAST_CONTRACTUAL_DISTRIBUTION_APPLIED)
     navigate(leaveBalancesLandingPath())
   }
 
@@ -269,18 +266,10 @@ export function ContractualDistributionReviewPage() {
         requireReason
         confirmVariant="primary"
         title="Confirm distribution"
-        description="Apply these contractual leave credit grants? Provide remarks for the audit trail."
+        description="Apply these contractual leave credit grants?"
         reasonLabel="Remarks"
         reasonPlaceholder="Enter remarks for this distribution…"
         confirmLabel="Apply"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Distribution applied"
-        message="Leave credits have been distributed to the selected contractual employees."
-        confirmLabel="Back to Leave Balances"
       />
     </div>
   )

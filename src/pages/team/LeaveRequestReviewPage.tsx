@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
-import { TriangleAlert } from 'lucide-react'
+import { Check, TriangleAlert, X } from 'lucide-react'
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
 import { conversionMedCertPath } from '../../api/conversions'
@@ -16,7 +16,11 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import {
+  TOAST_LEAVE_REQUEST_APPROVED,
+  TOAST_LEAVE_REQUEST_REJECTED,
+} from '../../constants/toastMessages'
+import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
@@ -26,6 +30,7 @@ import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
+  formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
@@ -69,6 +74,7 @@ export function LeaveRequestReviewPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
 
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -86,10 +92,6 @@ export function LeaveRequestReviewPage() {
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
-  const [successKind, setSuccessKind] = useState<'approve' | 'reject'>(
-    'approve',
-  )
   const [submitting, setSubmitting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -250,8 +252,8 @@ export function LeaveRequestReviewPage() {
         remarks: reason.trim(),
       })
       await revalidateApprovalsCaches(detail.id, updated)
-      setSuccessKind('reject')
-      setSuccessOpen(true)
+      toast.success(TOAST_LEAVE_REQUEST_REJECTED)
+      navigate(backToApprovals)
     } catch (err) {
       setActionError(
         messageFromApiError(err, 'Unable to reject leave request. Please try again.'),
@@ -271,8 +273,8 @@ export function LeaveRequestReviewPage() {
     try {
       const updated = await approveLeave(detail.id)
       await revalidateApprovalsCaches(detail.id, updated)
-      setSuccessKind('approve')
-      setSuccessOpen(true)
+      toast.success(TOAST_LEAVE_REQUEST_APPROVED)
+      navigate(backToApprovals)
     } catch (err) {
       setActionError(
         messageFromApiError(err, 'Unable to approve leave request. Please try again.'),
@@ -282,16 +284,12 @@ export function LeaveRequestReviewPage() {
     }
   }
 
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate(backToApprovals)
-  }
-
   if (isLoading) {
     return (
       <LeaveDetailLoadingView
         backTo={backToApprovals}
         backLabel="Back to Leave Approvals"
+        infoLayout="review"
       />
     )
   }
@@ -354,7 +352,7 @@ export function LeaveRequestReviewPage() {
           <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
             <LeaveInfoRow
               label="Date Filed"
-              value={formatDateTime(detail.created_at)}
+              value={formatShortDate(detail.created_at)}
             />
             <LeaveInfoRow
               label="Leave Period"
@@ -386,12 +384,14 @@ export function LeaveRequestReviewPage() {
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
+            variant="dangerOutline"
             disabled={submitting}
             onClick={() => {
               setActionError(null)
               setRejectOpen(true)
             }}
           >
+            <X className="size-4" aria-hidden="true" />
             Reject
           </Button>
           <Button
@@ -403,6 +403,7 @@ export function LeaveRequestReviewPage() {
               setApproveOpen(true)
             }}
           >
+            <Check className="size-4" aria-hidden="true" />
             {submitting ? 'Submitting…' : 'Approve'}
           </Button>
         </div>
@@ -414,13 +415,14 @@ export function LeaveRequestReviewPage() {
         onConfirm={(reason) => {
           void handleRejectConfirm(reason)
         }}
-        title="Reject leave request"
+        title="Reject Leave Request"
         description="Please provide a reason for rejecting this leave request."
         reasonLabel="Rejection reason"
         reasonPlaceholder="Why are you rejecting this request?"
-        confirmLabel="Reject request"
-        cancelLabel="Go back"
+        confirmLabel="Reject"
+        cancelLabel="Cancel"
         confirmVariant="danger"
+        iconVariant="reject"
       />
 
       <ConfirmReasonModal
@@ -429,26 +431,13 @@ export function LeaveRequestReviewPage() {
         onConfirm={() => {
           void handleApproveConfirm()
         }}
-        title="Approve leave request"
+        title="Approve Leave Request"
         description="Are you sure you want to approve this leave request?"
         requireReason={false}
-        confirmLabel="Approve request"
-        cancelLabel="Go back"
+        confirmLabel="Approve"
+        cancelLabel="Cancel"
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title={
-          successKind === 'approve' ? 'Request approved' : 'Request rejected'
-        }
-        message={
-          successKind === 'approve'
-            ? 'The leave request has been approved successfully.'
-            : 'The leave request has been rejected successfully.'
-        }
-        confirmLabel="Back to Leave Approvals"
+        iconVariant="approve"
       />
 
       <AttachmentPreviewModal

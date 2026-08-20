@@ -53,6 +53,7 @@ export function AdminLeaveValidatePage() {
       <LeaveDetailLoadingView
         backTo={backToList}
         backLabel="Back to Leave Requests"
+        infoLayout="validate"
       />
     )
   }
@@ -168,12 +169,6 @@ export function AdminLeaveValidatePage() {
           description:
             'Are you sure you want to approve this leave conversion request?',
           confirmLabel: 'Approve',
-        }}
-        success={{
-          approveTitle: 'Approved',
-          rejectTitle: 'Rejected',
-          approveMessage: 'Leave conversion request successfully approved.',
-          rejectMessage: 'Leave conversion request has been rejected.',
         }}
       />
 

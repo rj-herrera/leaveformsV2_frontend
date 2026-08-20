@@ -1,6 +1,7 @@
 import { type LucideIcon } from 'lucide-react'
 import { LeaveTypeIconBadge } from './LeaveTypeIconBadge'
 import { PageBackLink } from './PageBackLink'
+import { INFO_FIELD_GRID_CLASS } from './tableStyles'
 
 type SkeletonProps = {
   className?: string
@@ -83,12 +84,133 @@ export function BalanceCardSkeleton({
 
 function LoadingInfoRow({ label }: { label: string }) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-      <dt className="text-body shrink-0 text-text-gray">{label}</dt>
-      <dd className="min-w-0 sm:text-right">
-        <Skeleton className="h-4 w-36 sm:ml-auto" />
+    <div className="flex flex-col gap-0.5">
+      <dt className="text-small text-text-gray">{label}</dt>
+      <dd>
+        <Skeleton className="h-4 w-28" />
       </dd>
     </div>
+  )
+}
+
+function LoadingInfoFieldGrid({
+  labels,
+  className,
+}: {
+  labels: string[]
+  className?: string
+}) {
+  return (
+    <dl className={className ?? `mt-4 ${INFO_FIELD_GRID_CLASS}`}>
+      {labels.map((label) => (
+        <LoadingInfoRow key={label} label={label} />
+      ))}
+    </dl>
+  )
+}
+
+export type LeaveDetailInfoLayout =
+  | 'employee'
+  | 'review'
+  | 'admin-view'
+  | 'validate'
+
+const EMPLOYEE_FIELD_LABELS = [
+  'Employee No.',
+  'Employee Name',
+  'Department',
+  'Group',
+] as const
+
+const LEAVE_INFO_LABELS = [
+  'Date Filed',
+  'Leave Period',
+  'Duration',
+  'Reason',
+] as const
+
+const LEAVE_SUMMARY_WITH_FILED_BY_LABELS = [
+  'Date Filed',
+  'Leave Period',
+  'Filed By',
+  'Duration',
+  'Reason',
+] as const
+
+function LoadingInfoCard({
+  title,
+  labels,
+  compact,
+}: {
+  title: string
+  labels: readonly string[]
+  compact?: boolean
+}) {
+  return (
+    <article
+      className={`flex flex-col rounded-lg border border-border bg-surface ${compact ? 'p-4' : 'p-5'}`}
+    >
+      <h2 className="text-h2 text-text-black">{title}</h2>
+      <LoadingInfoFieldGrid
+        labels={[...labels]}
+        className={`${compact ? 'mt-3' : 'mt-4'} ${INFO_FIELD_GRID_CLASS}`}
+      />
+    </article>
+  )
+}
+
+function LoadingTwoUpInfoCards({ showFiledBy }: { showFiledBy?: boolean }) {
+  return (
+    <section className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:items-stretch">
+      <LoadingInfoCard
+        title="Employee Information"
+        labels={EMPLOYEE_FIELD_LABELS}
+        compact
+      />
+      <LoadingInfoCard
+        title="Leave Request Summary"
+        labels={
+          showFiledBy ? LEAVE_SUMMARY_WITH_FILED_BY_LABELS : LEAVE_INFO_LABELS
+        }
+        compact
+      />
+    </section>
+  )
+}
+
+function LoadingValidateInfoChrome() {
+  return (
+    <>
+      <article className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
+          {EMPLOYEE_FIELD_LABELS.map((label, index) => (
+            <div key={label} className={index > 0 ? 'lg:pl-4' : undefined}>
+              <LoadingInfoRow label={label} />
+            </div>
+          ))}
+        </dl>
+      </article>
+      <LoadingInfoCard
+        title="Leave Request Summary"
+        labels={LEAVE_INFO_LABELS}
+        compact
+      />
+    </>
+  )
+}
+
+function LoadingInfoSections({ layout }: { layout: LeaveDetailInfoLayout }) {
+  if (layout === 'review') {
+    return <LoadingTwoUpInfoCards />
+  }
+  if (layout === 'admin-view') {
+    return <LoadingTwoUpInfoCards showFiledBy />
+  }
+  if (layout === 'validate') {
+    return <LoadingValidateInfoChrome />
+  }
+  return (
+    <LoadingInfoCard title="Leave Information" labels={LEAVE_INFO_LABELS} />
   )
 }
 
@@ -99,12 +221,18 @@ function LoadingInfoRow({ label }: { label: string }) {
 export function LeaveDetailLoadingView({
   backTo,
   backLabel,
+  infoLayout = 'employee',
 }: {
   backTo: string
   backLabel: string
+  infoLayout?: LeaveDetailInfoLayout
 }) {
+  const pageGap = infoLayout === 'employee' ? 'gap-4' : 'gap-3'
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+    <div
+      className={`flex h-full min-h-0 flex-col overflow-hidden ${pageGap}`}
+    >
       <PageBackLink to={backTo}>{backLabel}</PageBackLink>
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -112,15 +240,7 @@ export function LeaveDetailLoadingView({
         <Skeleton className="h-6 w-28 rounded-full" />
       </div>
 
-      <article className="shrink-0 rounded-lg border border-border bg-surface p-5">
-        <h2 className="text-h2 text-text-black">Leave Information</h2>
-        <dl className="mt-4 space-y-3">
-          <LoadingInfoRow label="Date Filed" />
-          <LoadingInfoRow label="Leave Period" />
-          <LoadingInfoRow label="Duration" />
-          <LoadingInfoRow label="Reason" />
-        </dl>
-      </article>
+      <LoadingInfoSections layout={infoLayout} />
 
       <section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface p-5">
         <h2 className="text-h2 text-text-black">Approval Details</h2>

@@ -783,10 +783,10 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
     attachmentFileName: 'Paternity_Form.pdf',
     department: 'Solution',
     approvers: [
-      approverRow(APPROVER_2, 'approved', 'Jun 3, 2026'),
+      approverRow(APPROVER_2, 'approved', 'Jun 3, 2026, 10:15 AM'),
       approverRow(APPROVER_3, 'no_action'),
       approverRow(APPROVER_4, 'no_action'),
-      approverRow(ADMIN, 'approved', 'Jun 3, 2026', null, 'admin', 'Admin validation'),
+      approverRow(ADMIN, 'approved', 'Jun 3, 2026, 2:30 PM', null, 'admin', 'Admin validation'),
     ],
   }),
   'apr-3': detailFromSummary(APPROVER_OWN_REQUESTS[2], {
@@ -845,7 +845,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(
         APPROVER_2,
         'approved',
-        'Jul 1, 2026',
+        'Jul 1, 2026, 9:20 AM',
         null,
         'approver',
         'Leave approval',
@@ -853,7 +853,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(
         APPROVER_3,
         'approved',
-        'Jul 1, 2026',
+        'Jul 1, 2026, 11:45 AM',
         null,
         'approver',
         'Leave approval',
@@ -886,7 +886,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(
         JORDAN,
         'approved',
-        'Jun 23, 2026',
+        'Jun 23, 2026, 3:10 PM',
         null,
         'approver',
         'Leave approval',
@@ -906,7 +906,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
     department: 'Project',
     attachmentFileName: 'Paternity_Form.pdf',
     approvers: [
-      approverRow(ADMIN, 'approved', 'June 3, 2026', null, 'admin'),
+      approverRow(ADMIN, 'approved', 'Jun 3, 2026, 1:00 PM', null, 'admin'),
       approverRow(JORDAN, 'no_action'),
       approverRow(APPROVER_2, 'no_action'),
     ],

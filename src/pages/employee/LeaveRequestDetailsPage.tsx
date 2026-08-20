@@ -20,7 +20,7 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
@@ -32,6 +32,7 @@ import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
+  formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 
@@ -56,6 +57,7 @@ export function LeaveRequestDetailsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
 
@@ -64,7 +66,6 @@ export function LeaveRequestDetailsPage() {
   )
 
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -179,7 +180,7 @@ export function LeaveRequestDetailsPage() {
       ? {
           originalLeaveType: conversion.from_leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
-          originalDateFiled: formatDateTime(detail.created_at),
+          originalDateFiled: formatShortDate(detail.created_at),
           originalLeavePeriod: formatLeavePeriod(
             detail.start_date,
             detail.end_date,
@@ -191,7 +192,7 @@ export function LeaveRequestDetailsPage() {
           originalReason: detail.leave_reason,
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type.name,
-          conversionRequestDate: formatDateTime(conversion.created_at),
+          conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.remarks?.trim() || '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
@@ -237,7 +238,8 @@ export function LeaveRequestDetailsPage() {
         mutate(swrKeys.balances()),
       ])
 
-      setSuccessOpen(true)
+      toast.success('Leave request cancelled successfully.')
+      navigate('/dashboard')
     } catch (err) {
       setCancelError(messageFromApiError(err))
     } finally {
@@ -245,16 +247,12 @@ export function LeaveRequestDetailsPage() {
     }
   }
 
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate('/dashboard')
-  }
-
   if (isLoading) {
     return (
       <LeaveDetailLoadingView
         backTo="/dashboard"
         backLabel="Back to Dashboard"
+        infoLayout="employee"
       />
     )
   }
@@ -321,6 +319,7 @@ export function LeaveRequestDetailsPage() {
 
           <Button
             type="button"
+            variant="dangerOutline"
             disabled={!canCancel || cancelling}
             onClick={() => {
               setCancelError(null)
@@ -334,7 +333,7 @@ export function LeaveRequestDetailsPage() {
                   : undefined
             }
           >
-            <Trash2 className="size-4" aria-hidden="true" />
+            <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
             {cancelling ? 'Cancelling…' : 'Cancel Request'}
           </Button>
         </div>
@@ -368,7 +367,7 @@ export function LeaveRequestDetailsPage() {
             <dl className={`mt-4 ${INFO_FIELD_GRID_CLASS}`}>
               <LeaveInfoRow
                 label="Date Filed"
-                value={formatDateTime(detail.created_at)}
+                value={formatShortDate(detail.created_at)}
               />
               <LeaveInfoRow
                 label="Leave Period"
@@ -406,18 +405,11 @@ export function LeaveRequestDetailsPage() {
         title="Cancel leave request"
         description="This will cancel the leave request. Please provide a cancellation reason."
         reasonLabel="Cancellation reason"
-        reasonPlaceholder="Why are you cancelling this request?"
-        confirmLabel="Cancel request"
-        cancelLabel="Keep request"
+        reasonPlaceholder="Enter cancellation reason..."
+        confirmLabel="Cancel Request"
+        cancelLabel="Keep Request"
         confirmVariant="danger"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Request cancelled"
-        message="Your leave request has been cancelled successfully."
-        confirmLabel="Back to dashboard"
+        iconVariant="cancel"
       />
 
       <AttachmentPreviewModal

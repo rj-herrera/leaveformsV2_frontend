@@ -12,7 +12,7 @@ OUT = Path(__file__).with_name("FRONTEND_LEADER_TRACKER.xlsx")
 
 # Development commitment: start 21 Jul → finish by end of August
 PROJECT_START = date(2026, 7, 21)
-TODAY = date(2026, 7, 30)  # last code sync date
+TODAY = date(2026, 8, 13)  # last code sync date
 DEV_END = date(2026, 8, 31)  # development only
 # Testing & documentation start after development (dates beyond start are TBD)
 POST_DEV_START = date(2026, 9, 1)
@@ -79,7 +79,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 21),
         date(2026, 7, 22),
         "Completed",
-        "",
+        "Routes include RequireAuth / RequireCapability gates and error preview paths.",
     ),
     # --- 2. Core App Shell ---
     (
@@ -94,17 +94,17 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         "2. Core App Shell",
         "Show different menus based on user role (Employee / Approver / Admin)",
         date(2026, 7, 21),
-        date(2026, 7, 22),
+        date(2026, 8, 13),
         "Completed",
-        "Role-based sidebar works. Dev-only role preview remains until portal cookies/session are wired.",
+        "Sidebar + RequireCapability use live roles from /api/me (approver/admin). Dev persona switcher removed as auth is wired.",
     ),
     (
         "2. Core App Shell",
         "Create reusable screen parts (buttons, forms, tables, status labels)",
         date(2026, 7, 22),
-        date(2026, 7, 30),
+        date(2026, 8, 13),
         "Completed",
-        "Built: StatusBadge, FilterSelect, Pagination, Button, Modal, ConfirmReasonModal, AttachmentPreviewModal, SuccessDialog, Skeleton, form fields, MonthYearPickerField, YearPickerField, EmployeeMultiSelect, tableStyles, admin-specific components.",
+        "Built: StatusBadge, FilterSelect, Pagination, Button, Modal, ConfirmReasonModal, AttachmentPreviewModal, SuccessDialog, Skeleton, EmptyState, TableEmptyRow, SortableHeader, ListTabButton, PageBackLink, NotificationPanel, form fields, shared leave panels, tableStyles/tableLayout, admin components.",
     ),
     (
         "2. Core App Shell",
@@ -112,56 +112,72 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 30),
         "Completed",
-        "Sidebar collapses to icon-only mode with flyout submenus, tooltips, and localStorage preference. Top header toggle wired in AppLayout.",
+        "Collapsible sidebar with flyouts, localStorage preference, and responsive/mobile behavior (useMediaQuery).",
+    ),
+    (
+        "2. Core App Shell",
+        "In-app notifications panel (header bell)",
+        date(2026, 7, 31),
+        date(2026, 7, 31),
+        "Completed",
+        "NotificationPanel in TopHeader (unread filter, mark read). Still uses mock notifications until a notifications API is available.",
+    ),
+    (
+        "2. Core App Shell",
+        "Error and system feedback pages (401, 403, 404, 409, 500, 503, offline)",
+        date(2026, 7, 31),
+        date(2026, 7, 31),
+        "Completed",
+        "Shared ErrorPage layout + dedicated routes. Catch-all invalid URLs show NotFound without redirecting away from the URL.",
     ),
     (
         "2. Core App Shell",
         "Replace temporary placeholder pages with real screens",
         date(2026, 7, 22),
-        date(2026, 7, 30),
+        date(2026, 8, 11),
         "Completed",
-        "All employee, approver/team, and admin routes now have real page components. PagePlaceholder is no longer used in routing.",
+        "All feature routes use real pages. PagePlaceholder and unused icons removed. Empty lists use EmptyState / TableEmptyRow.",
     ),
     # --- 3. Employee Features ---
     (
         "3. Employee Features",
         "Employee dashboard: leave balances and recent requests",
         date(2026, 7, 22),
-        date(2026, 7, 22),
+        date(2026, 8, 13),
         "Completed",
-        "UI complete (balances, reserved credits, filters, pagination). Uses mock data until Backend Integration.",
+        "UI complete; now loads live balances and leave list via useMyBalances / useMyLeaves (SWR).",
     ),
     (
         "3. Employee Features",
         "File leave request (dates, leave type, reason, attachment)",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "Apply Leave page is built with employee info, leave type/day type, date range, reason, attachment rules, duration preview, confirm modal, and success dialog. Uses mock submit until Backend Integration.",
+        "Apply Leave submits via createLeave API; holiday dates from live holidays hook. Multi-file attachments supported.",
     ),
     (
         "3. Employee Features",
         "Show unpaid leave (LWOP) warning when credits are not enough",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "LWOP / remaining-balance warning is shown in filing forms using mock remaining-day logic.",
+        "LWOP / remaining-balance warning shown in filing forms using live balance data where available.",
     ),
     (
         "3. Employee Features",
         "Leave request details: status, approvals needed, and activity history",
         date(2026, 7, 22),
-        date(2026, 7, 22),
+        date(2026, 8, 13),
         "Completed",
-        "UI complete: leave info, approval progress/requirements, approver list, attachments, conversion view. Mock data; activity timeline not a separate log yet.",
+        "Details page uses live useLeaveDetail + Approval Details table. Cancel calls live cancelLeave API.",
     ),
     (
         "3. Employee Features",
         "Activity log / leave history with filters",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "Activity Log page exists with filtering, sorting, pagination, and mock activity data.",
+        "Activity Log page wired to live useActivities API with filters, sorting, and pagination.",
     ),
     (
         "3. Employee Features",
@@ -169,7 +185,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 22),
         date(2026, 8, 13),
         "Completed",
-        "Edit Leave page exists with date/day-type/reason editing, weekday duration recalculation, lead-time validation, confirm modal, and rules from details page. Uses mock save until Backend Integration.",
+        "Edit Leave loads live detail and saves via updateLeave API; holiday dates from live hook.",
     ),
     (
         "3. Employee Features",
@@ -177,48 +193,48 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 22),
         date(2026, 8, 13),
         "Completed",
-        "Cancel flow is present on details page with required-reason modal and success state. Uses mock action until Backend Integration.",
+        "Cancel flow on details page with required reason; live cancelLeave + cache revalidation.",
     ),
     (
         "3. Employee Features",
         "Request vacation-to-sick leave conversion (upload medical certificate)",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "Conversion page exists with reason + medical certificate upload, eligibility rules, confirm modal, and mock submission.",
+        "Conversion page uses live leave detail and requestConversion API (multipart med cert).",
     ),
     # --- 4. Approver / Team Features ---
     (
         "4. Approver / Team Features",
         "Approver inbox: list of leave requests waiting for action",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "Leave Approvals page exists with pending/all tabs, search, filters, sorting, pagination, and mock queue data.",
+        "Leave Approvals inbox uses live usePendingApprovals / useApprovals (pending + all tabs).",
     ),
     (
         "4. Approver / Team Features",
         "Approve or reject leave (reject requires remarks)",
         date(2026, 7, 23),
-        date(2026, 7, 23),
+        date(2026, 8, 13),
         "Completed",
-        "Review page supports approve/reject actions, required rejection reason, confirmation modals, and success dialogs. Uses mock actions until Backend Integration.",
+        "Review page calls live approveLeave / rejectLeave APIs with confirmation modals.",
     ),
     (
         "4. Approver / Team Features",
-        "Show clear approval progress (who still needs to act)",
+        "Show clear approval details (who still needs to act)",
         date(2026, 7, 22),
-        date(2026, 8, 18),
+        date(2026, 8, 10),
         "Completed",
-        "Approval progress bars, requirement checklist, and approver status tables are built on employee details and approver review pages.",
+        "Changed: progress-bar UI removed. Shared Approval Details table + ApproverStatusBadge on employee/approver/admin request pages.",
     ),
     (
         "4. Approver / Team Features",
         "File leave on behalf of a team member",
         date(2026, 7, 23),
-        date(2026, 7, 23),
-        "Completed",
-        "File Leave for Member page exists with member selection, leave form, LWOP warning, attachment rules, confirm modal, and mock submit.",
+        date(2026, 8, 13),
+        "In Progress",
+        "UI complete; holidays hook wired. Full live submit / member directory API still being finished.",
     ),
     (
         "4. Approver / Team Features",
@@ -226,7 +242,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Team Leave Calendar page (month/week views, filters, leave chips) and Upcoming Approved Leaves page are both built with mock data.",
+        "Calendar + upcoming pages built. Still on mock calendar data until team-calendar API is connected.",
     ),
     # --- 5. Admin Features ---
     (
@@ -235,7 +251,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Admin Leave Requests list (pending/all tabs, filters, search, reminders) and detail/view/validate pages are all built with mock data.",
+        "Admin Leave Requests list + detail/validate UIs built. Still mock data until admin API wiring.",
     ),
     (
         "5. Admin Features",
@@ -243,7 +259,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Conversion review is handled via Admin Leave Validate page; conversion state visible on request detail/view pages.",
+        "Conversion review via Admin Leave Validate page (UI). Live admin conversion API not wired yet.",
     ),
     (
         "5. Admin Features",
@@ -251,7 +267,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Admin Leave Balances page with filters, adjust-credits modal, and full distribution flows (annual, newly-regularized, parental, contractual) are built with mock data.",
+        "Balances + distribution flows (annual, newly-regularized, parental, contractual) built with mock data.",
     ),
     (
         "5. Admin Features",
@@ -259,7 +275,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Admin Administrative Log page with search, filters, month-year picker, sorting, and pagination is built with mock data.",
+        "Admin Administrative Log UI built with mock data.",
     ),
     (
         "5. Admin Features",
@@ -267,7 +283,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 29),
         date(2026, 7, 29),
         "Completed",
-        "Report page with month/cut-off filters, employee multi-select, group filter, calendar grid, legend, print, and download. Uses mock data.",
+        "Report UI built (filters, grid, print/download). Mock data until reports API.",
     ),
     (
         "5. Admin Features",
@@ -275,7 +291,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 30),
         date(2026, 7, 30),
         "Completed",
-        "Report page with year filter, eligibility filters, sortable table, summary totals, print, and download. Uses mock data.",
+        "Report UI built. Mock data until reports API.",
     ),
     (
         "5. Admin Features",
@@ -283,7 +299,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 30),
         date(2026, 7, 30),
         "Completed",
-        "Report page with year and group filters, sortable LWOP summary table, print, and download. Uses mock data.",
+        "Report UI built. Mock data until reports API.",
     ),
     (
         "5. Admin Features",
@@ -291,65 +307,73 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         date(2026, 7, 22),
         date(2026, 7, 29),
         "Completed",
-        "Emergency, PTB, Maternity/Paternity handled in employee/team filing and in admin screens. Monthly attendance report covers all leave categories including LWOP.",
+        "Emergency, PTB, Maternity/Paternity handled across filing and admin screens.",
     ),
     # --- 6. UI Polish & Cleanup ---
     (
         "6. UI Polish & Cleanup",
         "Review and clean up global CSS (colors, fonts, spacing, typography)",
         date(2026, 7, 30),
-        date(2026, 8, 8),
+        date(2026, 8, 22),
         "In Progress",
-        "Currently in progress — checking index.css theme tokens, base styles, and consistency with Tailwind usage across screens.",
+        "STILL IN PROGRESS as of 2026-08-13 — codebase review and CSS cleanup ongoing.",
     ),
     (
         "6. UI Polish & Cleanup",
         "Check and fix app shell layout (sidebar, top header, main content area)",
         date(2026, 7, 30),
-        date(2026, 8, 8),
+        date(2026, 8, 22),
         "In Progress",
-        "Currently in progress — reviewing AppLayout, collapsible sidebar, header alignment, and page padding/overflow behavior.",
+        "STILL IN PROGRESS as of 2026-08-13 — AppLayout, sidebar, header, overflow, and content spacing under review.",
     ),
     (
         "6. UI Polish & Cleanup",
         "Standardize screen layouts (tables, filter bars, forms, and reports)",
         date(2026, 7, 30),
-        date(2026, 8, 15),
+        date(2026, 8, 22),
         "In Progress",
-        "Currently in progress — aligning filter control heights, table spacing, button placement, and responsive layout on list/form/report pages.",
+        "STILL IN PROGRESS as of 2026-08-13 — table/filter/form consistency and empty states being aligned across pages.",
     ),
-    # --- 7. Backend Integration (dates TBD) ---
+    (
+        "6. UI Polish & Cleanup",
+        "Extract shared leave UI and remove unused placeholder code",
+        date(2026, 8, 6),
+        date(2026, 8, 11),
+        "Completed",
+        "Shared leave components added; PagePlaceholder removed; EmptyState / TableEmptyRow rolled out.",
+    ),
+    # --- 7. Backend Integration ---
     (
         "7. Backend Integration (TBD)",
         "Connect frontend to backend API (base connection and shared data types)",
-        date(2026, 7, 23),
-        None,
-        "Not Started",
-        NOTE_BACKEND,
+        date(2026, 8, 11),
+        date(2026, 8, 13),
+        "Completed",
+        "Axios client (/api), ApiError + 401 handling, typed API modules, and SWR provider/hooks are in place.",
     ),
     (
         "7. Backend Integration (TBD)",
         "Use portal cookies / session to identify the user (no separate login page)",
-        date(2026, 7, 23),
-        None,
-        "Not Started",
-        NOTE_BACKEND + " Agreed with backend: cookies/session — no login screen.",
+        date(2026, 8, 11),
+        date(2026, 8, 13),
+        "In Progress",
+        "Auth bootstraps from userID cookie + GET /api/me. Dev-only Employee ID entry (/login) for local testing — production remains cookie/portal session.",
     ),
     (
         "7. Backend Integration (TBD)",
         "Connect employee leave screens to live API (file, history, cancel, edit)",
-        None,
-        None,
-        "Not Started",
-        NOTE_BACKEND,
+        date(2026, 8, 11),
+        date(2026, 8, 13),
+        "In Progress",
+        "Dashboard, activity log, file/edit/cancel/convert, and details are on live APIs. Continue hardening error handling and edge cases.",
     ),
     (
         "7. Backend Integration (TBD)",
         "Connect approver / team screens to live API (inbox, approve, reject)",
-        None,
-        None,
-        "Not Started",
-        NOTE_BACKEND,
+        date(2026, 8, 11),
+        date(2026, 8, 13),
+        "In Progress",
+        "Approvals inbox + approve/reject live. Team calendar / file-for-member still need fuller API coverage.",
     ),
     (
         "7. Backend Integration (TBD)",
@@ -357,7 +381,7 @@ TASKS: list[tuple[str, str, date | None, date | None, str, str]] = [
         None,
         None,
         "Not Started",
-        NOTE_BACKEND,
+        NOTE_BACKEND + " Admin screens still use mock data.",
     ),
     (
         "7. Backend Integration (TBD)",
@@ -464,8 +488,8 @@ PHASES = [
     (
         "Phase 5 — UI polish & cleanup (development)",
         date(2026, 7, 30),
-        date(2026, 8, 15),
-        "CSS review, layout checks, and consistent spacing across screens.",
+        date(2026, 8, 22),
+        "CSS/layout review STILL IN PROGRESS; shared leave components and empty states landed.",
     ),
     (
         "Phase 6 — Development complete (commitment)",
@@ -478,8 +502,8 @@ PHASES = [
 # Backend / post-dev rows for schedule (no fixed end)
 FLEX_PHASES = [
     (
-        "Backend integration (parallel / TBD)",
-        "Ongoing with backend partner — no fixed day count yet. Update when APIs and cookie/session are ready.",
+        "Backend integration (in progress)",
+        "Employee + key approver APIs wired (as of 2026-08-13). Admin APIs and remaining team screens still TBD.",
     ),
     (
         "Testing (after development)",
@@ -645,16 +669,17 @@ def main() -> None:
     dash.merge_cells("A2:G2")
 
     dash["A3"] = (
-        "Backend Integration is listed separately — schedule depends on the backend partner. "
-        "No separate login page (portal cookies/session). Days = weekdays only when both dates are set."
+        "Backend Integration is underway (employee + key approver screens on live API). "
+        "Production auth is portal cookies/session (dev-only employee ID entry for local testing). "
+        "Days = weekdays only when both dates are set."
     )
     dash["A3"].font = SUB_FONT
     dash.merge_cells("A3:G3")
 
     dash["A4"] = (
         f"Last aligned to codebase: {TODAY.isoformat()} — "
-        "all screens built with mock data; currently polishing CSS and layouts (section 6); "
-        "cookie/session and live API not wired yet."
+        "live API wired for auth + employee + key approver flows; admin still mock; "
+        "CODEBASE REVIEW AND CLEANUP STILL IN PROGRESS (section 6)."
     )
     dash["A4"].font = Font(name="Calibri", size=11, italic=True, color="595959")
     dash.merge_cells("A4:G4")
@@ -838,13 +863,13 @@ def main() -> None:
 
     milestones = [
         ("App shell & menus ready (dev kickoff)", date(2026, 7, 22), "2. Core App Shell"),
-        ("Reusable UI + employee screens underway", date(2026, 7, 31), "2–3"),
-        ("Employee filing & history usable (UI)", date(2026, 8, 13), "3. Employee Features"),
-        ("Approver approve/reject usable (UI)", date(2026, 8, 18), "4. Approver / Team"),
         ("Admin screens usable (UI) — done early", date(2026, 7, 30), "5. Admin Features"),
-        ("Admin screens target (original plan)", date(2026, 8, 28), "5. Admin Features"),
         ("UI polish & layout cleanup underway", date(2026, 7, 30), "6. UI Polish & Cleanup"),
-        ("Development complete (August commitment)", date(2026, 8, 31), "Sections 1–6"),
+        ("Notifications + error pages", date(2026, 7, 31), "2. Core App Shell"),
+        ("Employee + approver live API wiring started", date(2026, 8, 11), "7. Backend Integration"),
+        ("Codebase review & cleanup still in progress", date(2026, 8, 13), "6. UI Polish & Cleanup"),
+        ("Live auth + employee/approver APIs in progress", date(2026, 8, 13), "7. Backend Integration"),
+        ("Development complete (August commitment)", date(2026, 8, 31), "Sections 1–7"),
     ]
     for i, (name, target, related) in enumerate(milestones):
         row = m_row + 2 + i
@@ -877,10 +902,10 @@ def main() -> None:
     weeks = [
         (date(2026, 7, 24), "Kickoff: layout/menus; align cookie/session & API approach with backend"),
         (date(2026, 7, 31), "Reusable UI done; employee + approver + admin screens largely complete (ahead of plan)"),
-        (date(2026, 8, 7), "CSS and layout cleanup in progress across screens"),
-        (date(2026, 8, 14), "Layout polish wrapping up; ready for backend hookup when APIs are available"),
-        (date(2026, 8, 21), "Approver UI in place; admin screens underway"),
-        (date(2026, 8, 28), "Admin UI in progress / wrapping up"),
+        (date(2026, 8, 7), "CSS/layout cleanup in progress; shared leave detail layout improvements"),
+        (date(2026, 8, 14), "Codebase review still in progress; live auth + employee/approver APIs wired"),
+        (date(2026, 8, 21), "Continue UI polish + finish remaining API wiring (team calendar, admin)"),
+        (date(2026, 8, 28), "Wrap remaining polish and admin API work before Aug commitment"),
         (date(2026, 8, 31), "Target: frontend DEVELOPMENT complete (not testing/docs)"),
     ]
     for i, (friday, expect) in enumerate(weeks):
@@ -898,7 +923,7 @@ def main() -> None:
         "August commitment",
         "Only frontend DEVELOPMENT is committed to finish by end of August.",
         "Testing and documentation come AFTER development (start ~1 Sep; end dates TBD).",
-        "Backend Integration is listed with TBD dates — teams work separately for now.",
+        "Backend Integration is underway (employee + key approver). Admin APIs and remaining team screens still TBD.",
         "",
         "For leaders / managers",
         "1. Dashboard — overall % and section progress (also see Development progress for sections 1–6).",

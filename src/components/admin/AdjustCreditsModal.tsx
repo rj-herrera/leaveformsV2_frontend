@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../auth/AuthContext'
-import { ConfirmReasonModal } from '../ui/ConfirmReasonModal'
+import { toastLeaveCreditsAdjusted } from '../../constants/toastMessages'
 import { Modal } from '../ui/Modal'
-import { SuccessDialog } from '../ui/SuccessDialog'
+import { useToast } from '../ui/ToastProvider'
 import { SelectField } from '../ui/form/SelectField'
 import { TextField } from '../ui/form/TextField'
 import { fieldLabelClassName, fieldShellClassName } from '../ui/form/fieldStyles'
@@ -72,6 +72,7 @@ export function AdjustCreditsModal({
   onSuccess,
 }: AdjustCreditsModalProps) {
   const { user } = useAuth()
+  const toast = useToast()
 
   const [leaveTypeKey, setLeaveTypeKey] = useState<LeaveBalanceKey>('vl')
   const [direction, setDirection] = useState<AdjustmentDirection>('add')
@@ -81,8 +82,6 @@ export function AdjustCreditsModal({
     useState<AdjustmentReasonCategory>('distribution_error')
   const [reason, setReason] = useState('')
   const [touched, setTouched] = useState(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
 
   useEffect(() => {
     if (!open || !employee) return
@@ -93,8 +92,6 @@ export function AdjustCreditsModal({
     setReasonCategory('distribution_error')
     setReason('')
     setTouched(false)
-    setConfirmOpen(false)
-    setSuccessOpen(false)
   }, [open, employee?.id])
 
   const parsedCredits = parseCredits(credits)
@@ -143,51 +140,9 @@ export function AdjustCreditsModal({
     (!isOtherReason || reasonTrimmed.length >= 10) &&
     !deductWouldGoNegative
 
-  const confirmDescription = useMemo(() => {
-    if (!employee || parsedCredits == null) return ''
-    const short = LEAVE_BALANCE_SHORT[leaveTypeKey]
-    const signed =
-      direction === 'add'
-        ? `+${formatBalanceValue(parsedCredits)}`
-        : `-${formatBalanceValue(parsedCredits)}`
-    const categoryLabel =
-      ADJUSTMENT_REASON_OPTIONS.find((o) => o.value === reasonCategory)
-        ?.label ?? reasonCategory
-    return [
-      `Apply ${signed} ${short} for ${employee.name} (${employee.employeeNumber})?`,
-      `Effective ${effectiveDate}. Balance: ${formatBalanceValue(before)} → ${formatBalanceValue(after)}.`,
-      `Category: ${categoryLabel}.`,
-      isOtherReason ? `Reason: ${reasonTrimmed}.` : null,
-    ]
-      .filter(Boolean)
-      .join(' ')
-  }, [
-    employee,
-    parsedCredits,
-    leaveTypeKey,
-    direction,
-    effectiveDate,
-    before,
-    after,
-    reasonCategory,
-    isOtherReason,
-    reasonTrimmed,
-  ])
-
-  function handleClose() {
-    setConfirmOpen(false)
-    setSuccessOpen(false)
-    onClose()
-  }
-
   function handleContinue() {
     setTouched(true)
-    if (!canContinue) return
-    setConfirmOpen(true)
-  }
-
-  function handleConfirmApply() {
-    if (!employee || parsedCredits == null) return
+    if (!canContinue || !employee || parsedCredits == null) return
     const result = applyBalanceAdjustment(employee.id, {
       leaveTypeKey,
       direction,
@@ -198,14 +153,12 @@ export function AdjustCreditsModal({
       performedBy: user.name,
     })
     if (!result) return
-    setConfirmOpen(false)
-    setSuccessOpen(true)
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
+    const employeeName = employee.name
     onSuccess()
     onClose()
+    queueMicrotask(() => {
+      toast.success(toastLeaveCreditsAdjusted(employeeName))
+    })
   }
 
   if (!employee) return null
@@ -219,17 +172,16 @@ export function AdjustCreditsModal({
         : `-${formatBalanceValue(parsedCredits)}`
 
   return (
-    <>
-      <Modal
-        open={open && !successOpen}
-        onClose={handleClose}
+    <Modal
+      open={open}
+      onClose={onClose}
         title="Adjust leave credits"
         maxWidthClass="max-w-2xl"
         footer={
           <>
             <button
               type="button"
-              onClick={handleClose}
+              onClick={onClose}
               className="rounded-md border border-border bg-surface px-4 py-2.5 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
             >
               Cancel
@@ -240,11 +192,16 @@ export function AdjustCreditsModal({
               disabled={!canContinue}
               className="rounded-md bg-primary px-4 py-2.5 text-body font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Continue
+              Confirm
             </button>
           </>
         }
       >
+        <p className="text-small text-text-gray uppercase mb-3">
+          For corrections and exceptions only. Use Distribute Leave Credits
+          for routine grants.
+        </p>
+
         <div className="flex flex-col gap-5">
           <section className="rounded-lg border border-border bg-surface-muted px-4 py-3">
             <p className="text-body font-semibold text-text-black">
@@ -385,33 +342,7 @@ export function AdjustCreditsModal({
               />
             </label>
           ) : null}
-
-          <p className="text-small text-text-gray">
-            For corrections and exceptions only. Use Distribute Leave Credits
-            for routine grants.
-          </p>
         </div>
-      </Modal>
-
-      <ConfirmReasonModal
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmApply}
-        requireReason={false}
-        confirmVariant="primary"
-        title="Confirm adjustment"
-        description={confirmDescription}
-        confirmLabel="Apply adjustment"
-        cancelLabel="Go back"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Adjustment applied"
-        message={`Leave credits for ${employee.name} have been updated.`}
-        confirmLabel="OK"
-      />
-    </>
+    </Modal>
   )
 }

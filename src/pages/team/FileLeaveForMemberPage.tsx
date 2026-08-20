@@ -12,7 +12,7 @@ import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useGroupMembers } from '../../hooks/api/useGroupMembers'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
@@ -70,6 +70,7 @@ export function FileLeaveForMemberPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const [groupId, setGroupId] = useState('')
@@ -81,7 +82,6 @@ export function FileLeaveForMemberPage() {
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
     clearLeaveFormApiErrors,
@@ -293,17 +293,13 @@ export function FileLeaveForMemberPage() {
         mutate(isApprovalsListKey, undefined, { revalidate: true }),
       ])
 
-      setSuccessOpen(true)
+      toast.success('Leave request filed for member successfully.')
+      navigate('/team/leave-approvals')
     } catch (error) {
       setApiErrors(parseLeaveFormApiError(error))
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate('/team/leave-approvals')
   }
 
   function handleStartDateChange(value: string) {
@@ -578,19 +574,20 @@ export function FileLeaveForMemberPage() {
           void handleConfirmSubmit()
         }}
         title="Confirm leave request"
-        description={`Submit this leave request on behalf of ${selectedMember?.name ?? 'the selected employee'}?`}
+        description={
+          <>
+            Submit this leave request on behalf of{' '}
+            <span className="font-semibold text-primary">
+              {selectedMember?.name ?? 'the selected employee'}
+            </span>
+            ?
+          </>
+        }
         requireReason={false}
-        confirmLabel="Submit request"
-        cancelLabel="Go back"
+        confirmLabel="Submit"
+        cancelLabel="Cancel"
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Request submitted"
-        message="The leave request has been filed on behalf of the employee successfully."
-        confirmLabel="Back to Leave Approvals"
+        iconVariant="submit"
       />
     </div>
   )

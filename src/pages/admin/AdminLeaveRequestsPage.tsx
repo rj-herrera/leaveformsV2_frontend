@@ -10,7 +10,7 @@ import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import { SortableHeader } from '../../components/ui/SortableHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import {
   TABLE_AVAILABLE_SLOT,
   TABLE_CONTENT_AREA,
@@ -26,6 +26,7 @@ import {
   type LeaveRequestStatus,
   type StatusFilter,
 } from '../../constants/leaveStatus'
+import { TOAST_REMINDER_SENT_TO_ALL } from '../../constants/toastMessages'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import { shouldShowDataSkeleton } from '../../mocks/config'
@@ -61,6 +62,7 @@ const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
 
 export function AdminLeaveRequestsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const toast = useToast()
   const {
     availableSlotRef,
     sectionHeaderRef,
@@ -83,7 +85,6 @@ export function AdminLeaveRequestsPage() {
     () => getLastApproverReminderSentAt(),
   )
   const [reminderConfirmOpen, setReminderConfirmOpen] = useState(false)
-  const [reminderSuccessOpen, setReminderSuccessOpen] = useState(false)
 
   const reminderSentToday = wasApproverReminderSentToday(lastReminderSent)
 
@@ -215,7 +216,7 @@ export function AdminLeaveRequestsPage() {
     setLastApproverReminderSentAt(nowIso)
     setLastReminderSent(nowIso)
     setReminderConfirmOpen(false)
-    setReminderSuccessOpen(true)
+    toast.success(TOAST_REMINDER_SENT_TO_ALL)
   }
 
   const showReminderBanner =
@@ -263,7 +264,7 @@ export function AdminLeaveRequestsPage() {
             variant="primary"
             disabled={reminderSentToday || showSkeleton}
             onClick={() => setReminderConfirmOpen(true)}
-            className="shrink-0 bg-status-pending-conversion hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
+            className="shrink-0 bg-status-pending-conversion enabled:hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >
             <Send className="size-4" aria-hidden="true" />
             Send Reminder to All
@@ -468,14 +469,8 @@ export function AdminLeaveRequestsPage() {
         description="Send a reminder to approvers who have leave requests awaiting their action?"
         confirmLabel="Send Reminder"
         cancelLabel="Cancel"
-        confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={reminderSuccessOpen}
-        onClose={() => setReminderSuccessOpen(false)}
-        title="Reminder sent"
-        message="Email reminders have been queued for approvers with pending leave requests."
+        confirmVariant="reminder"
+        iconVariant="reminder"
       />
     </div>
   )

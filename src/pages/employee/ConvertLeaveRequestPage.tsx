@@ -8,16 +8,17 @@ import type { LeaveDetail } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
-import { FileField } from '../../components/ui/form/FileField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { DropzoneFileField } from '../../components/ui/form/DropzoneFileField'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 
-/** API: pdf / jpg / jpeg / png, max 5120 KB. */
+/** API: pdf / jpg / jpeg / png. */
 const MED_CERT_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
-const MED_CERT_MAX_BYTES = 5120 * 1024
+// File size validation disabled for now; re-enable if API enforces a max again:
+// const MED_CERT_MAX_BYTES = 5120 * 1024
 
 function messageFromApiError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -45,13 +46,12 @@ function canRequestConversion(
 
 type ConvertLeaveFormProps = {
   detail: LeaveDetail
-  /** Called after a successful API submit (parent owns success dialog). */
-  onSubmitted: () => void
 }
 
-function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
+function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
   const navigate = useNavigate()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const detailsPath = `/my-leave/requests/${detail.id}`
 
   const [attachments, setAttachments] = useState<File[]>([])
@@ -63,12 +63,8 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
 
   const medCert = attachments[0] ?? null
   const attachmentMissing = medCert == null
-  const fileTooLarge = medCert != null && medCert.size > MED_CERT_MAX_BYTES
   const canSubmit =
-    !attachmentMissing &&
-    !fileTooLarge &&
-    !attachmentUploading &&
-    !submitting
+    !attachmentMissing && !attachmentUploading && !submitting
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -88,15 +84,14 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
     try {
       await requestConversion(detail.id, medCert)
 
-      // Signal success first so parent keeps success UI even after detail
-      // revalidates to pending_conversion (convertible becomes false).
-      onSubmitted()
-
       await Promise.all([
         mutate(swrKeys.leave(detail.id)),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
       ])
+
+      toast.success('Leave conversion submitted successfully.')
+      navigate('/dashboard')
     } catch (error) {
       setSubmitError(messageFromApiError(error))
     } finally {
@@ -122,33 +117,29 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
           Convert to Sick Leave
         </h1>
 
-        <section className="shrink-0 rounded-lg border border-border bg-surface p-4 sm:p-5">
-          <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
-          <p className="mt-1 text-small text-text-gray">
-            Upload a medical certificate. Admin validation is required before
-            the leave becomes Sick Leave.
-          </p>
-          <div className="mt-4 grid gap-4">
-            <FileField
-              label="Medical certificate"
+        <section className="flex min-h-0 flex-[0_1_auto] flex-col overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
+            <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5">
+            <DropzoneFileField
+              label="Supporting Files"
               files={attachments}
               onChange={setAttachments}
               onUploadingChange={setAttachmentUploading}
               accept={MED_CERT_ACCEPT}
               required
               multiple={false}
-              hint="Required. PDF, JPG, or PNG — max 5 MB."
+              className="min-h-0"
               error={
                 triedSubmit && attachmentMissing
                   ? 'A medical certificate is required to submit a conversion request.'
-                  : triedSubmit && fileTooLarge
-                    ? 'File must be 5 MB or smaller.'
-                    : null
+                  : null
               }
             />
             {submitError ? (
               <div
-                className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+                className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
                 role="alert"
               >
                 <TriangleAlert
@@ -182,9 +173,7 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
                   ? 'Wait for the attachment upload to finish.'
                   : attachmentMissing
                     ? 'Upload a medical certificate before confirming.'
-                    : fileTooLarge
-                      ? 'File must be 5 MB or smaller.'
-                      : undefined
+                    : undefined
             }
           >
             {submitting ? 'Submitting…' : 'Confirm'}
@@ -199,11 +188,12 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
           void handleConfirmConversion()
         }}
         title="Confirm leave conversion"
-        description="Are you sure you want to convert this confirmed Vacation Leave to Sick Leave? Admin validation will be required."
+        description="Are you sure you want to convert this confirmed leave request?"
         requireReason={false}
         confirmLabel="Submit conversion"
-        cancelLabel="Go back"
+        cancelLabel="Cancel"
         confirmVariant="primary"
+        iconVariant="conversion"
       />
     </div>
   )
@@ -211,7 +201,6 @@ function ConvertLeaveForm({ detail, onSubmitted }: ConvertLeaveFormProps) {
 
 export function ConvertLeaveRequestPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
-  const navigate = useNavigate()
   const { user } = useAuth()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -219,8 +208,6 @@ export function ConvertLeaveRequestPage() {
   const { data: detail, error, isLoading } = useLeaveDetail(
     validId ? leaveId : null,
   )
-
-  const [successOpen, setSuccessOpen] = useState(false)
 
   const convertible = useMemo(() => {
     if (!detail) return false
@@ -235,11 +222,6 @@ export function ConvertLeaveRequestPage() {
     !validId ||
     (error instanceof ApiError && error.status === 404) ||
     (!isLoading && !detail && error != null)
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate(detailsPath)
-  }
 
   if (isLoading) {
     return (
@@ -279,21 +261,6 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
-  // Success owns the screen after submit — even when leave is no longer convertible.
-  if (successOpen) {
-    return (
-      <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
-        <SuccessDialog
-          open={successOpen}
-          onClose={handleSuccessClose}
-          title="Conversion submitted"
-          message="Your leave conversion request has been submitted successfully and is awaiting Admin validation."
-          confirmLabel="Back to request"
-        />
-      </div>
-    )
-  }
-
   if (!convertible) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -315,10 +282,5 @@ export function ConvertLeaveRequestPage() {
     )
   }
 
-  return (
-    <ConvertLeaveForm
-      detail={detail}
-      onSubmitted={() => setSuccessOpen(true)}
-    />
-  )
+  return <ConvertLeaveForm detail={detail} />
 }

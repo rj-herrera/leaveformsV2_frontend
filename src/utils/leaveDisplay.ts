@@ -24,8 +24,10 @@ export function mapApiLeaveStatusToUi(
   }
 }
 
-export function formatShortDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T00:00:00`)
+export function formatShortDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return '—'
+  const datePart = isoDate.slice(0, 10)
+  const date = new Date(`${datePart}T00:00:00`)
   if (Number.isNaN(date.getTime())) return isoDate
   return date.toLocaleDateString('en-US', {
     month: 'short',
@@ -34,11 +36,34 @@ export function formatShortDate(isoDate: string): string {
   })
 }
 
-/** Formats an ISO datetime (or date) for display. */
+const PHT_TIME_ZONE = 'Asia/Manila'
+
+/** API datetimes are PHT wall-clock; ignore a trailing Z / offset. */
+function parseAsPht(iso: string): Date {
+  const trimmed = iso.trim()
+  const withoutOffset = trimmed
+    .replace(/Z$/i, '')
+    .replace(/[+-]\d{2}:?\d{2}$/, '')
+  const normalized = withoutOffset.includes('T')
+    ? withoutOffset
+    : withoutOffset.replace(' ', 'T')
+  return new Date(`${normalized}+08:00`)
+}
+
+/** Formats an ISO datetime for display (date + time). */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const datePart = iso.slice(0, 10)
-  return formatShortDate(datePart)
+  const date = parseAsPht(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString('en-US', {
+    timeZone: PHT_TIME_ZONE,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
 export function formatLeavePeriod(startDate: string, endDate: string): string {

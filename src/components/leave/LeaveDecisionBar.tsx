@@ -1,8 +1,12 @@
 import { Check, X } from 'lucide-react'
+import {
+  TOAST_LEAVE_CONVERSION_APPROVED,
+  TOAST_LEAVE_CONVERSION_REJECTED,
+} from '../../constants/toastMessages'
+import { useLeaveDecisionModals } from '../../hooks/useLeaveDecisionModals'
 import { Button } from '../ui/Button'
 import { ConfirmReasonModal } from '../ui/ConfirmReasonModal'
-import { SuccessDialog } from '../ui/SuccessDialog'
-import { useLeaveDecisionModals } from '../../hooks/useLeaveDecisionModals'
+import { useToast } from '../ui/ToastProvider'
 
 type RejectModalCopy = {
   title: string
@@ -20,19 +24,12 @@ type ApproveModalCopy = {
   cancelLabel?: string
 }
 
-type SuccessCopy = {
-  approveTitle: string
-  rejectTitle: string
-  approveMessage: string
-  rejectMessage: string
-  confirmLabel?: string
-}
-
 export function LeaveDecisionBar({
   visible,
   reject,
   approve,
-  success,
+  approveSuccessMessage = TOAST_LEAVE_CONVERSION_APPROVED,
+  rejectSuccessMessage = TOAST_LEAVE_CONVERSION_REJECTED,
   onApprove,
   onReject,
   onSuccessClose,
@@ -40,11 +37,14 @@ export function LeaveDecisionBar({
   visible: boolean
   reject: RejectModalCopy
   approve: ApproveModalCopy
-  success: SuccessCopy
+  /** Defaults to VL → SL conversion validation copy. */
+  approveSuccessMessage?: string
+  rejectSuccessMessage?: string
   onApprove?: () => void
   onReject?: (reason: string) => void
   onSuccessClose: () => void
 }) {
+  const toast = useToast()
   const decision = useLeaveDecisionModals({
     onApprove,
     onReject,
@@ -55,8 +55,8 @@ export function LeaveDecisionBar({
     <>
       {visible ? (
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <Button type="button" onClick={decision.openReject}>
-            <X className="size-4 text-status-rejected" aria-hidden="true" />
+          <Button type="button" variant="dangerOutline" onClick={decision.openReject}>
+            <X className="size-4" aria-hidden="true" />
             Reject
           </Button>
           <Button
@@ -73,7 +73,10 @@ export function LeaveDecisionBar({
       <ConfirmReasonModal
         open={decision.rejectOpen}
         onClose={decision.closeReject}
-        onConfirm={decision.handleRejectConfirm}
+        onConfirm={(reason) => {
+          toast.success(rejectSuccessMessage)
+          decision.handleRejectConfirm(reason)
+        }}
         title={reject.title}
         description={reject.description}
         reasonLabel={reject.reasonLabel}
@@ -81,34 +84,23 @@ export function LeaveDecisionBar({
         confirmLabel={reject.confirmLabel}
         cancelLabel={reject.cancelLabel}
         confirmVariant="danger"
+        iconVariant="reject"
       />
 
       <ConfirmReasonModal
         open={decision.approveOpen}
         onClose={decision.closeApprove}
-        onConfirm={decision.handleApproveConfirm}
+        onConfirm={() => {
+          toast.success(approveSuccessMessage)
+          decision.handleApproveConfirm('')
+        }}
         requireReason={false}
         title={approve.title}
         description={approve.description}
         confirmLabel={approve.confirmLabel}
         cancelLabel={approve.cancelLabel}
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={decision.successOpen}
-        onClose={decision.handleSuccessClose}
-        title={
-          decision.successKind === 'approve'
-            ? success.approveTitle
-            : success.rejectTitle
-        }
-        message={
-          decision.successKind === 'approve'
-            ? success.approveMessage
-            : success.rejectMessage
-        }
-        confirmLabel={success.confirmLabel}
+        iconVariant="approve"
       />
     </>
   )

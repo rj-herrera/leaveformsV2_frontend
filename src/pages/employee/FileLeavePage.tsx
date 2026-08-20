@@ -11,7 +11,7 @@ import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
-import { SuccessDialog } from '../../components/ui/SuccessDialog'
+import { useToast } from '../../components/ui/ToastProvider'
 import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { swrKeys, isLeaveListKey } from '../../hooks/api/swrKeys'
@@ -37,7 +37,6 @@ const DAY_TYPE_OPTIONS = [
 
 /** Only VL is supported by POST /leaves for now. */
 const LEAVE_TYPE_OPTIONS = [
-  { value: '', label: 'Select Leave Type' },
   { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
 ]
 
@@ -53,6 +52,7 @@ export function FileLeavePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
+  const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const [leaveType, setLeaveType] = useState(EMPTY_FORM.leaveType)
@@ -62,7 +62,6 @@ export function FileLeavePage() {
   const [reason, setReason] = useState(EMPTY_FORM.reason)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [successOpen, setSuccessOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
     clearLeaveFormApiErrors,
@@ -178,17 +177,13 @@ export function FileLeavePage() {
         mutate(swrKeys.balances()),
       ])
 
-      setSuccessOpen(true)
+      toast.success('Leave request submitted successfully.')
+      navigate('/dashboard')
     } catch (error) {
       setApiErrors(parseLeaveFormApiError(error))
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function handleSuccessClose() {
-    setSuccessOpen(false)
-    navigate('/dashboard')
   }
 
   function handleStartDateChange(value: string) {
@@ -244,6 +239,7 @@ export function FileLeavePage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
+                placeholder="Select Leave Type"
                 options={LEAVE_TYPE_OPTIONS}
                 error={
                   triedSubmit && leaveTypeMissing
@@ -385,7 +381,7 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || submitting}
+            disabled={submitting}
             title={submitting ? 'Submitting…' : undefined}
           >
             {submitting ? 'Submitting…' : 'Submit Request'}
@@ -402,17 +398,10 @@ export function FileLeavePage() {
         title="Confirm leave request"
         description="Are you sure you want to submit this leave request?"
         requireReason={false}
-        confirmLabel="Submit request"
-        cancelLabel="Go back"
+        confirmLabel="Submit"
+        cancelLabel="Cancel"
         confirmVariant="primary"
-      />
-
-      <SuccessDialog
-        open={successOpen}
-        onClose={handleSuccessClose}
-        title="Request submitted"
-        message="Your leave request has been submitted successfully."
-        confirmLabel="Back to dashboard"
+        iconVariant="submit"
       />
     </div>
   )
