@@ -18,9 +18,11 @@ import {
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import {
   TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_BODY_CELL_CLASS,
   TABLE_SEARCH_INPUT_CLASS,
-  TABLE_ROW_HEIGHT,
-  TABLE_ROW_HEIGHT_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+  APPROVALS_TABLE_ROW_MIN_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
 import {
   SICK_LEAVE_THEME,
@@ -84,7 +86,7 @@ export function UpcomingApprovedLeavesPage() {
     paginationRef,
     tableAreaRef,
     pageSize,
-  } = useContentSizedTableRefs()
+  } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
   const today = todayISO()
 
   const [search, setSearch] = useState('')
@@ -209,6 +211,14 @@ export function UpcomingApprovedLeavesPage() {
 
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
             <table className="w-full min-w-[40rem] table-fixed text-left">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[12%]" />
+                <col className="w-[22%]" />
+                <col className="w-[18%]" />
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <thead>
                 <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
@@ -233,9 +243,13 @@ export function UpcomingApprovedLeavesPage() {
               </thead>
               <tbody>
                 {showSkeleton ? (
-                  <TableBodySkeleton rows={pageSize} cols={6} />
+                  <TableBodySkeleton
+                    rows={pageSize}
+                    cols={6}
+                    rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                  />
                 ) : error && !data ? (
-                  <tr className={TABLE_ROW_HEIGHT_CLASS}>
+                  <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                     <td
                       colSpan={6}
                       className="px-5 text-center text-body text-status-rejected"
@@ -247,7 +261,7 @@ export function UpcomingApprovedLeavesPage() {
                   <TableEmptyRow
                     colSpan={6}
                     pageSize={pageSize}
-                    rowHeight={TABLE_ROW_HEIGHT}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant={hasActiveFilters ? 'no-results' : 'no-data'}
                     action={
                       hasActiveFilters ? (
@@ -270,24 +284,24 @@ export function UpcomingApprovedLeavesPage() {
                           navigate(`/team/leave-requests/${entry.id}`)
                         }
                       }}
-                      className={`cursor-pointer ${TABLE_BODY_ROW_BORDER_CLASS} transition-colors hover:bg-surface-muted ${TABLE_ROW_HEIGHT_CLASS}`}
+                      className={`cursor-pointer ${TABLE_BODY_ROW_BORDER_CLASS} transition-colors hover:bg-surface-muted ${APPROVALS_TABLE_ROW_MIN_HEIGHT_CLASS}`}
                     >
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {formatLeavePeriod(entry.start_date, entry.end_date)}
                       </td>
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {employeeNumber(entry)}
                       </td>
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {employeeName(entry)}
                       </td>
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {leaveTypeLabel(entry)}
                       </td>
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {calendarEntryDuration(entry)}
                       </td>
-                      <td className="px-5 text-body text-text-black">
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-body text-text-black`}>
                         {groupLabel(entry)}
                       </td>
                     </tr>

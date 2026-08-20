@@ -12,17 +12,9 @@ const YOU_BADGE_CLASS: Record<YouBadgeVariant, string> = {
     'rounded bg-surface-muted px-1.5 py-0.5 text-header tracking-[0.08em] text-text-gray uppercase',
 }
 
-function purposeLabel(approver: ApproverRow): string {
-  return (
-    approver.purpose ??
-    (approver.role === 'admin' ? 'Admin validation' : 'Leave approval')
-  )
-}
-
 export function ApprovalDetailsTable({
   approvers,
   decisionSettled,
-  showPurpose = false,
   currentUserId,
   youBadgeVariant = 'muted',
   canRemind,
@@ -31,7 +23,6 @@ export function ApprovalDetailsTable({
 }: {
   approvers: ApproverRow[]
   decisionSettled: boolean
-  showPurpose?: boolean
   currentUserId?: string
   youBadgeVariant?: YouBadgeVariant
   canRemind?: (approver: ApproverRow) => boolean
@@ -39,7 +30,7 @@ export function ApprovalDetailsTable({
   headerClassName?: string
 }) {
   const showReminder = typeof onRemind === 'function'
-  const minWidthClass = showReminder ? 'min-w-[720px]' : 'min-w-[640px]'
+  const minWidthClass = showReminder ? 'min-w-[560px]' : 'min-w-[480px]'
 
   return (
     <article className="flex min-h-0 flex-[0_1_auto] flex-col overflow-hidden rounded-lg border border-border bg-surface">
@@ -53,11 +44,6 @@ export function ApprovalDetailsTable({
               <th className="px-5 py-3 font-bold uppercase tracking-wide">
                 Approver
               </th>
-              {showPurpose ? (
-                <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                  Purpose
-                </th>
-              ) : null}
               <th className="px-5 py-3 font-bold uppercase tracking-wide">
                 Status
               </th>
@@ -80,7 +66,7 @@ export function ApprovalDetailsTable({
                 currentUserId !== undefined && approver.id === currentUserId
               return (
                 <tr
-                  key={`${approver.id}-${approver.purpose ?? 'default'}`}
+                  key={approver.id}
                   className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black`}
                 >
                   <td className="px-5 py-3.5">
@@ -97,11 +83,6 @@ export function ApprovalDetailsTable({
                       approver.name
                     )}
                   </td>
-                  {showPurpose ? (
-                    <td className="px-5 py-3.5 text-text-gray">
-                      {purposeLabel(approver)}
-                    </td>
-                  ) : null}
                   <td className="px-5 py-3.5">
                     <ApproverStatusBadge
                       status={approver.status}

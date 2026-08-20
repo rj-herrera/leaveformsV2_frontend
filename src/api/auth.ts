@@ -12,6 +12,12 @@ export type MeGroupRef = {
   name: string | null
 }
 
+export type MeDesignationRef = {
+  id: number
+  acronym: string | null
+  name: string | null
+}
+
 export type MeRole = {
   approval_level: number | null
   is_president: boolean
@@ -30,6 +36,7 @@ export type MeResponse = {
   group: MeGroupRef | null
   date_hired: string | null
   role: MeRole
+  designation: MeDesignationRef | null
 }
 
 /** Local-only: resolve emp_id → portal userID hash (frontend sets the cookie). */

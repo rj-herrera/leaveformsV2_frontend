@@ -8,5 +8,4 @@ export type ApproverRow = {
   actionDate: string | null
   remarks: string | null
   role: 'approver' | 'admin'
-  purpose?: string
 }

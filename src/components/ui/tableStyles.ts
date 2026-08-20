@@ -37,3 +37,9 @@ export const APPROVALS_TABLE_ROW_HEIGHT = 56
 
 /** CSS class matching `APPROVALS_TABLE_ROW_HEIGHT`. */
 export const APPROVALS_TABLE_ROW_HEIGHT_CLASS = 'h-[56px]'
+
+/** Minimum approvals row height; grows when cell content wraps to multiple lines. */
+export const APPROVALS_TABLE_ROW_MIN_HEIGHT_CLASS = 'min-h-[56px]'
+
+/** Standard tbody cell padding — matches thead `px-5 py-3`. */
+export const TABLE_BODY_CELL_CLASS = 'px-5 py-3'

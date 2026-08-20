@@ -2,7 +2,6 @@ import type { LeaveRequestStatus } from '../constants/leaveStatus'
 import type {
   LeaveApprovalRequirement,
   LeaveStatus,
-  RequiredApproverType,
 } from '../api/types'
 
 /** Map API leave status → existing UI badge/filter status. */
@@ -87,27 +86,4 @@ export function approvalRequirementLabel(
     return `Assigned group approver`
   }
   return `Step ${requirement.display_order}`
-}
-
-export function approvalPurposeLabel(
-  requiredType: RequiredApproverType | null,
-): string {
-  if (requiredType === 'admin') return 'Admin validation'
-  if (requiredType === 'president') return 'President approval'
-  return 'Leave approval'
-}
-
-/**
- * Purpose for Approvers table: prefer API `purpose`, else derive from type
- * (admin → Admin validation, otherwise Leave approval).
- */
-export function eligibleApproverPurpose(
-  purpose: string | undefined,
-  approverType: string,
-): string {
-  const trimmed = purpose?.trim()
-  if (trimmed) return trimmed
-  if (approverType === 'admin') return 'Admin validation'
-  if (approverType === 'president') return 'President approval'
-  return 'Leave approval'
 }

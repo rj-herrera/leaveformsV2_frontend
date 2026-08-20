@@ -4,7 +4,7 @@ import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from './ui/Button'
 import { NAV_SECTIONS, type NavChildItem, type NavItem } from '../nav/navConfig'
-import { userInitials, userRoleLabel } from '../utils/userDisplay'
+import { userInitials } from '../utils/userDisplay'
 
 const COLLAPSED_ICON_BUTTON =
   'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors'
@@ -349,7 +349,6 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const initials = userInitials(user.firstName, user.lastName)
-  const roleLabel = userRoleLabel(user.roles)
 
   const visibleSections = NAV_SECTIONS.filter((section) =>
     canAccessSection(section.requires, user.roles),
@@ -420,7 +419,6 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         <div className="flex shrink-0 flex-col items-center gap-2 border-t border-white/15 p-2">
           <SidebarUserAvatar
             initials={initials}
-            tooltip={`${user.name} · ${roleLabel}`}
           />
           <button
             type="button"
@@ -441,14 +439,14 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                 <p className="truncate text-small font-medium text-white">
                   {user.name}
                 </p>
-                <p className="truncate text-small text-white/70">{roleLabel}</p>
+                <p className="truncate text-small text-white/70">{user.group.abbreviation} • {user.designation.acronym}</p>
               </div>
             </div>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="w-full border-white/25 bg-white/10 text-white hover:bg-white/20"
+              className="w-full border-white/25 bg-white/10 text-white hover:bg-white/10"
               onClick={handleLogout}
             >
               Log out

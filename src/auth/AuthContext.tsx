@@ -43,6 +43,16 @@ export type AuthUser = {
     approver: boolean
     admin: boolean
   }
+  group: {
+    id: number
+    name: string | null
+    abbreviation: string | null
+  }
+  designation: {
+    id: number
+    name: string | null
+    acronym: string | null
+  }
 }
 
 export type SignInResult =
@@ -70,6 +80,8 @@ const FALLBACK_USER: AuthUser = {
   gender: 'female',
   picGroups: [],
   roles: { employee: true, approver: false, admin: false },
+  group: { id: 0, name: '', abbreviation: '' },
+  designation: { id: 0, name: '', acronym: '' },
 }
 
 function rolesFromMe(me: MeResponse): AuthUser['roles'] {
@@ -93,6 +105,8 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
     gender: 'female',
     picGroups: me.role.pic_groups ?? [],
     roles: rolesFromMe(me),
+    group: me.group ?? { id: 0, name: null, abbreviation: null },
+    designation: me.designation ?? { id: 0, name: '', acronym: '' },
   }
 }
 

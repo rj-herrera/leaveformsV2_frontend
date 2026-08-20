@@ -154,7 +154,6 @@ export function approverRow(
   actionDate: string | null = null,
   remarks: string | null = null,
   role: 'approver' | 'admin' = 'approver',
-  purpose?: string,
 ): ApproverRow {
   return {
     id: person.id,
@@ -163,7 +162,6 @@ export function approverRow(
     actionDate,
     remarks,
     role,
-    purpose,
   }
 }
 
@@ -463,10 +461,7 @@ function applyConversionSubmission(
   base: LeaveRequestDetail,
   submission: ConversionSubmission,
 ): LeaveRequestDetail {
-  const originalApprovers = base.approvers.map((row) => ({
-    ...row,
-    purpose: row.purpose ?? 'Leave approval',
-  }))
+  const originalApprovers = base.approvers
 
   const hasAdmin = originalApprovers.some((row) => row.role === 'admin')
   const approvers = hasAdmin
@@ -477,20 +472,12 @@ function applyConversionSubmission(
               status: 'no_action' as const,
               actionDate: null,
               remarks: null,
-              purpose: 'Admin validation',
             }
           : row,
       )
     : [
         ...originalApprovers,
-        approverRow(
-          ADMIN,
-          'no_action',
-          null,
-          null,
-          'admin',
-          'Admin validation',
-        ),
+        approverRow(ADMIN, 'no_action', null, null, 'admin'),
       ]
 
   return {
@@ -786,7 +773,7 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
       approverRow(APPROVER_2, 'approved', 'Jun 3, 2026, 10:15 AM'),
       approverRow(APPROVER_3, 'no_action'),
       approverRow(APPROVER_4, 'no_action'),
-      approverRow(ADMIN, 'approved', 'Jun 3, 2026, 2:30 PM', null, 'admin', 'Admin validation'),
+      approverRow(ADMIN, 'approved', 'Jun 3, 2026, 2:30 PM', null, 'admin'),
     ],
   }),
   'apr-3': detailFromSummary(APPROVER_OWN_REQUESTS[2], {
@@ -848,7 +835,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
         'Jul 1, 2026, 9:20 AM',
         null,
         'approver',
-        'Leave approval',
       ),
       approverRow(
         APPROVER_3,
@@ -856,16 +842,14 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
         'Jul 1, 2026, 11:45 AM',
         null,
         'approver',
-        'Leave approval',
       ),
-      approverRow(APPROVER_4, 'no_action', null, null, 'approver', 'Leave approval'),
+      approverRow(APPROVER_4, 'no_action', null, null, 'approver'),
       approverRow(
         JORDAN,
         'no_action',
         null,
         null,
         'approver',
-        'Leave approval',
       ),
       approverRow(
         ADMIN,
@@ -873,7 +857,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
         null,
         null,
         'admin',
-        'Admin validation',
       ),
     ],
   }),
@@ -889,7 +872,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
         'Jun 23, 2026, 3:10 PM',
         null,
         'approver',
-        'Leave approval',
       ),
       approverRow(
         ADMIN,
@@ -897,7 +879,6 @@ const LEAVE_REQUEST_DETAILS: Record<string, LeaveRequestDetail> = {
         null,
         null,
         'admin',
-        'Admin validation',
       ),
     ],
   }),

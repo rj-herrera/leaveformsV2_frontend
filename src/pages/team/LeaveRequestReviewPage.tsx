@@ -26,7 +26,6 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
 import {
-  eligibleApproverPurpose,
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
@@ -155,10 +154,6 @@ export function LeaveRequestReviewPage() {
         return {
           id: String(approver.emp_id),
           name: approver.name.trim() || `Employee #${approver.emp_id}`,
-          purpose: eligibleApproverPurpose(
-            approver.purpose,
-            approver.approver_type,
-          ),
           role:
             approver.approver_type === 'admin'
               ? ('admin' as const)
@@ -375,7 +370,6 @@ export function LeaveRequestReviewPage() {
       <ApprovalDetailsTable
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
-        showPurpose
         currentUserId={String(user.id)}
         youBadgeVariant="primary"
       />
