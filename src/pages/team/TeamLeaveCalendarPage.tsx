@@ -8,6 +8,7 @@ import { FilterSelect } from '../../components/ui/FilterSelect'
 import { CalendarGridSkeleton, SidePanelListSkeleton } from '../../components/ui/Skeleton'
 import { CalendarLeaveTooltip } from '../../components/leave/CalendarLeaveTooltip'
 import {
+  getLeaveTypeAvatarClasses,
   getLeaveTypeChipClasses,
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
@@ -62,12 +63,6 @@ function groupLabel(entry: TeamCalendarEntry): string {
   const group = entry.employee?.group
   if (!group) return '—'
   return group.abbreviation?.trim() || group.name?.trim() || '—'
-}
-
-function halfDayHint(entry: TeamCalendarEntry): string {
-  if (entry.day_type === 'half_am') return ' (AM)'
-  if (entry.day_type === 'half_pm') return ' (PM)'
-  return ''
 }
 
 export function TeamLeaveCalendarPage() {
@@ -628,7 +623,6 @@ function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
   const typeLabel = leaveTypeLabel(entry)
   const name = employeeName(entry)
   const tone = getLeaveTypeChipClasses(typeLabel)
-  const halfHint = halfDayHint(entry)
 
   return (
     <CalendarLeaveTooltip entry={entry}>
@@ -638,7 +632,6 @@ function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
         </p>
         <p className="truncate text-[0.65rem] leading-tight text-text-gray">
           {typeLabel}
-          {halfHint}
         </p>
       </div>
     </CalendarLeaveTooltip>
@@ -647,7 +640,6 @@ function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
 
 function SidePanelLeaveRow({
   entry,
-  periodLabel,
 }: {
   entry: TeamCalendarEntry
   periodLabel?: string
@@ -655,23 +647,18 @@ function SidePanelLeaveRow({
   const name = employeeName(entry)
   const typeLabel = leaveTypeLabel(entry)
   const group = groupLabel(entry)
-  const halfHint = halfDayHint(entry)
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
-  const tooltip = periodLabel
-    ? `${name} · ${typeLabel}${halfHint} · ${periodLabel}`
-    : `${name} · ${typeLabel}${halfHint}`
 
   return (
     <div
       className="flex items-center gap-3 rounded-md px-1 py-2"
-      title={tooltip}
     >
       <span
-        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-small font-semibold text-text-gray"
+        className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full text-small font-semibold ${getLeaveTypeAvatarClasses(typeLabel)}`}
         aria-hidden="true"
       >
         {initials || '?'}
@@ -681,8 +668,7 @@ function SidePanelLeaveRow({
           {name}
         </span>
         <span className="block truncate text-small text-text-gray">
-          {group} · {typeLabel}
-          {halfHint}
+          {group} • {typeLabel}
         </span>
       </span>
     </div>

@@ -80,3 +80,25 @@ export function getLeaveTypeChipClasses(leaveType: string): string {
       return 'border-l-primary bg-primary/10'
   }
 }
+
+/** Soft avatar fill + text tint matching calendar leave-type chip colors. */
+export function getLeaveTypeAvatarClasses(leaveType: string): string {
+  switch (leaveType.trim().toLowerCase()) {
+    case 'vl':
+    case 'vacation leave':
+      return 'bg-leave-vacation/15 text-leave-vacation'
+    case 'sl':
+    case 'sick leave':
+      return 'bg-leave-sick/15 text-leave-sick'
+    case 'emergency leave':
+      return 'bg-leave-emergency/20 text-leave-emergency'
+    case 'ptb leave':
+      return 'bg-leave-ptb/15 text-leave-ptb'
+    case 'maternity leave':
+      return 'bg-leave-maternity/15 text-leave-maternity'
+    case 'paternity leave':
+      return 'bg-leave-paternity/15 text-leave-paternity'
+    default:
+      return 'bg-primary/10 text-primary'
+  }
+}
