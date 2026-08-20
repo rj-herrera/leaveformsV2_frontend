@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { CalendarGridSkeleton, SidePanelListSkeleton } from '../../components/ui/Skeleton'
+import { CalendarLeaveTooltip } from '../../components/leave/CalendarLeaveTooltip'
 import {
   getLeaveTypeChipClasses,
   SICK_LEAVE_THEME,
@@ -630,18 +631,17 @@ function CalendarLeaveChip({ entry }: { entry: TeamCalendarEntry }) {
   const halfHint = halfDayHint(entry)
 
   return (
-    <div
-      className={`rounded-md border-l-4 px-1.5 py-1 ${tone}`}
-      title={`${name} · ${typeLabel}${halfHint}`}
-    >
-      <p className="truncate text-small font-semibold leading-tight text-text-black">
-        {name}
-      </p>
-      <p className="truncate text-[0.65rem] leading-tight text-text-gray">
-        {typeLabel}
-        {halfHint}
-      </p>
-    </div>
+    <CalendarLeaveTooltip entry={entry}>
+      <div className={`rounded-md border-l-4 px-1.5 py-1 ${tone}`}>
+        <p className="truncate text-small font-semibold leading-tight text-text-black">
+          {name}
+        </p>
+        <p className="truncate text-[0.65rem] leading-tight text-text-gray">
+          {typeLabel}
+          {halfHint}
+        </p>
+      </div>
+    </CalendarLeaveTooltip>
   )
 }
 
