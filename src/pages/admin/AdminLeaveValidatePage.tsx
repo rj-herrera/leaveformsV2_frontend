@@ -32,7 +32,6 @@ import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import {
-  eligibleApproverPurpose,
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
@@ -164,10 +163,6 @@ export function AdminLeaveValidatePage() {
         return {
           id: String(approver.emp_id),
           name: approver.name.trim() || `Employee #${approver.emp_id}`,
-          purpose: eligibleApproverPurpose(
-            approver.purpose,
-            approver.approver_type,
-          ),
           role:
             approver.approver_type === 'admin'
               ? ('admin' as const)
