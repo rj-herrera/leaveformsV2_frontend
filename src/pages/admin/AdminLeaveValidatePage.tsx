@@ -1,54 +1,320 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
+import { Check, TriangleAlert, X } from 'lucide-react'
+import { ApiError } from '../../api/axios-client'
+import {
+  approveConversion,
+  conversionMedCertPath,
+  rejectConversion,
+} from '../../api/conversions'
+import { leaveAttachmentPath } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
-import { LeaveDecisionBar } from '../../components/leave/LeaveDecisionBar'
 import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
+import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
-import { shouldShowDataSkeleton } from '../../mocks/config'
-import { getLeaveRequestDetail } from '../../mocks/leaveRequests'
 import {
-  attachmentFilesFromNames,
-  type AttachmentFile,
-} from '../../utils/attachments'
+  TOAST_LEAVE_CONVERSION_APPROVED,
+  TOAST_LEAVE_CONVERSION_REJECTED,
+} from '../../constants/toastMessages'
+import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
+import { isAdminLeavesListKey, swrKeys } from '../../hooks/api/swrKeys'
+import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
+import type { ApproverRow } from '../../types/approverRow'
+import { formatDayTypeLabel } from '../../utils/leaveDates'
+import {
+  eligibleApproverPurpose,
+  formatDateTime,
+  formatDurationDays,
+  formatLeavePeriod,
+  formatShortDate,
+  mapApiLeaveStatusToUi,
+} from '../../utils/leaveDisplay'
 import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
+
+const ATTACHMENT_LABEL = 'Leave attachment'
+const MED_CERT_LABEL = 'Medical certificate'
+
+function messageFromApiError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return fallback
+}
+
+function orgLabel(
+  org: { abbreviation: string | null; name: string | null } | null | undefined,
+): string {
+  if (!org) return '—'
+  return org.abbreviation?.trim() || org.name?.trim() || '—'
+}
+
+function filedByLabel(detail: {
+  emp_id: number
+  filed_by_emp_id: number
+  filed_by: { name: string | null; employee_number: string } | null
+}): string {
+  const name = detail.filed_by?.name?.trim()
+  if (name) return name
+  if (detail.filed_by?.employee_number) return detail.filed_by.employee_number
+  return `Employee #${detail.filed_by_emp_id}`
+}
 
 export function AdminLeaveValidatePage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const detail = getLeaveRequestDetail(leaveRequestId)
-  const showSkeleton = shouldShowDataSkeleton()
+  const { mutate } = useSWRConfig()
+  const toast = useToast()
+
+  const leaveId = Number(leaveRequestId)
+  const validId = Number.isInteger(leaveId) && leaveId > 0
+
+  const { data: detail, error, isLoading } = useLeaveDetail(
+    validId ? leaveId : null,
+  )
+
   const listTab = listTabFromLocationState(location.state, 'pending')
   const backToList = listPathWithTab('/admin/leave-requests', listTab)
 
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [approveOpen, setApproveOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
+  const [previewFileName, setPreviewFileName] = useState('')
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
+  const conversion = detail?.conversion ?? null
+  const eligibleApprovers = detail?.eligible_approvers ?? []
+  const requirements = detail?.approval_requirements ?? []
+
+  const historyByEmpId = useMemo(() => {
+    const map = new Map<
+      number,
+      NonNullable<(typeof requirements)[number]['history']>
+    >()
+    for (const requirement of requirements) {
+      const history = requirement.history
+      if (history) map.set(history.approver_emp_id, history)
+    }
+    return map
+  }, [requirements])
+
+  const usesConversionReview =
+    detail?.status === 'pending_conversion' ||
+    detail?.status === 'converted_to_sl'
+
+  const approverRows: ApproverRow[] = useMemo(
+    () =>
+      eligibleApprovers.map((approver) => {
+        let status: ApproverRow['status'] = 'no_action'
+        let actionDate: string | null = null
+        let remarks: string | null = null
+
+        if (usesConversionReview && conversion) {
+          const reviewedBy = conversion.reviewed_by_emp_id
+          if (
+            reviewedBy != null &&
+            Number(reviewedBy) === Number(approver.emp_id)
+          ) {
+            if (conversion.status === 'approved') status = 'approved'
+            else if (conversion.status === 'rejected') status = 'rejected'
+
+            actionDate = conversion.reviewed_at
+              ? formatDateTime(conversion.reviewed_at)
+              : null
+            remarks = conversion.remarks?.trim() || null
+          }
+        } else {
+          const history = historyByEmpId.get(approver.emp_id)
+          if (history?.is_approved === true) status = 'approved'
+          else if (history?.is_approved === false) status = 'rejected'
+
+          actionDate = history?.created_at
+            ? formatDateTime(history.created_at)
+            : null
+          remarks = history?.remarks?.trim() || null
+        }
+
+        return {
+          id: String(approver.emp_id),
+          name: approver.name.trim() || `Employee #${approver.emp_id}`,
+          purpose: eligibleApproverPurpose(
+            approver.purpose,
+            approver.approver_type,
+          ),
+          role:
+            approver.approver_type === 'admin'
+              ? ('admin' as const)
+              : ('approver' as const),
+          status,
+          actionDate,
+          remarks,
+        }
+      }),
+    [
+      conversion,
+      eligibleApprovers,
+      historyByEmpId,
+      usesConversionReview,
+    ],
+  )
 
   const canAct = useMemo(() => {
-    if (!detail) return false
-    return (
-      detail.status === 'PENDING_CONVERSION' &&
-      detail.approvers.some(
-        (row) =>
-          row.id === user.id &&
-          row.role === 'admin' &&
-          row.status === 'no_action',
-      )
+    if (!detail || !conversion) return false
+    if (detail.status !== 'pending_conversion') return false
+    if (conversion.status !== 'pending_review') return false
+    if (!user.roles.admin) return false
+    return eligibleApprovers.some(
+      (approver) =>
+        String(approver.emp_id) === String(user.id) &&
+        approver.approver_type === 'admin',
     )
-  }, [detail, user.id])
+  }, [conversion, detail, eligibleApprovers, user.id, user.roles.admin])
 
-  if (showSkeleton) {
+  const decisionSettled =
+    detail?.status === 'confirmed' ||
+    detail?.status === 'rejected' ||
+    detail?.status === 'cancelled' ||
+    detail?.status === 'converted_to_sl'
+
+  const employee = detail?.employee ?? null
+  const employeeNumber = employee?.employee_number ?? '—'
+  const employeeName = employee?.name?.trim() || '—'
+  const departmentLabel = orgLabel(employee?.department)
+  const groupLabel = orgLabel(employee?.group)
+
+  const conversionPanels: LeaveConversionInfo | null =
+    detail && conversion
+      ? {
+          originalLeaveType:
+            conversion.from_leave_type?.name ?? detail.leave_type.name,
+          originalDayType: formatDayTypeLabel(detail.day_type),
+          originalDateFiled: formatShortDate(detail.created_at),
+          originalLeavePeriod: formatLeavePeriod(
+            detail.start_date,
+            detail.end_date,
+          ),
+          filedBy: filedByLabel(detail),
+          originalReason: detail.leave_reason,
+          originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
+          requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
+          conversionRequestDate: formatShortDate(conversion.created_at),
+          conversionReason: '—',
+          conversionAttachment: conversion.has_med_cert
+            ? MED_CERT_LABEL
+            : null,
+        }
+      : null
+
+  const notFound =
+    !validId ||
+    (error instanceof ApiError &&
+      (error.status === 404 || error.status === 403)) ||
+    (!isLoading && !detail && error != null)
+
+  function openPreview(fileName: string, url: string | null) {
+    setPreviewFileName(fileName)
+    setPreviewUrl(url)
+    setPreviewOpen(true)
+  }
+
+  function openPreviewFromAttachmentLabel(value: string | null | undefined) {
+    if (!value || !detail) return
+    if (value === MED_CERT_LABEL && conversion) {
+      openPreview(MED_CERT_LABEL, conversionMedCertPath(conversion.id))
+      return
+    }
+    openPreview(
+      ATTACHMENT_LABEL,
+      detail.has_attachment ? leaveAttachmentPath(detail.id) : null,
+    )
+  }
+
+  async function revalidateCaches(leaveIdToRefresh: number) {
+    await Promise.all([
+      mutate(swrKeys.leave(leaveIdToRefresh)),
+      mutate(swrKeys.pendingConversions),
+      mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
+    ])
+  }
+
+  async function handleRejectConfirm(reason: string) {
+    if (!detail || !conversion) return
+
+    setRejectOpen(false)
+    setSubmitting(true)
+    setActionError(null)
+
+    try {
+      await rejectConversion(conversion.id, {
+        remarks: reason.trim(),
+      })
+      await revalidateCaches(detail.id)
+      toast.success(TOAST_LEAVE_CONVERSION_REJECTED)
+      navigate(backToList)
+    } catch (err) {
+      setActionError(
+        messageFromApiError(
+          err,
+          'Unable to reject conversion request. Please try again.',
+        ),
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleApproveConfirm() {
+    if (!detail || !conversion) return
+
+    setApproveOpen(false)
+    setSubmitting(true)
+    setActionError(null)
+
+    try {
+      await approveConversion(conversion.id)
+      await revalidateCaches(detail.id)
+      toast.success(TOAST_LEAVE_CONVERSION_APPROVED)
+      navigate(backToList)
+    } catch (err) {
+      setActionError(
+        messageFromApiError(
+          err,
+          'Unable to approve conversion request. Please try again.',
+        ),
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (isLoading) {
     return (
       <LeaveDetailLoadingView
         backTo={backToList}
@@ -58,33 +324,22 @@ export function AdminLeaveValidatePage() {
     )
   }
 
-  if (!detail) {
+  if (notFound || !detail || !uiStatus) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <PageBackLink to={backToList}>Back to Leave Requests</PageBackLink>
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Leave request not found</h1>
           <p className="mt-2 text-body text-text-gray">
-            No details exist for ID{' '}
+            No leave request was found for ID{' '}
             <span className="font-semibold text-text-black">
               {leaveRequestId ?? 'unknown'}
             </span>
-            .
+            , or you are not allowed to view it.
           </p>
         </div>
       </div>
     )
-  }
-
-  const conversion = detail.conversion
-  const decisionSettled =
-    detail.status === 'APPROVED' || detail.status === 'REJECTED'
-
-  function openPreview(attachmentValue: string | null | undefined) {
-    const files = attachmentFilesFromNames(attachmentValue)
-    if (files.length === 0) return
-    setPreviewFiles(files)
-    setPreviewOpen(true)
   }
 
   return (
@@ -93,89 +348,159 @@ export function AdminLeaveValidatePage() {
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <h1 className="text-h1 text-text-black">
-          {conversion ? 'Leave Conversion Request' : detail.leaveType}
+          {conversion ? 'Leave Conversion Request' : detail.leave_type.name}
         </h1>
-        <StatusBadge status={detail.status} label="PENDING VALIDATION" />
+        <StatusBadge
+          status={uiStatus}
+          label={
+            detail.status === 'pending_conversion'
+              ? 'PENDING VALIDATION'
+              : undefined
+          }
+        />
       </div>
+
+      {actionError ? (
+        <div
+          className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+          role="alert"
+        >
+          <TriangleAlert
+            className="mt-0.5 size-4 shrink-0 text-status-rejected"
+            aria-hidden="true"
+          />
+          <p className="text-small font-semibold text-status-rejected">
+            {actionError}
+          </p>
+        </div>
+      ) : null}
 
       <article className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border">
-          <InfoCell label="Employee No." value={detail.employeeNumber} />
+          <InfoCell label="Employee No." value={employeeNumber} />
           <InfoCell
             label="Employee Name"
-            value={detail.requesterName}
+            value={employeeName}
             className="lg:pl-4"
           />
           <InfoCell
             label="Department"
-            value={detail.department}
+            value={departmentLabel}
             className="lg:pl-4"
           />
-          <InfoCell
-            label="Group"
-            value={detail.groupLabel}
-            className="lg:pl-4"
-          />
+          <InfoCell label="Group" value={groupLabel} className="lg:pl-4" />
         </dl>
       </article>
 
-      {conversion ? (
+      {conversionPanels ? (
         <LeaveConversionPanels
-          conversion={conversion}
-          onPreview={openPreview}
+          conversion={conversionPanels}
+          onPreview={openPreviewFromAttachmentLabel}
           spacing="compact"
         />
       ) : (
         <article className="shrink-0 rounded-lg border border-border bg-surface p-4">
           <h2 className="text-h2 text-text-black">Leave Request Summary</h2>
           <dl className={`mt-3 ${INFO_FIELD_GRID_CLASS}`}>
-            <LeaveInfoRow label="Date Filed" value={detail.dateFiled} />
-            <LeaveInfoRow label="Leave Period" value={detail.leavePeriod} />
-            <LeaveInfoRow label="Duration" value={detail.duration} />
-            <LeaveInfoRow label="Reason" value={detail.reason} />
+            <LeaveInfoRow
+              label="Date Filed"
+              value={formatShortDate(detail.created_at)}
+            />
+            <LeaveInfoRow
+              label="Leave Period"
+              value={formatLeavePeriod(detail.start_date, detail.end_date)}
+            />
+            <LeaveInfoRow
+              label="Duration"
+              value={formatDurationDays(detail.duration)}
+            />
+            <LeaveInfoRow label="Reason" value={detail.leave_reason} />
             <LeaveAttachmentRow
-              value={detail.attachmentFileName}
-              onView={() => openPreview(detail.attachmentFileName)}
+              value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+              onView={() =>
+                openPreview(
+                  ATTACHMENT_LABEL,
+                  detail.has_attachment
+                    ? leaveAttachmentPath(detail.id)
+                    : null,
+                )
+              }
             />
           </dl>
         </article>
       )}
 
       <ApprovalDetailsTable
-        approvers={detail.approvers}
-        decisionSettled={decisionSettled}
-        currentUserId={user.id}
+        approvers={approverRows}
+        decisionSettled={Boolean(decisionSettled)}
+        showPurpose
+        currentUserId={String(user.id)}
         youBadgeVariant="muted"
       />
 
-      <LeaveDecisionBar
-        visible={canAct}
-        onReject={(reason) => {
-          // TODO(REPLACE): POST admin reject conversion
-          void reason
+      {canAct ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="dangerOutline"
+            disabled={submitting}
+            onClick={() => {
+              setActionError(null)
+              setRejectOpen(true)
+            }}
+          >
+            <X className="size-4" aria-hidden="true" />
+            Reject
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={submitting}
+            onClick={() => {
+              setActionError(null)
+              setApproveOpen(true)
+            }}
+          >
+            <Check className="size-4 text-white" aria-hidden="true" />
+            {submitting ? 'Submitting…' : 'Approve'}
+          </Button>
+        </div>
+      ) : null}
+
+      <ConfirmReasonModal
+        open={rejectOpen}
+        onClose={() => setRejectOpen(false)}
+        onConfirm={(reason) => {
+          void handleRejectConfirm(reason)
         }}
-        onApprove={() => {
-          // TODO(REPLACE): POST admin approve conversion
+        title="Reject leave conversion"
+        description="Please provide a reason for rejecting this conversion request."
+        confirmLabel="Reject"
+        cancelLabel="Cancel"
+        confirmVariant="danger"
+        iconVariant="reject"
+      />
+
+      <ConfirmReasonModal
+        open={approveOpen}
+        onClose={() => setApproveOpen(false)}
+        onConfirm={() => {
+          void handleApproveConfirm()
         }}
-        onSuccessClose={() => navigate(backToList)}
-        reject={{
-          title: 'Reject leave conversion',
-          description:
-            'Please provide a reason for rejecting this conversion request.',
-          confirmLabel: 'Reject',
-        }}
-        approve={{
-          title: 'Approve leave conversion',
-          description:
-            'Are you sure you want to approve this leave conversion request?',
-          confirmLabel: 'Approve',
-        }}
+        requireReason={false}
+        title="Approve leave conversion"
+        description="Are you sure you want to approve this leave conversion request?"
+        confirmLabel="Approve"
+        cancelLabel="Cancel"
+        confirmVariant="primary"
+        iconVariant="approve"
       />
 
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        files={previewFiles}
+        fileName={previewFileName}
+        previewUrl={previewUrl}
       />
     </div>
   )

@@ -1,7 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search, Send } from 'lucide-react'
-import type { LeaveConversionResource } from '../../api/types'
+import type { AdminLeavesListStatus } from '../../api/adminLeaves'
+import type {
+  ApprovalInboxRow,
+  LeaveConversionResource,
+  LeaveStatus,
+} from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
@@ -21,25 +26,25 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_ACTION_BUTTON_CLASS, TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import {
-  STATUS_FILTER_OPTIONS,
-  type LeaveRequestStatus,
-  type StatusFilter,
-} from '../../constants/leaveStatus'
+  TABLE_ACTION_BUTTON_CLASS,
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import type { LeaveRequestStatus } from '../../constants/leaveStatus'
 import {
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
 import { TOAST_REMINDER_SENT_TO_ALL } from '../../constants/toastMessages'
+import { useAdminLeaves } from '../../hooks/api/useAdminLeaves'
+import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { usePendingConversions } from '../../hooks/api/usePendingConversions'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
-import {
-  getAdminAllLeaveRequests,
-  getAdminPendingApproverReminderStats,
-} from '../../mocks/leaveRequests'
+import { getAdminPendingApproverReminderStats } from '../../mocks/leaveRequests'
 import {
   formatReminderSentLabel,
   getLastApproverReminderSentAt,
@@ -60,10 +65,16 @@ import {
 } from '../../utils/listTab'
 import { compareEmployeeNumber } from '../../utils/sort'
 
-type LeaveTypeFilter = 'ALL' | string
+type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
+type AdminAllStatusFilter =
+  | 'ALL'
+  | 'PENDING'
+  | 'PENDING_CONVERSION'
+  | 'APPROVED'
+  | 'CONVERTED'
 
 type PendingValidationDisplay =
   | {
@@ -79,7 +90,7 @@ type PendingValidationDisplay =
     }
 
 type AdminListRow = {
-  id: number | string
+  id: number
   employeeNumber: string
   requesterName: string
   groupLabel: string
@@ -91,13 +102,32 @@ type AdminListRow = {
   filedOnDate: string
   filedOnLabel: string
   status: LeaveRequestStatus
+  apiStatus?: LeaveStatus
 }
 
-const PENDING_LEAVE_TYPE_FILTER_OPTIONS = [
+const LEAVE_TYPE_FILTER_OPTIONS = [
   { value: 'ALL' as const, label: 'All Leave Types' },
   { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
   { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
 ]
+
+const ADMIN_ALL_STATUS_FILTER_OPTIONS: {
+  value: AdminAllStatusFilter
+  label: string
+}[] = [
+  { value: 'ALL', label: 'All statuses' },
+  { value: 'PENDING', label: 'Pending Approval' },
+  { value: 'PENDING_CONVERSION', label: 'Pending Conversion' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'CONVERTED', label: 'Converted to SL' },
+]
+
+const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
+  PENDING: 'PENDING',
+  PENDING_CONVERSION: 'PENDING REVIEW',
+}
+
+const PAGE_SIZE_DEBOUNCE_MS = 150
 
 function toPendingValidationRow(
   conversion: LeaveConversionResource,
@@ -143,6 +173,53 @@ function toPendingValidationRow(
     filedOnDate: conversion.created_at ?? '',
     filedOnLabel: formatShortDate(conversion.created_at),
     status: mapApiLeaveStatusToUi(leave.status),
+    apiStatus: leave.status,
+  }
+}
+
+function toAdminAllRow(row: ApprovalInboxRow): AdminListRow {
+  const employee = row.employee
+  return {
+    id: row.id,
+    employeeNumber: employee?.employee_number ?? '—',
+    requesterName: employee?.name?.trim() || '—',
+    groupLabel:
+      employee?.group?.abbreviation?.trim() ||
+      employee?.group?.name?.trim() ||
+      '—',
+    leaveType: row.leave_type.name,
+    leaveTypeCode: row.leave_type.code,
+    period: formatLeavePeriod(row.start_date, row.end_date),
+    duration: formatDurationDays(row.duration),
+    filedOnDate: row.created_at ?? '',
+    filedOnLabel: formatShortDate(row.created_at),
+    status: mapApiLeaveStatusToUi(row.status),
+    apiStatus: row.status,
+  }
+}
+
+function groupOptionLabel(group: {
+  abbreviation: string | null
+  name: string | null
+  id: number
+}): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
+
+function toApiAdminStatus(
+  filter: AdminAllStatusFilter,
+): AdminLeavesListStatus | undefined {
+  switch (filter) {
+    case 'PENDING':
+      return 'pending_approval'
+    case 'PENDING_CONVERSION':
+      return 'pending_conversion'
+    case 'APPROVED':
+      return 'confirmed'
+    case 'CONVERTED':
+      return 'converted_to_sl'
+    default:
+      return undefined
   }
 }
 
@@ -163,9 +240,19 @@ function pendingRowMatchesLeaveTypeFilter(
   return item.leaveTypeCode === leaveTypeFilter
 }
 
-const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
-  PENDING: 'PENDING',
-  PENDING_CONVERSION: 'PENDING REVIEW',
+function statusBadgeLabel(item: AdminListRow): string | undefined {
+  return ADMIN_STATUS_LABELS[item.status]
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
 }
 
 export function AdminLeaveRequestsPage() {
@@ -176,17 +263,24 @@ export function AdminLeaveRequestsPage() {
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
+  const prevPageSizeRef = useRef<number | null>(null)
 
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState<LeaveTypeFilter>('ALL')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [statusFilter, setStatusFilter] =
+    useState<AdminAllStatusFilter>('ALL')
   const [sortKey, setSortKey] = useState<SortKey>('filedOn')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const [allPage, setAllPage] = useState(1)
+  const [awaitingAllReset, setAwaitingAllReset] = useState(false)
+  const skipAllResetSkeleton = useRef(true)
 
   const [lastReminderSent, setLastReminderSent] = useState(
     () => getLastApproverReminderSentAt(),
@@ -201,6 +295,79 @@ export function AdminLeaveRequestsPage() {
     isLoading: pendingLoading,
   } = usePendingConversions()
 
+  const apiSort = sortDir
+
+  const allGroupId =
+    tab === 'all' && groupFilter !== 'ALL' ? Number(groupFilter) : undefined
+
+  const allListParams = useMemo(
+    () => ({
+      status: toApiAdminStatus(statusFilter),
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      group_id:
+        allGroupId != null && Number.isInteger(allGroupId) && allGroupId > 0
+          ? allGroupId
+          : undefined,
+      sort: apiSort,
+      page: allPage,
+      per_page: pageSize,
+    }),
+    [
+      statusFilter,
+      leaveTypeFilter,
+      allGroupId,
+      apiSort,
+      allPage,
+      pageSize,
+    ],
+  )
+
+  const {
+    data: allData,
+    error: allError,
+    isLoading: allLoading,
+    isValidating: allValidating,
+  } = useAdminLeaves(tab === 'all' ? allListParams : null)
+
+  const { data: adminGroups } = useAdminGroups(tab === 'all')
+
+  useEffect(() => {
+    if (tab !== 'all') return
+    if (sortKey !== 'filedOn') {
+      setSortKey('filedOn')
+      setSortDir('desc')
+    }
+  }, [tab, sortKey])
+
+  useEffect(() => {
+    if (tab !== 'all') return
+    setAllPage(1)
+    if (skipAllResetSkeleton.current) {
+      skipAllResetSkeleton.current = false
+      return
+    }
+    setAwaitingAllReset(true)
+  }, [tab, statusFilter, leaveTypeFilter, groupFilter, apiSort])
+
+  useEffect(() => {
+    if (tab !== 'all') return
+    const previous = prevPageSizeRef.current
+    prevPageSizeRef.current = pageSize
+    if (previous == null || previous === pageSize) return
+
+    setAllPage((page) => {
+      const firstVisibleIndex = (page - 1) * previous
+      return Math.max(1, Math.floor(firstVisibleIndex / pageSize) + 1)
+    })
+  }, [tab, pageSize])
+
+  useEffect(() => {
+    if (!awaitingAllReset) return
+    if (!allValidating) {
+      setAwaitingAllReset(false)
+    }
+  }, [awaitingAllReset, allValidating, allData, allError])
+
   const pendingItems = useMemo(() => {
     if (!pendingData) return []
     return pendingData
@@ -208,80 +375,58 @@ export function AdminLeaveRequestsPage() {
       .filter((row): row is AdminListRow => row !== null)
   }, [pendingData])
 
-  const allItems = useMemo((): AdminListRow[] => {
-    return getAdminAllLeaveRequests().map((item) => ({
-      id: item.id,
-      employeeNumber: item.employeeNumber,
-      requesterName: item.requesterName,
-      groupLabel: item.groupLabel,
-      leaveType: item.leaveType,
-      leaveTypeCode: '',
-      period: item.period,
-      duration: item.duration,
-      filedOnDate: item.filedOnDate,
-      filedOnLabel: item.filedOnLabel,
-      status: item.status,
-    }))
-  }, [])
+  const allRows = useMemo(
+    () =>
+      awaitingAllReset ? [] : (allData?.data ?? []).map(toAdminAllRow),
+    [allData, awaitingAllReset],
+  )
+
   const reminderStats = useMemo(
     () => getAdminPendingApproverReminderStats(),
     [],
   )
 
-  const sourceItems = tab === 'pending' ? pendingItems : allItems
-  const showSkeleton =
-    tab === 'pending'
-      ? pendingLoading && !pendingData
-      : shouldShowDataSkeleton()
-
-  const groupOptions = useMemo(() => {
+  const pendingGroupOptions = useMemo(() => {
     const groups = Array.from(
-      new Set(sourceItems.map((item) => item.groupLabel).filter((label) => label !== '—')),
+      new Set(
+        pendingItems
+          .map((item) => item.groupLabel)
+          .filter((label) => label !== '—'),
+      ),
     ).sort((a, b) => a.localeCompare(b))
     return [
       { value: 'ALL' as const, label: 'All Groups' },
       ...groups.map((group) => ({ value: group, label: group })),
     ]
-  }, [sourceItems])
+  }, [pendingItems])
 
-  const leaveTypeOptions = useMemo(() => {
-    if (tab === 'pending') return PENDING_LEAVE_TYPE_FILTER_OPTIONS
+  const allGroupOptions = useMemo(
+    () => [
+      { value: 'ALL' as const, label: 'All Groups' },
+      ...(adminGroups ?? []).map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
+    ],
+    [adminGroups],
+  )
 
-    const types = Array.from(
-      new Set(allItems.map((item) => item.leaveType)),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
-      { value: 'ALL' as const, label: 'All Leave Types' },
-      ...types.map((type) => ({ value: type, label: type })),
-    ]
-  }, [tab, allItems])
+  const searchQuery = search.trim().toLowerCase()
 
-  const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase()
-
-    const filtered = sourceItems.filter((item) => {
+  const filteredPending = useMemo(() => {
+    const filtered = pendingItems.filter((item) => {
       const matchesSearch =
-        query.length === 0 ||
-        item.requesterName.toLowerCase().includes(query) ||
-        item.employeeNumber.toLowerCase().includes(query)
+        searchQuery.length === 0 ||
+        item.requesterName.toLowerCase().includes(searchQuery) ||
+        item.employeeNumber.toLowerCase().includes(searchQuery)
 
       const matchesGroup =
-        tab === 'all' ||
-        groupFilter === 'ALL' ||
-        item.groupLabel === groupFilter
-
-      const matchesLeaveType =
-        tab === 'all'
-          ? leaveTypeFilter === 'ALL' || item.leaveType === leaveTypeFilter
-          : pendingRowMatchesLeaveTypeFilter(item, leaveTypeFilter)
-
-      const matchesStatus =
-        tab === 'pending' ||
-        statusFilter === 'ALL' ||
-        item.status === statusFilter
+        groupFilter === 'ALL' || item.groupLabel === groupFilter
 
       return (
-        matchesSearch && matchesGroup && matchesLeaveType && matchesStatus
+        matchesSearch &&
+        matchesGroup &&
+        pendingRowMatchesLeaveTypeFilter(item, leaveTypeFilter)
       )
     })
 
@@ -295,32 +440,74 @@ export function AdminLeaveRequestsPage() {
       return sortDir === 'asc' ? cmp : -cmp
     })
   }, [
-    sourceItems,
-    search,
+    pendingItems,
+    searchQuery,
     groupFilter,
     leaveTypeFilter,
-    statusFilter,
-    tab,
     sortKey,
     sortDir,
   ])
 
-  const filterResetKey = [
-    tab,
+  const pendingFilterResetKey = [
     search,
     groupFilter,
     leaveTypeFilter,
-    statusFilter,
     sortKey,
     sortDir,
   ].join('|')
 
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredItems, pageSize, filterResetKey)
+  const {
+    currentPage: pendingPage,
+    setCurrentPage: setPendingPage,
+    totalPages: pendingTotalPages,
+    paginatedItems: pendingPageItems,
+  } = usePagination(filteredPending, pageSize, pendingFilterResetKey)
+
+  const displayAllRows = useMemo(
+    () =>
+      allRows.filter((item) => {
+        if (searchQuery.length === 0) return true
+        return (
+          item.requesterName.toLowerCase().includes(searchQuery) ||
+          item.employeeNumber.toLowerCase().includes(searchQuery)
+        )
+      }),
+    [allRows, searchQuery],
+  )
+
+  const allTotalItems = awaitingAllReset
+    ? 0
+    : (allData?.meta?.total ?? displayAllRows.length)
+  const allTotalPages = awaitingAllReset
+    ? 1
+    : Math.max(1, allData?.meta?.last_page ?? 1)
+
+  useEffect(() => {
+    if (tab !== 'all' || awaitingAllReset) return
+    if (allPage > allTotalPages) {
+      setAllPage(allTotalPages)
+    }
+  }, [tab, awaitingAllReset, allPage, allTotalPages])
+
+  const showPendingSkeleton = pendingLoading && !pendingData
+  const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
+  const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
+  const listError =
+    tab === 'pending'
+      ? pendingError && !pendingData
+      : allError && !allData
+
+  const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
+  const currentPage = tab === 'pending' ? pendingPage : allPage
+  const totalPages = tab === 'pending' ? pendingTotalPages : allTotalPages
+  const totalItems =
+    tab === 'pending' ? filteredPending.length : allTotalItems
+  const setCurrentPage =
+    tab === 'pending' ? setPendingPage : setAllPage
 
   const hasActiveFilters =
     search.trim().length > 0 ||
-    (tab === 'pending' && groupFilter !== 'ALL') ||
+    groupFilter !== 'ALL' ||
     leaveTypeFilter !== 'ALL' ||
     (tab === 'all' && statusFilter !== 'ALL')
 
@@ -332,6 +519,8 @@ export function AdminLeaveRequestsPage() {
   }
 
   function toggleSort(key: SortKey) {
+    if (tab === 'all' && key !== 'filedOn') return
+
     if (sortKey === key) {
       setSortDir((dir) => (dir === 'desc' ? 'asc' : 'desc'))
       return
@@ -344,6 +533,7 @@ export function AdminLeaveRequestsPage() {
     setLeaveTypeFilter('ALL')
     setGroupFilter('ALL')
     setStatusFilter('ALL')
+    setSearch('')
     setSearchParams(
       (prev) => {
         const params = new URLSearchParams(prev)
@@ -355,7 +545,6 @@ export function AdminLeaveRequestsPage() {
   }
 
   function handleSendReminderConfirm() {
-    // TODO(REPLACE): POST bulk approver reminder email
     const nowIso = new Date().toISOString()
     setLastApproverReminderSentAt(nowIso)
     setLastReminderSent(nowIso)
@@ -441,20 +630,18 @@ export function AdminLeaveRequestsPage() {
               </label>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {tab === 'pending' ? (
-                  <FilterSelect
-                    label="Filter by group"
-                    value={groupFilter}
-                    onChange={setGroupFilter}
-                    options={groupOptions}
-                    selectHeight="h-[2.125rem]"
-                  />
-                ) : null}
+                <FilterSelect
+                  label="Filter by group"
+                  value={groupFilter}
+                  onChange={setGroupFilter}
+                  options={tab === 'pending' ? pendingGroupOptions : allGroupOptions}
+                  selectHeight="h-[2.125rem]"
+                />
                 <FilterSelect
                   label="Filter by leave type"
                   value={leaveTypeFilter}
                   onChange={setLeaveTypeFilter}
-                  options={leaveTypeOptions}
+                  options={LEAVE_TYPE_FILTER_OPTIONS}
                   selectHeight="h-[2.125rem]"
                 />
                 {tab === 'all' ? (
@@ -462,7 +649,7 @@ export function AdminLeaveRequestsPage() {
                     label="Filter by status"
                     value={statusFilter}
                     onChange={setStatusFilter}
-                    options={STATUS_FILTER_OPTIONS}
+                    options={ADMIN_ALL_STATUS_FILTER_OPTIONS}
                     selectHeight="h-[2.125rem]"
                   />
                 ) : null}
@@ -501,12 +688,16 @@ export function AdminLeaveRequestsPage() {
               <thead>
                 <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    <SortableHeader
-                      label="Employee No."
-                      active={sortKey === 'employeeNumber'}
-                      direction={sortDir}
-                      onToggle={() => toggleSort('employeeNumber')}
-                    />
+                    {tab === 'pending' ? (
+                      <SortableHeader
+                        label="Employee No."
+                        active={sortKey === 'employeeNumber'}
+                        direction={sortDir}
+                        onToggle={() => toggleSort('employeeNumber')}
+                      />
+                    ) : (
+                      'Employee No.'
+                    )}
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     Employee Name
@@ -518,12 +709,16 @@ export function AdminLeaveRequestsPage() {
                     Leave Type
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
-                    <SortableHeader
-                      label="Leave Period"
-                      active={sortKey === 'period'}
-                      direction={sortDir}
-                      onToggle={() => toggleSort('period')}
-                    />
+                    {tab === 'pending' ? (
+                      <SortableHeader
+                        label="Leave Period"
+                        active={sortKey === 'period'}
+                        direction={sortDir}
+                        onToggle={() => toggleSort('period')}
+                      />
+                    ) : (
+                      'Leave Period'
+                    )}
                   </th>
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     Duration
@@ -553,16 +748,18 @@ export function AdminLeaveRequestsPage() {
                     cols={tab === 'pending' ? 8 : 9}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
-                ) : tab === 'pending' && pendingError && !pendingData ? (
+                ) : listError ? (
                   <tr className={APPROVALS_TABLE_ROW_HEIGHT_CLASS}>
                     <td
-                      colSpan={8}
+                      colSpan={tab === 'pending' ? 8 : 9}
                       className="px-5 text-center text-body text-status-rejected"
                     >
-                      Unable to load pending conversions. Please try again.
+                      {tab === 'pending'
+                        ? 'Unable to load pending conversions. Please try again.'
+                        : 'Unable to load leave requests. Please try again.'}
                     </td>
                   </tr>
-                ) : paginatedItems.length === 0 ? (
+                ) : pageItems.length === 0 ? (
                   <TableEmptyRow
                     colSpan={tab === 'pending' ? 8 : 9}
                     pageSize={pageSize}
@@ -575,7 +772,7 @@ export function AdminLeaveRequestsPage() {
                     }
                   />
                 ) : (
-                  paginatedItems.map((item) => (
+                  pageItems.map((item) => (
                     <AdminRequestRow
                       key={item.id}
                       item={item}
@@ -599,7 +796,7 @@ export function AdminLeaveRequestsPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={filteredItems.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
@@ -677,7 +874,7 @@ function AdminRequestRow({
         <td className="px-5">
           <StatusBadge
             status={item.status}
-            label={ADMIN_STATUS_LABELS[item.status]}
+            label={statusBadgeLabel(item)}
           />
         </td>
       ) : null}

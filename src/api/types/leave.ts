@@ -31,6 +31,13 @@ export type LeaveEmployee = {
   department: LeaveOrgRef | null
 }
 
+/** Slim filer nest from `EmployeeNest::summary` on GET /leaves/{id}. */
+export type LeaveFiledBy = {
+  id: number
+  employee_number: string
+  name: string | null
+}
+
 export type LeaveApprovalHistory = {
   approver_emp_id: number
   /** Present on detail responses when the employee can be resolved. */
@@ -107,6 +114,8 @@ export type LeaveDetail = {
   attachment_url: string | null
   cancellation_reason: string | null
   employee: LeaveEmployee | null
+  /** Who submitted the leave (`filed_by_emp_id`); same as employee when self-filed. */
+  filed_by: LeaveFiledBy | null
   approval_requirements: LeaveApprovalRequirement[]
   eligible_approvers: EligibleApprover[]
   conversion: LeaveDetailConversion | null

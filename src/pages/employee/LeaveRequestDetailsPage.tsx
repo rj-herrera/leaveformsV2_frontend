@@ -186,9 +186,11 @@ export function LeaveRequestDetailsPage() {
             detail.end_date,
           ),
           filedBy:
-            detail.filed_by_emp_id === detail.emp_id
+            detail.filed_by?.name?.trim() ||
+            detail.filed_by?.employee_number ||
+            (detail.filed_by_emp_id === detail.emp_id
               ? 'Self'
-              : `Employee #${detail.filed_by_emp_id}`,
+              : `Employee #${detail.filed_by_emp_id}`),
           originalReason: detail.leave_reason,
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type.name,
