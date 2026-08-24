@@ -14,8 +14,9 @@ export function mapApiLeaveStatusToUi(
     case 'pending_conversion':
       return 'PENDING_CONVERSION'
     case 'confirmed':
-    case 'converted_to_sl':
       return 'APPROVED'
+    case 'converted_to_sl':
+      return 'CONVERTED'
     case 'rejected':
       return 'REJECTED'
     case 'cancelled':

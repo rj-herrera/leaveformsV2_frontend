@@ -40,6 +40,7 @@ export type {
   LeaveDetail,
   LeaveDetailConversion,
   LeaveEmployee,
+  LeaveFiledBy,
   LeaveOrgRef,
   LeaveResource,
   LeaveSummary,

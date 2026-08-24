@@ -1,5 +1,6 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
 import type { ListActivitiesParams } from '../../api/activities'
+import type { ListAdminLeavesParams } from '../../api/adminLeaves'
 import type { ListApprovalsParams } from '../../api/approvals'
 import type { ListTeamCalendarParams } from '../../api/calendar'
 
@@ -56,6 +57,19 @@ export const swrKeys = {
 
   pendingConversions: ['conversions', 'pending'] as const,
 
+  adminGroups: ['admin-groups'] as const,
+
+  adminLeaves: (params?: ListAdminLeavesParams) =>
+    [
+      'admin-leaves',
+      params?.status ?? null,
+      params?.code ?? null,
+      params?.group_id ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
   teamCalendar: (params: ListTeamCalendarParams) =>
     [
       'team-calendar',
@@ -85,5 +99,14 @@ export function isApprovalsListKey(key: unknown): boolean {
     Array.isArray(key) &&
     key[0] === 'approvals' &&
     key.length === 6
+  )
+}
+
+/** True for paginated admin leave list keys `['admin-leaves', ...]`. */
+export function isAdminLeavesListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-leaves' &&
+    key.length === 7
   )
 }

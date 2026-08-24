@@ -5,8 +5,8 @@ import type { LeaveEmployee, LeaveTypeRef } from './leave'
 export type ApprovalInboxEmployee = LeaveEmployee
 
 /**
- * Slim inbox row shared by GET /approvals and GET /approvals/pending
- * (`PendingApprovalResource`).
+ * Slim inbox row shared by GET /approvals, GET /approvals/pending,
+ * and GET /admin/leaves (`PendingApprovalResource`).
  */
 export type ApprovalInboxRow = {
   id: number
