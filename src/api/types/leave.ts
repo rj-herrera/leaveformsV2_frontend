@@ -18,6 +18,8 @@ export type LeaveOrgRef = {
   id: number
   abbreviation: string | null
   name: string | null
+  /** Present on `GET /admin/groups` for department → group cascade. */
+  dept_id?: number | null
 }
 
 /**

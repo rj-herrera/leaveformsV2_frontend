@@ -1,5 +1,6 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
 import type { ListActivitiesParams } from '../../api/activities'
+import type { ListAdminBalancesParams } from '../../api/adminBalances'
 import type { ListAdminLeavesParams } from '../../api/adminLeaves'
 import type { ListApprovalsParams } from '../../api/approvals'
 import type { ListTeamCalendarParams } from '../../api/calendar'
@@ -59,12 +60,28 @@ export const swrKeys = {
 
   adminGroups: ['admin-groups'] as const,
 
+  adminDepartments: ['admin-departments'] as const,
+
+  adminReminders: ['admin-reminders'] as const,
+
   adminLeaves: (params?: ListAdminLeavesParams) =>
     [
       'admin-leaves',
       params?.status ?? null,
       params?.code ?? null,
       params?.group_id ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
+  adminBalances: (params?: ListAdminBalancesParams) =>
+    [
+      'admin-balances',
+      params?.q ?? null,
+      params?.department_id ?? null,
+      params?.group_id ?? null,
+      params?.employment_status ?? null,
       params?.sort ?? null,
       params?.per_page ?? null,
       params?.page ?? null,

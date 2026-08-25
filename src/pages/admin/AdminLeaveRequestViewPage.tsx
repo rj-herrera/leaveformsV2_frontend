@@ -1,19 +1,32 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
 import { ApiError } from '../../api/axios-client'
 import { conversionMedCertPath } from '../../api/conversions'
 import { leaveAttachmentPath } from '../../api/leaves'
+import type { AdminReminderStats } from '../../api/reminders'
+import {
+  isReminderPairReminded,
+  sendLeaveReminder,
+  statsAfterReminder429,
+  statsAfterSingleSend,
+} from '../../api/reminders'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
 import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
+import { TOAST_REMINDER_SENT_TO_APPROVER } from '../../constants/toastMessages'
+import { useAdminReminders } from '../../hooks/api/useAdminReminders'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
+import { swrKeys } from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
@@ -50,10 +63,29 @@ function filedByLabel(detail: {
   return `Employee #${detail.filed_by_emp_id}`
 }
 
+function messageFromReminderError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to send reminder. Please try again.'
+}
+
 export function AdminLeaveRequestViewPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const location = useLocation()
   const { user } = useAuth()
+  const { mutate } = useSWRConfig()
+  const toast = useToast()
 
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
@@ -61,6 +93,7 @@ export function AdminLeaveRequestViewPage() {
   const { data: detail, error, isLoading } = useLeaveDetail(
     validId ? leaveId : null,
   )
+  const { data: reminderStats } = useAdminReminders(user.roles.admin)
 
   const listTab = listTabFromLocationState(location.state, 'all')
   const backToList = listPathWithTab('/admin/leave-requests', listTab)
@@ -68,6 +101,11 @@ export function AdminLeaveRequestViewPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [reminderTarget, setReminderTarget] = useState<ApproverRow | null>(
+    null,
+  )
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderError, setReminderError] = useState<string | null>(null)
 
   const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
   const conversion = detail?.conversion ?? null
@@ -177,6 +215,9 @@ export function AdminLeaveRequestViewPage() {
         }
       : null
 
+  const showReminderActions =
+    user.roles.admin && detail?.status === 'pending_approval'
+
   const notFound =
     !validId ||
     (error instanceof ApiError &&
@@ -199,6 +240,60 @@ export function AdminLeaveRequestViewPage() {
       ATTACHMENT_LABEL,
       detail.has_attachment ? leaveAttachmentPath(detail.id) : null,
     )
+  }
+
+  function canRemind(approver: ApproverRow): boolean {
+    if (!showReminderActions || reminderSending || !detail) return false
+    if (approver.role === 'admin') return false
+    if (approver.status !== 'no_action') return false
+    const approverEmpId = Number(approver.id)
+    if (
+      isReminderPairReminded(
+        reminderStats?.reminded_pairs,
+        detail.id,
+        approverEmpId,
+      )
+    ) {
+      return false
+    }
+    return true
+  }
+
+  async function handleReminderConfirm() {
+    if (!detail || !reminderTarget) return
+
+    const approverEmpId = Number(reminderTarget.id)
+    if (!Number.isInteger(approverEmpId) || approverEmpId <= 0) return
+
+    setReminderTarget(null)
+    setReminderSending(true)
+    setReminderError(null)
+
+    try {
+      await sendLeaveReminder(detail.id, approverEmpId)
+      await mutate(
+        swrKeys.adminReminders,
+        (current: AdminReminderStats | undefined) =>
+          statsAfterSingleSend(current, detail.id, approverEmpId),
+        { revalidate: true },
+      )
+      toast.success(TOAST_REMINDER_SENT_TO_APPROVER)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        await mutate(
+          swrKeys.adminReminders,
+          (current: AdminReminderStats | undefined) =>
+            statsAfterReminder429(current, err.body, {
+              leaveId: detail.id,
+              approverEmpId,
+            }),
+          { revalidate: true },
+        )
+      }
+      setReminderError(messageFromReminderError(err))
+    } finally {
+      setReminderSending(false)
+    }
   }
 
   if (isLoading) {
@@ -237,6 +332,17 @@ export function AdminLeaveRequestViewPage() {
         <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
         <StatusBadge status={uiStatus} />
       </div>
+
+      {reminderError ? (
+        <div
+          className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+          role="alert"
+        >
+          <p className="text-small font-semibold text-status-rejected">
+            {reminderError}
+          </p>
+        </div>
+      ) : null}
 
       {conversionPanels ? (
         <>
@@ -302,9 +408,37 @@ export function AdminLeaveRequestViewPage() {
       <ApprovalDetailsTable
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
-        showPurpose
         currentUserId={String(user.id)}
         youBadgeVariant="muted"
+        canRemind={showReminderActions ? canRemind : undefined}
+        onRemind={showReminderActions ? setReminderTarget : undefined}
+      />
+
+      <ConfirmReasonModal
+        open={reminderTarget !== null}
+        onClose={() => setReminderTarget(null)}
+        onConfirm={() => {
+          void handleReminderConfirm()
+        }}
+        requireReason={false}
+        title="Send Reminder"
+        description={
+          reminderTarget ? (
+            <>
+              Send a reminder to{' '}
+              <span className="font-semibold text-status-pending-conversion">
+                {reminderTarget.name}
+              </span>{' '}
+              that this leave request still needs their action?
+            </>
+          ) : (
+            'Send a reminder to this approver?'
+          )
+        }
+        confirmLabel="Send Reminder"
+        cancelLabel="Cancel"
+        confirmVariant="reminder"
+        iconVariant="reminder"
       />
 
       <AttachmentPreviewModal

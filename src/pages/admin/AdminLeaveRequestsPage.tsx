@@ -41,16 +41,13 @@ import {
 import { TOAST_REMINDER_SENT_TO_ALL } from '../../constants/toastMessages'
 import { useAdminLeaves } from '../../hooks/api/useAdminLeaves'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
+import { useAdminReminders } from '../../hooks/api/useAdminReminders'
 import { usePendingConversions } from '../../hooks/api/usePendingConversions'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { getAdminPendingApproverReminderStats } from '../../mocks/leaveRequests'
-import {
-  formatReminderSentLabel,
-  getLastApproverReminderSentAt,
-  setLastApproverReminderSentAt,
-  wasApproverReminderSentToday,
-} from '../../utils/adminReminder'
+import { ApiError } from '../../api/axios-client'
+import { sendAdminBulkReminder, statsAfterBulkSend, statsAfterReminder429 } from '../../api/reminders'
+import { formatReminderSentLabel } from '../../utils/adminReminder'
 import {
   formatDurationDays,
   formatLeavePeriod,
@@ -128,6 +125,23 @@ const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
 }
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
+
+function messageFromReminderError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to send reminder. Please try again.'
+}
 
 function toPendingValidationRow(
   conversion: LeaveConversionResource,
@@ -282,18 +296,22 @@ export function AdminLeaveRequestsPage() {
   const [awaitingAllReset, setAwaitingAllReset] = useState(false)
   const skipAllResetSkeleton = useRef(true)
 
-  const [lastReminderSent, setLastReminderSent] = useState(
-    () => getLastApproverReminderSentAt(),
-  )
   const [reminderConfirmOpen, setReminderConfirmOpen] = useState(false)
-
-  const reminderSentToday = wasApproverReminderSentToday(lastReminderSent)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderError, setReminderError] = useState<string | null>(null)
 
   const {
     data: pendingData,
     error: pendingError,
     isLoading: pendingLoading,
   } = usePendingConversions()
+
+  const {
+    data: reminderStats,
+    error: reminderErrorFromApi,
+    isLoading: reminderLoading,
+    mutate: mutateReminders,
+  } = useAdminReminders(tab === 'all')
 
   const apiSort = sortDir
 
@@ -379,11 +397,6 @@ export function AdminLeaveRequestsPage() {
     () =>
       awaitingAllReset ? [] : (allData?.data ?? []).map(toAdminAllRow),
     [allData, awaitingAllReset],
-  )
-
-  const reminderStats = useMemo(
-    () => getAdminPendingApproverReminderStats(),
-    [],
   )
 
   const pendingGroupOptions = useMemo(() => {
@@ -544,19 +557,43 @@ export function AdminLeaveRequestsPage() {
     )
   }
 
-  function handleSendReminderConfirm() {
-    const nowIso = new Date().toISOString()
-    setLastApproverReminderSentAt(nowIso)
-    setLastReminderSent(nowIso)
+  async function handleSendReminderConfirm() {
     setReminderConfirmOpen(false)
-    toast.success(TOAST_REMINDER_SENT_TO_ALL)
+    setReminderSending(true)
+    setReminderError(null)
+
+    try {
+      const result = await sendAdminBulkReminder()
+      await mutateReminders(statsAfterBulkSend(reminderStats, result), {
+        revalidate: true,
+      })
+      toast.success(TOAST_REMINDER_SENT_TO_ALL)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        await mutateReminders(
+          (current) => statsAfterReminder429(current, err.body, {}),
+          { revalidate: true },
+        )
+      }
+      setReminderError(messageFromReminderError(err))
+    } finally {
+      setReminderSending(false)
+    }
   }
+
+  const approverCount = reminderStats?.approver_count ?? 0
+  const requestCount = reminderStats?.request_count ?? 0
+  const lastReminderSent = reminderStats?.last_sent_at ?? null
+  const canSendReminder =
+    Boolean(reminderStats?.can_send) && requestCount > 0 && !reminderSending
 
   const showReminderBanner =
     tab === 'all' &&
-    (showSkeleton ||
-      reminderStats.requestCount > 0 ||
-      reminderStats.approverCount > 0 ||
+    (reminderLoading ||
+      reminderErrorFromApi != null ||
+      reminderError != null ||
+      requestCount > 0 ||
+      approverCount > 0 ||
       lastReminderSent !== null)
 
   return (
@@ -584,23 +621,33 @@ export function AdminLeaveRequestsPage() {
               Pending Approver Reminders
             </p>
             <p className="mt-0.5 text-small text-text-black">
-              {showSkeleton
+              {reminderLoading && !reminderStats
                 ? 'Loading reminder summary…'
-                : `${reminderStats.approverCount} approver(s) have ${reminderStats.requestCount} leave request(s) awaiting their action.`}
+                : reminderErrorFromApi
+                  ? 'Unable to load reminder summary.'
+                  : `${approverCount} approver(s) have ${requestCount} leave request(s) awaiting their action.`}
             </p>
             <p className="mt-1 text-small text-text-gray">
               Last Reminder Sent:{' '}
               {formatReminderSentLabel(lastReminderSent)}
             </p>
+            {reminderError ? (
+              <p className="mt-1 text-small font-semibold text-status-rejected">
+                {reminderError}
+              </p>
+            ) : null}
           </div>
           <Button
             variant="primary"
-            disabled={reminderSentToday || showSkeleton}
-            onClick={() => setReminderConfirmOpen(true)}
+            disabled={!canSendReminder || reminderLoading}
+            onClick={() => {
+              setReminderError(null)
+              setReminderConfirmOpen(true)
+            }}
             className="shrink-0 bg-status-pending-conversion enabled:hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >
             <Send className="size-4" aria-hidden="true" />
-            Send Reminder to All
+            {reminderSending ? 'Sending…' : 'Send Reminder to All'}
           </Button>
         </div>
       ) : null}
@@ -813,7 +860,9 @@ export function AdminLeaveRequestsPage() {
       <ConfirmReasonModal
         open={reminderConfirmOpen}
         onClose={() => setReminderConfirmOpen(false)}
-        onConfirm={() => handleSendReminderConfirm()}
+        onConfirm={() => {
+          void handleSendReminderConfirm()
+        }}
         requireReason={false}
         title="Send Reminder to All"
         description="Send a reminder to approvers who have leave requests awaiting their action?"

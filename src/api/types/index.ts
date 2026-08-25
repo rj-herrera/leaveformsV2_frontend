@@ -17,7 +17,12 @@ export type {
   ApprovalInboxRow,
 } from './approval'
 
-export type { LeaveBalanceResource } from './balance'
+export type {
+  AdminBalanceTypeRow,
+  AdminEmployeeBalanceRow,
+  EmploymentStatusApi,
+  LeaveBalanceResource,
+} from './balance'
 
 export type {
   TeamCalendarEmployee,

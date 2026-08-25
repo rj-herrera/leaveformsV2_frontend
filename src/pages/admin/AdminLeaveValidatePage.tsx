@@ -428,7 +428,6 @@ export function AdminLeaveValidatePage() {
       <ApprovalDetailsTable
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
-        showPurpose
         currentUserId={String(user.id)}
         youBadgeVariant="muted"
       />
