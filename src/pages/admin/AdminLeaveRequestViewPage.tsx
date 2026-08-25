@@ -14,7 +14,7 @@ import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
-import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
+import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import {
@@ -302,7 +302,7 @@ export function AdminLeaveRequestViewPage() {
       <ApprovalDetailsTable
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
-        showPurpose
+        // showPurpose
         currentUserId={String(user.id)}
         youBadgeVariant="muted"
       />

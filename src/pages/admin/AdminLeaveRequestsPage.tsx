@@ -44,7 +44,6 @@ import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { usePendingConversions } from '../../hooks/api/usePendingConversions'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { getAdminPendingApproverReminderStats } from '../../mocks/leaveRequests'
 import {
   formatReminderSentLabel,
   getLastApproverReminderSentAt,
@@ -329,6 +328,15 @@ export function AdminLeaveRequestsPage() {
     isValidating: allValidating,
   } = useAdminLeaves(tab === 'all' ? allListParams : null)
 
+  const {
+    data: pendingApprovalData,
+    isLoading: pendingApprovalLoading,
+  } = useAdminLeaves(
+    tab === 'all'
+      ? { status: 'pending_approval', page: 1, per_page: 50 }
+      : null,
+  )
+
   const { data: adminGroups } = useAdminGroups(tab === 'all')
 
   useEffect(() => {
@@ -381,10 +389,21 @@ export function AdminLeaveRequestsPage() {
     [allData, awaitingAllReset],
   )
 
-  const reminderStats = useMemo(
-    () => getAdminPendingApproverReminderStats(),
-    [],
-  )
+  const reminderStats = useMemo(() => {
+    const rows = pendingApprovalData?.data ?? []
+    const requestCount = rows.length
+    // List rows lack eligible-approver IDs; remaining approval slots approximate
+    // how many approver actions are still outstanding.
+    const pendingSlots = rows.reduce(
+      (sum, row) =>
+        sum + Math.max(0, row.approvals_required - row.approvals_completed),
+      0,
+    )
+    return {
+      requestCount,
+      approverCount: pendingSlots > 0 ? pendingSlots : requestCount,
+    }
+  }, [pendingApprovalData])
 
   const pendingGroupOptions = useMemo(() => {
     const groups = Array.from(
@@ -554,7 +573,7 @@ export function AdminLeaveRequestsPage() {
 
   const showReminderBanner =
     tab === 'all' &&
-    (showSkeleton ||
+    (pendingApprovalLoading ||
       reminderStats.requestCount > 0 ||
       reminderStats.approverCount > 0 ||
       lastReminderSent !== null)
@@ -584,7 +603,7 @@ export function AdminLeaveRequestsPage() {
               Pending Approver Reminders
             </p>
             <p className="mt-0.5 text-small text-text-black">
-              {showSkeleton
+              {pendingApprovalLoading
                 ? 'Loading reminder summary…'
                 : `${reminderStats.approverCount} approver(s) have ${reminderStats.requestCount} leave request(s) awaiting their action.`}
             </p>
@@ -595,7 +614,7 @@ export function AdminLeaveRequestsPage() {
           </div>
           <Button
             variant="primary"
-            disabled={reminderSentToday || showSkeleton}
+            disabled={reminderSentToday || pendingApprovalLoading}
             onClick={() => setReminderConfirmOpen(true)}
             className="shrink-0 bg-status-pending-conversion enabled:hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >

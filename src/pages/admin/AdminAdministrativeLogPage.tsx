@@ -18,12 +18,12 @@ import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
 import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { formatActivityTimestamp } from '../../mocks/activityLog'
 import {
   filterAdminLogEntries,
   getAdminLogEntries,
 } from '../../mocks/adminLog'
 import { shouldShowDataSkeleton } from '../../mocks/config'
+import { formatDateTime } from '../../utils/leaveDisplay'
 
 type LeaveTypeFilter = 'ALL' | string
 type GroupFilter = 'ALL' | string
@@ -267,7 +267,7 @@ export function AdminAdministrativeLogPage() {
                       className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                     >
                       <td className="whitespace-nowrap px-5 text-body text-text-black">
-                        {formatActivityTimestamp(entry.occurredAt)}
+                        {formatDateTime(entry.occurredAt)}
                       </td>
                       <td
                         className="truncate px-5 text-body text-text-black"

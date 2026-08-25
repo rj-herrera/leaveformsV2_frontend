@@ -1,4 +1,4 @@
-import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
+import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import { INFO_FIELD_GRID_CLASS } from '../ui/tableStyles'
 import { LeaveAttachmentRow } from './LeaveAttachmentRow'
 import { LeaveInfoRow } from './LeaveInfoRow'

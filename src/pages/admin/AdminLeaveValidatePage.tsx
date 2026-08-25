@@ -28,7 +28,7 @@ import {
 } from '../../constants/toastMessages'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isAdminLeavesListKey, swrKeys } from '../../hooks/api/swrKeys'
-import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
+import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import {
@@ -428,7 +428,6 @@ export function AdminLeaveValidatePage() {
       <ApprovalDetailsTable
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
-        showPurpose
         currentUserId={String(user.id)}
         youBadgeVariant="muted"
       />

@@ -42,10 +42,6 @@ import { useMyLeaves } from '../../hooks/api/useMyLeaves'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import {
-  PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
-} from '../../mocks/leaveBalances'
-import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
-import {
   formatDurationDays,
   formatLeavePeriod,
   formatShortDate,
@@ -62,6 +58,9 @@ const MOCK_OTHER_BALANCES = {
   maternity: 105,
   paternity: 7,
 } as const
+
+const PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE =
+  'Submit a leave request first before credits can be viewed or applied.'
 
 /** Format API decimal strings (e.g. `"12.00"`) for balance cards. */
 function formatBalanceDays(value: string | undefined): string {
@@ -146,7 +145,7 @@ export function DashboardPage() {
 
   const canViewSelectedParentalCredits =
     selectedLeaveType !== 'parental' ||
-    canViewParentalLeaveCredits(user.id, parentalLabel)
+    leaveRequests.some((request) => request.leave_type.name === parentalLabel)
 
   const selectedAvailableDays = (() => {
     if (!selectedLeaveType) return null
