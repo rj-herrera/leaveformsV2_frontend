@@ -335,8 +335,9 @@ export function FileLeaveForMemberPage() {
 
         <section className="shrink-0 overflow-visible rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
             <SelectField
+              className="sm:col-span-1"
               label="Group"
               value={groupId}
               onChange={handleGroupChange}
@@ -347,6 +348,7 @@ export function FileLeaveForMemberPage() {
               }
             />
             <SelectField
+              className="sm:col-span-2"
               label="Employee Name"
               value={employeeId}
               onChange={handleEmployeeChange}
@@ -362,6 +364,7 @@ export function FileLeaveForMemberPage() {
               }
             />
             <TextField
+              className="sm:col-span-1"
               label="Employee No."
               value={selectedMember ? String(selectedMember.id) : ''}
               placeholder="Employee No."
