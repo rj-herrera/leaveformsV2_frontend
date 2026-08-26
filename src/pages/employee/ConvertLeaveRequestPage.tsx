@@ -166,17 +166,17 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
             type="submit"
             variant="primary"
             disabled={!canSubmit}
+            loading={submitting}
+            loadingText="Submitting…"
             title={
-              submitting
-                ? 'Submitting…'
-                : attachmentUploading
-                  ? 'Wait for the attachment upload to finish.'
-                  : attachmentMissing
-                    ? 'Upload a medical certificate before confirming.'
-                    : undefined
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : attachmentMissing
+                  ? 'Upload a medical certificate before confirming.'
+                  : undefined
             }
           >
-            {submitting ? 'Submitting…' : 'Confirm'}
+            Confirm
           </Button>
         </div>
       </form>

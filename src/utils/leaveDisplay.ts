@@ -1,5 +1,6 @@
 import type { LeaveRequestStatus } from '../constants/leaveStatus'
 import type {
+  ConversionStatus,
   LeaveApprovalRequirement,
   LeaveStatus,
 } from '../api/types'
@@ -22,6 +23,42 @@ export function mapApiLeaveStatusToUi(
     case 'cancelled':
       return 'CANCELLED'
   }
+}
+
+/** Map API conversion status → conversion-request section badge. */
+export function mapConversionStatusToUi(
+  status: ConversionStatus,
+): LeaveRequestStatus {
+  switch (status) {
+    case 'pending_review':
+      return 'CONVERSION_PENDING'
+    case 'approved':
+      return 'CONVERSION_APPROVED'
+    case 'rejected':
+      return 'CONVERSION_REJECTED'
+  }
+}
+
+/** Resolve conversion reviewer display name from API relation or eligible pool. */
+export function resolveConversionReviewerName(
+  conversion: {
+    reviewed_by_emp_id: number | null
+    reviewed_by?: { name: string } | null
+  },
+  eligibleApprovers: ReadonlyArray<{ emp_id: number; name: string }> = [],
+): string | null {
+  const fromRelation = conversion.reviewed_by?.name?.trim()
+  if (fromRelation) return fromRelation
+
+  const reviewedByEmpId = conversion.reviewed_by_emp_id
+  if (reviewedByEmpId == null) return null
+
+  const match = eligibleApprovers.find(
+    (approver) => Number(approver.emp_id) === Number(reviewedByEmpId),
+  )
+  const name = match?.name?.trim()
+  if (name) return name
+  return `Employee #${reviewedByEmpId}`
 }
 
 export function formatShortDate(isoDate: string | null | undefined): string {

@@ -33,6 +33,7 @@ import {
   formatLeavePeriod,
   formatShortDate,
   mapApiLeaveStatusToUi,
+  resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
 
 const ATTACHMENT_LABEL = 'Attachment'
@@ -151,8 +152,7 @@ export function LeaveRequestDetailsPage() {
     ],
   )
 
-  const isConversion =
-    detail?.status === 'pending_conversion' && detail.conversion != null
+  const isConversion = detail?.conversion != null
   const canEdit =
     detail?.status === 'pending_approval' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
@@ -171,8 +171,9 @@ export function LeaveRequestDetailsPage() {
     detail?.status === 'converted_to_sl'
 
   const conversionPanels: LeaveConversionInfo | null =
-    isConversion && conversion
+    detail && conversion
       ? {
+          status: conversion.status,
           originalLeaveType: conversion.from_leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
           originalDateFiled: formatShortDate(detail.created_at),
@@ -190,10 +191,22 @@ export function LeaveRequestDetailsPage() {
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type.name,
           conversionRequestDate: formatShortDate(conversion.created_at),
-          conversionReason: conversion.remarks?.trim() || '—',
+          conversionReason: '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
+          reviewedBy: resolveConversionReviewerName(
+            conversion,
+            eligibleApprovers,
+          ),
+          ...(conversion.status === 'rejected'
+            ? {
+                reviewedAtLabel: conversion.reviewed_at
+                  ? formatDateTime(conversion.reviewed_at)
+                  : '—',
+                rejectionReason: conversion.remarks?.trim() || '—',
+              }
+            : {}),
         }
       : null
 
@@ -317,7 +330,9 @@ export function LeaveRequestDetailsPage() {
           <Button
             type="button"
             variant="dangerOutline"
-            disabled={!canCancel || cancelling}
+            disabled={!canCancel}
+            loading={cancelling}
+            loadingText="Cancelling…"
             onClick={() => {
               setCancelError(null)
               setCancelOpen(true)
@@ -325,13 +340,11 @@ export function LeaveRequestDetailsPage() {
             title={
               !canCancel
                 ? 'Only pending leave requests can be cancelled'
-                : cancelling
-                  ? 'Cancelling…'
-                  : undefined
+                : undefined
             }
           >
             <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
-            {cancelling ? 'Cancelling…' : 'Cancel Request'}
+            Cancel Request
           </Button>
         </div>
       </div>

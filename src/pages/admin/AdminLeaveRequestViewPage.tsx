@@ -23,6 +23,7 @@ import {
   formatLeavePeriod,
   formatShortDate,
   mapApiLeaveStatusToUi,
+  resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
 import {
   listPathWithTab,
@@ -155,8 +156,9 @@ export function AdminLeaveRequestViewPage() {
   const groupLabel = orgLabel(employee?.group)
 
   const conversionPanels: LeaveConversionInfo | null =
-    detail && conversion && conversion.status !== 'rejected'
+    detail && conversion
       ? {
+          status: conversion.status,
           originalLeaveType:
             conversion.from_leave_type?.name ?? detail.leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
@@ -174,6 +176,18 @@ export function AdminLeaveRequestViewPage() {
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
+          reviewedBy: resolveConversionReviewerName(
+            conversion,
+            eligibleApprovers,
+          ),
+          ...(conversion.status === 'rejected'
+            ? {
+                reviewedAtLabel: conversion.reviewed_at
+                  ? formatDateTime(conversion.reviewed_at)
+                  : '—',
+                rejectionReason: conversion.remarks?.trim() || '—',
+              }
+            : {}),
         }
       : null
 

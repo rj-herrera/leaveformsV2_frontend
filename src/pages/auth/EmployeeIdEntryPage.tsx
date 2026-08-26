@@ -92,9 +92,10 @@ export function EmployeeIdEntryPage() {
             type="submit"
             variant="primary"
             className="w-full"
-            disabled={isSubmitting}
+            loading={isSubmitting}
+            loadingText="Signing in…"
           >
-            {isSubmitting ? 'Signing in…' : 'Continue'}
+            Continue
           </Button>
         </form>
 

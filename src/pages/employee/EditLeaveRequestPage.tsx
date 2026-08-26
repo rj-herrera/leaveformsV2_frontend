@@ -349,16 +349,12 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
           <Button
             type="submit"
             variant="primary"
-            disabled={!formValid || submitting}
-            title={
-              submitting
-                ? 'Saving…'
-                : !isDirty
-                  ? 'No changes to save'
-                  : undefined
-            }
+            disabled={!formValid}
+            loading={submitting}
+            loadingText="Saving…"
+            title={!isDirty ? 'No changes to save' : undefined}
           >
-            {submitting ? 'Saving…' : 'Confirm'}
+            Confirm
           </Button>
         </div>
       </form>

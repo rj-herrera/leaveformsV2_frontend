@@ -81,6 +81,11 @@ export type LeaveDetailConversion = {
   has_med_cert: boolean
   med_cert_url: string | null
   reviewed_by_emp_id: number | null
+  reviewed_by?: {
+    id: number
+    emp_id: string
+    name: string
+  } | null
   remarks: string | null
   reviewed_at: string | null
   created_at: string | null

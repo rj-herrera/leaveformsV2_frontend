@@ -15,7 +15,7 @@ export function LeaveAttachmentRow({
   if (fileCount === 0 && !alwaysShow) return null
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-small text-text-gray">Attachment</dt>
       <dd>
         {fileCount > 0 ? (

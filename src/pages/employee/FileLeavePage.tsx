@@ -381,10 +381,10 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={submitting}
-            title={submitting ? 'Submitting…' : undefined}
+            loading={submitting}
+            loadingText="Submitting…"
           >
-            {submitting ? 'Submitting…' : 'Submit Request'}
+            Submit Request
           </Button>
         </div>
       </form>

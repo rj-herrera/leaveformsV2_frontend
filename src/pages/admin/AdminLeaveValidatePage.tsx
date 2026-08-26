@@ -37,6 +37,7 @@ import {
   formatLeavePeriod,
   formatShortDate,
   mapApiLeaveStatusToUi,
+  resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
 import {
   listPathWithTab,
@@ -101,7 +102,9 @@ export function AdminLeaveValidatePage() {
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(
+    null,
+  )
   const [actionError, setActionError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
@@ -207,6 +210,7 @@ export function AdminLeaveValidatePage() {
   const conversionPanels: LeaveConversionInfo | null =
     detail && conversion
       ? {
+          status: conversion.status,
           originalLeaveType:
             conversion.from_leave_type?.name ?? detail.leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
@@ -224,6 +228,18 @@ export function AdminLeaveValidatePage() {
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
+          reviewedBy: resolveConversionReviewerName(
+            conversion,
+            eligibleApprovers,
+          ),
+          ...(conversion.status === 'rejected'
+            ? {
+                reviewedAtLabel: conversion.reviewed_at
+                  ? formatDateTime(conversion.reviewed_at)
+                  : '—',
+                rejectionReason: conversion.remarks?.trim() || '—',
+              }
+            : {}),
         }
       : null
 
@@ -263,7 +279,7 @@ export function AdminLeaveValidatePage() {
     if (!detail || !conversion) return
 
     setRejectOpen(false)
-    setSubmitting(true)
+    setPendingAction('reject')
     setActionError(null)
 
     try {
@@ -281,7 +297,7 @@ export function AdminLeaveValidatePage() {
         ),
       )
     } finally {
-      setSubmitting(false)
+      setPendingAction(null)
     }
   }
 
@@ -289,7 +305,7 @@ export function AdminLeaveValidatePage() {
     if (!detail || !conversion) return
 
     setApproveOpen(false)
-    setSubmitting(true)
+    setPendingAction('approve')
     setActionError(null)
 
     try {
@@ -305,7 +321,7 @@ export function AdminLeaveValidatePage() {
         ),
       )
     } finally {
-      setSubmitting(false)
+      setPendingAction(null)
     }
   }
 
@@ -437,7 +453,9 @@ export function AdminLeaveValidatePage() {
           <Button
             type="button"
             variant="dangerOutline"
-            disabled={submitting}
+            disabled={pendingAction != null}
+            loading={pendingAction === 'reject'}
+            loadingText="Rejecting…"
             onClick={() => {
               setActionError(null)
               setRejectOpen(true)
@@ -449,14 +467,16 @@ export function AdminLeaveValidatePage() {
           <Button
             type="button"
             variant="primary"
-            disabled={submitting}
+            disabled={pendingAction != null}
+            loading={pendingAction === 'approve'}
+            loadingText="Approving…"
             onClick={() => {
               setActionError(null)
               setApproveOpen(true)
             }}
           >
             <Check className="size-4 text-white" aria-hidden="true" />
-            {submitting ? 'Submitting…' : 'Approve'}
+            Approve
           </Button>
         </div>
       ) : null}

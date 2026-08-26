@@ -559,10 +559,11 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || submitting}
-            title={submitting ? 'Submitting…' : undefined}
+            disabled={!leadTimeValidation.ok}
+            loading={submitting}
+            loadingText="Submitting…"
           >
-            {submitting ? 'Submitting…' : 'Submit Request'}
+            Submit Request
           </Button>
         </div>
       </form>
