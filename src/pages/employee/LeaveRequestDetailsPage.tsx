@@ -14,6 +14,10 @@ import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTabl
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
 import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
+import {
+  RequestConversionModal,
+  type ConversionLeaveType,
+} from '../../components/leave/RequestConversionModal'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -68,6 +72,7 @@ export function LeaveRequestDetailsPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [conversionModalOpen, setConversionModalOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -158,7 +163,7 @@ export function LeaveRequestDetailsPage() {
     detail.leave_type.code.toUpperCase() === 'VL' &&
     !detail.approval_requirements.some((req) => req.history != null)
   const canCancel = detail?.status === 'pending_approval'
-  const canConvertToSick =
+  const canRequestConversion =
     detail?.status === 'confirmed' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
     detail.conversion == null &&
@@ -296,14 +301,15 @@ export function LeaveRequestDetailsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canConvertToSick ? (
-            <Link
-              to={`/my-leave/requests/${detail.id}/convert`}
+          {canRequestConversion ? (
+            <button
+              type="button"
+              onClick={() => setConversionModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-2 text-body font-medium text-white transition-opacity hover:opacity-90"
             >
               <RefreshCw className="size-4" aria-hidden="true" />
-              Convert to Sick Leave
-            </Link>
+              Request Conversion
+            </button>
           ) : canEdit ? (
             <Link
               to={`/my-leave/requests/${detail.id}/edit`}
@@ -419,6 +425,18 @@ export function LeaveRequestDetailsPage() {
         cancelLabel="Keep Request"
         confirmVariant="danger"
         iconVariant="cancel"
+      />
+
+      <RequestConversionModal
+        open={conversionModalOpen}
+        onClose={() => setConversionModalOpen(false)}
+        onContinue={(type: ConversionLeaveType) => {
+          if (type === 'sick') {
+            navigate(`/my-leave/requests/${detail.id}/convert`)
+            return
+          }
+          navigate(`/my-leave/requests/${detail.id}/convert/emergency`)
+        }}
       />
 
       <AttachmentPreviewModal

@@ -4,6 +4,7 @@ import { RequireCapability } from './auth/RequireCapability'
 import { AppLayout } from './layouts/AppLayout'
 import { EmployeeIdEntryPage } from './pages/auth/EmployeeIdEntryPage'
 import { ActivityLogPage } from './pages/employee/ActivityLogPage'
+import { ConvertEmergencyLeaveRequestPage } from './pages/employee/ConvertEmergencyLeaveRequestPage'
 import { ConvertLeaveRequestPage } from './pages/employee/ConvertLeaveRequestPage'
 import { DashboardPage } from './pages/employee/DashboardPage'
 import { EditLeaveRequestPage } from './pages/employee/EditLeaveRequestPage'
@@ -80,6 +81,10 @@ function App() {
           <Route
             path="my-leave/requests/:leaveRequestId/convert"
             element={<ConvertLeaveRequestPage />}
+          />
+          <Route
+            path="my-leave/requests/:leaveRequestId/convert/emergency"
+            element={<ConvertEmergencyLeaveRequestPage />}
           />
 
           {/* Approver / Team — src/pages/team */}

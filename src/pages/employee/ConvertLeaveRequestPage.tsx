@@ -13,6 +13,7 @@ import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
+import { canRequestConversion } from '../../utils/leaveConversion'
 
 /** API: pdf / jpg / jpeg / png. */
 const MED_CERT_ACCEPT =
@@ -31,17 +32,6 @@ function messageFromApiError(error: unknown): string {
     if (error.message) return error.message
   }
   return 'Unable to submit conversion request. Please try again.'
-}
-
-/** Confirmed VL, no conversion yet, and viewer is the employee on leave. */
-function canRequestConversion(
-  detail: LeaveDetail,
-  viewerEmpId: string,
-): boolean {
-  if (detail.status !== 'confirmed') return false
-  if (detail.leave_type.code.toUpperCase() !== 'VL') return false
-  if (detail.conversion != null) return false
-  return String(detail.emp_id) === String(viewerEmpId)
 }
 
 type ConvertLeaveFormProps = {

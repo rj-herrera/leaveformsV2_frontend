@@ -29,6 +29,12 @@ export const SICK_LEAVE_THEME: LeaveTypeTheme = {
   iconBgClass: 'bg-leave-sick',
 }
 
+export const EMERGENCY_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Emergency Leave',
+  icon: AlertTriangle,
+  iconBgClass: 'bg-leave-emergency',
+}
+
 export const SELECTABLE_LEAVE_DEFAULT: LeaveTypeTheme = {
   label: 'Select Leave Type',
   icon: Leaf,
@@ -40,11 +46,7 @@ export function getSelectableLeaveThemes(
   gender: UserGender,
 ): Record<SelectableLeaveType, LeaveTypeTheme> {
   return {
-    emergency: {
-      label: 'Emergency Leave',
-      icon: AlertTriangle,
-      iconBgClass: 'bg-leave-emergency',
-    },
+    emergency: EMERGENCY_LEAVE_THEME,
     ptb: {
       label: 'PTB Leave',
       icon: Sprout,
