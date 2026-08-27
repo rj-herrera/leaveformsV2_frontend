@@ -85,3 +85,26 @@
     font-weight: var(--text-h2--font-weight);
   }
 }
+
+@keyframes boot-brand-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .boot-brand-fade {
+    opacity: 0;
+    animation: boot-brand-fade 0.9s ease-out 0.35s forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .boot-brand-fade {
+      opacity: 1;
+      animation: none;
+    }
+  }
+}

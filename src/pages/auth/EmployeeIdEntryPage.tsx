@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
+import { BootLoadingView } from '../../components/ui/BootLoadingView'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/form/TextField'
 
@@ -24,11 +25,7 @@ export function EmployeeIdEntryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isBootstrapping) {
-    return (
-      <div className="flex min-h-svh items-center justify-center bg-background px-4">
-        <p className="text-body text-text-gray">Checking session…</p>
-      </div>
-    )
+    return <BootLoadingView />
   }
 
   if (isAuthenticated) {

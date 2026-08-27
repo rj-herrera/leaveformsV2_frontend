@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { BootLoadingView } from '../components/ui/BootLoadingView'
 import { useAuth } from './AuthContext'
 
 /** Redirects unauthenticated visitors to the employee ID entry page. */
@@ -7,11 +8,7 @@ export function RequireAuth() {
   const location = useLocation()
 
   if (isBootstrapping) {
-    return (
-      <div className="flex min-h-svh items-center justify-center bg-background px-4">
-        <p className="text-body text-text-gray">Loading…</p>
-      </div>
-    )
+    return <BootLoadingView />
   }
 
   if (!isAuthenticated) {

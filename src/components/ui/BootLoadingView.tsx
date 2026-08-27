@@ -1,0 +1,23 @@
+/** Full-viewport loading state shown while auth is bootstrapping. */
+export function BootLoadingView() {
+  return (
+    <div
+      className="flex min-h-svh flex-col items-center justify-center gap-0 bg-background px-4"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading"
+    >
+      <img
+        src="/wind2.svg"
+        alt=""
+        width={500}
+        height={500}
+        className="size-[500px]"
+        aria-hidden
+      />
+      <p className="boot-brand-fade -mt-16 text-4xl font-semibold text-primary">
+        KDT Leave Forms
+      </p>
+    </div>
+  )
+}
