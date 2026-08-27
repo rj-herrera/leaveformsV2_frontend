@@ -404,18 +404,18 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
           <Button
             type="submit"
             variant="primary"
-            disabled={!formValid || submitting}
+            disabled={!formValid || attachmentUploading}
+            loading={submitting}
+            loadingText="Saving…"
             title={
-              submitting
-                ? 'Saving…'
-                : attachmentUploading
-                  ? 'Wait for the attachment upload to finish.'
-                  : !isDirty
-                    ? 'No changes to save'
-                    : undefined
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : !isDirty
+                  ? 'No changes to save'
+                  : undefined
             }
           >
-            {submitting ? 'Saving…' : 'Confirm'}
+            Confirm
           </Button>
         </div>
       </form>

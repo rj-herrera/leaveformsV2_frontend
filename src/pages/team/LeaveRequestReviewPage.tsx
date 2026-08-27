@@ -92,7 +92,9 @@ export function LeaveRequestReviewPage() {
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [approveOpen, setApproveOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | null>(
+    null,
+  )
   const [actionError, setActionError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
@@ -240,7 +242,7 @@ export function LeaveRequestReviewPage() {
     if (!detail) return
 
     setRejectOpen(false)
-    setSubmitting(true)
+    setPendingAction('reject')
     setActionError(null)
 
     try {
@@ -255,7 +257,7 @@ export function LeaveRequestReviewPage() {
         messageFromApiError(err, 'Unable to reject leave request. Please try again.'),
       )
     } finally {
-      setSubmitting(false)
+      setPendingAction(null)
     }
   }
 
@@ -263,7 +265,7 @@ export function LeaveRequestReviewPage() {
     if (!detail) return
 
     setApproveOpen(false)
-    setSubmitting(true)
+    setPendingAction('approve')
     setActionError(null)
 
     try {
@@ -276,7 +278,7 @@ export function LeaveRequestReviewPage() {
         messageFromApiError(err, 'Unable to approve leave request. Please try again.'),
       )
     } finally {
-      setSubmitting(false)
+      setPendingAction(null)
     }
   }
 
@@ -380,7 +382,9 @@ export function LeaveRequestReviewPage() {
           <Button
             type="button"
             variant="dangerOutline"
-            disabled={submitting}
+            disabled={pendingAction != null}
+            loading={pendingAction === 'reject'}
+            loadingText="Rejecting…"
             onClick={() => {
               setActionError(null)
               setRejectOpen(true)
@@ -392,14 +396,16 @@ export function LeaveRequestReviewPage() {
           <Button
             type="button"
             variant="primary"
-            disabled={submitting}
+            disabled={pendingAction != null}
+            loading={pendingAction === 'approve'}
+            loadingText="Approving…"
             onClick={() => {
               setActionError(null)
               setApproveOpen(true)
             }}
           >
             <Check className="size-4" aria-hidden="true" />
-            {submitting ? 'Submitting…' : 'Approve'}
+            Approve
           </Button>
         </div>
       ) : null}

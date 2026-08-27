@@ -484,16 +484,16 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={submitting || attachmentUploading}
+            disabled={attachmentUploading}
+            loading={submitting}
+            loadingText="Submitting…"
             title={
-              submitting
-                ? 'Submitting…'
-                : attachmentUploading
-                  ? 'Wait for the attachment upload to finish.'
-                  : undefined
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : undefined
             }
           >
-            {submitting ? 'Submitting…' : 'Submit Request'}
+            Submit Request
           </Button>
         </div>
       </form>

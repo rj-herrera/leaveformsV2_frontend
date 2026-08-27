@@ -14,6 +14,7 @@ import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
+import { canRequestConversion } from '../../utils/leaveConversion'
 import { MED_CERT_ACCEPT } from '../../utils/leaveFiling'
 // File size validation disabled for now; re-enable if API enforces a max again:
 // const MED_CERT_MAX_BYTES = 5120 * 1024
@@ -40,17 +41,6 @@ function reasonErrorFromApi(error: unknown): string | null {
     if (typeof first === 'string' && first.trim()) return first.trim()
   }
   return null
-}
-
-/** Confirmed VL, no conversion yet, and viewer is the employee on leave. */
-function canRequestConversion(
-  detail: LeaveDetail,
-  viewerEmpId: string,
-): boolean {
-  if (detail.status !== 'confirmed') return false
-  if (detail.leave_type.code.toUpperCase() !== 'VL') return false
-  if (detail.conversion != null) return false
-  return String(detail.emp_id) === String(viewerEmpId)
 }
 
 type ConvertLeaveFormProps = {
@@ -201,19 +191,19 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
             type="submit"
             variant="primary"
             disabled={!canSubmit}
+            loading={submitting}
+            loadingText="Submitting…"
             title={
-              submitting
-                ? 'Submitting…'
-                : attachmentUploading
-                  ? 'Wait for the attachment upload to finish.'
-                  : reasonMissing
-                    ? 'Enter a conversion reason before confirming.'
-                    : attachmentMissing
-                      ? 'Upload a medical certificate before confirming.'
-                      : undefined
+              attachmentUploading
+                ? 'Wait for the attachment upload to finish.'
+                : reasonMissing
+                  ? 'Enter a conversion reason before confirming.'
+                  : attachmentMissing
+                    ? 'Upload a medical certificate before confirming.'
+                    : undefined
             }
           >
-            {submitting ? 'Submitting…' : 'Confirm'}
+            Confirm
           </Button>
         </div>
       </form>

@@ -14,7 +14,8 @@ export const TABLE_BODY_ROW_BORDER_CLASS =
   'border-b border-border last:border-b-0'
 
 /** Leave-detail info fields: equal 2-column stacked label-over-value grid. */
-export const INFO_FIELD_GRID_CLASS = 'grid grid-cols-2 gap-x-6 gap-y-3'
+export const INFO_FIELD_GRID_CLASS =
+  'grid min-w-0 grid-cols-2 gap-x-6 gap-y-3'
 
 /**
  * Shared search field chrome for table filter bars (left icon inset via pl-9).

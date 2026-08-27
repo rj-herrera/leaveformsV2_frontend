@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { Loader2 } from 'lucide-react'
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerOutline' | 'ghost'
 type ButtonSize = 'sm' | 'md'
@@ -27,6 +28,10 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
   size?: ButtonSize
+  /** Shows a spinner and forces the button disabled. */
+  loading?: boolean
+  /** Label shown while loading (replaces children). */
+  loadingText?: string
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -37,6 +42,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type = 'button',
       className = '',
       children,
+      loading = false,
+      loadingText,
+      disabled,
       ...rest
     },
     ref,
@@ -45,10 +53,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         type={type}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
         className={`${BASE} ${VARIANT_CLASSES[variant]} ${SIZE_CLASSES[size]} ${className}`}
         {...rest}
       >
-        {children}
+        {loading ? (
+          <>
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
+            {loadingText}
+          </>
+        ) : (
+          children
+        )}
       </button>
     )
   },

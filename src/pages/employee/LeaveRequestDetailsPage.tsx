@@ -14,6 +14,10 @@ import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTabl
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
 import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
+import {
+  RequestConversionModal,
+  type ConversionLeaveType,
+} from '../../components/leave/RequestConversionModal'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -25,7 +29,7 @@ import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
-import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
+import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
 import {
@@ -34,6 +38,7 @@ import {
   formatLeavePeriod,
   formatShortDate,
   mapApiLeaveStatusToUi,
+  resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
 
 const ATTACHMENT_LABEL = 'Attachment'
@@ -68,6 +73,7 @@ export function LeaveRequestDetailsPage() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [conversionModalOpen, setConversionModalOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewFileName, setPreviewFileName] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -156,7 +162,7 @@ export function LeaveRequestDetailsPage() {
     detail?.status === 'pending_conversion' && detail.conversion != null
   const canEdit = detail ? isPendingLeaveEditable(detail) : false
   const canCancel = detail?.status === 'pending_approval'
-  const canConvertToSick =
+  const canRequestConversion =
     detail?.status === 'confirmed' &&
     detail.leave_type.code.toUpperCase() === 'VL' &&
     detail.conversion == null &&
@@ -169,8 +175,9 @@ export function LeaveRequestDetailsPage() {
     detail?.status === 'converted_to_sl'
 
   const conversionPanels: LeaveConversionInfo | null =
-    isConversion && conversion
+    detail && conversion
       ? {
+          status: conversion.status,
           originalLeaveType: conversion.from_leave_type.name,
           originalDayType: formatDayTypeLabel(detail.day_type),
           originalDateFiled: formatShortDate(detail.created_at),
@@ -192,6 +199,18 @@ export function LeaveRequestDetailsPage() {
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
+          reviewedBy: resolveConversionReviewerName(
+            conversion,
+            eligibleApprovers,
+          ),
+          ...(conversion.status === 'rejected'
+            ? {
+                reviewedAtLabel: conversion.reviewed_at
+                  ? formatDateTime(conversion.reviewed_at)
+                  : '—',
+                rejectionReason: conversion.remarks?.trim() || '—',
+              }
+            : {}),
         }
       : null
 
@@ -284,14 +303,15 @@ export function LeaveRequestDetailsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canConvertToSick ? (
-            <Link
-              to={`/my-leave/requests/${detail.id}/convert`}
+          {canRequestConversion ? (
+            <button
+              type="button"
+              onClick={() => setConversionModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-md border border-primary bg-primary px-3 py-2 text-body font-medium text-white transition-opacity hover:opacity-90"
             >
               <RefreshCw className="size-4" aria-hidden="true" />
-              Convert to Sick Leave
-            </Link>
+              Request Conversion
+            </button>
           ) : canEdit ? (
             <Link
               to={`/my-leave/requests/${detail.id}/edit`}
@@ -318,7 +338,9 @@ export function LeaveRequestDetailsPage() {
           <Button
             type="button"
             variant="dangerOutline"
-            disabled={!canCancel || cancelling}
+            disabled={!canCancel}
+            loading={cancelling}
+            loadingText="Cancelling…"
             onClick={() => {
               setCancelError(null)
               setCancelOpen(true)
@@ -326,13 +348,11 @@ export function LeaveRequestDetailsPage() {
             title={
               !canCancel
                 ? 'Only pending leave requests can be cancelled'
-                : cancelling
-                  ? 'Cancelling…'
-                  : undefined
+                : undefined
             }
           >
             <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
-            {cancelling ? 'Cancelling…' : 'Cancel Request'}
+            Cancel Request
           </Button>
         </div>
       </div>
@@ -413,6 +433,18 @@ export function LeaveRequestDetailsPage() {
         cancelLabel="Keep Request"
         confirmVariant="danger"
         iconVariant="cancel"
+      />
+
+      <RequestConversionModal
+        open={conversionModalOpen}
+        onClose={() => setConversionModalOpen(false)}
+        onContinue={(type: ConversionLeaveType) => {
+          if (type === 'sick') {
+            navigate(`/my-leave/requests/${detail.id}/convert`)
+            return
+          }
+          navigate(`/my-leave/requests/${detail.id}/convert/emergency`)
+        }}
       />
 
       <AttachmentPreviewModal
