@@ -30,6 +30,7 @@ import { swrKeys } from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
+import { requiresMedCert } from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -208,7 +209,7 @@ export function AdminLeaveRequestViewPage() {
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
           conversionRequestDate: formatShortDate(conversion.created_at),
-          conversionReason: '—',
+          conversionReason: conversion.reason?.trim() || '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
@@ -216,7 +217,9 @@ export function AdminLeaveRequestViewPage() {
       : null
 
   const showReminderActions =
-    user.roles.admin && detail?.status === 'pending_approval'
+    user.roles.admin &&
+    detail?.status === 'pending_approval' &&
+    !requiresMedCert(detail.leave_type.code)
 
   const notFound =
     !validId ||
@@ -391,6 +394,7 @@ export function AdminLeaveRequestViewPage() {
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow
                 value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+                alwaysShow={requiresMedCert(detail.leave_type.code)}
                 onView={() =>
                   openPreview(
                     ATTACHMENT_LABEL,

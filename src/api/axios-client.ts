@@ -7,7 +7,7 @@ import { clearCookie } from '../utils/cookies'
  *
  * Laravel JsonResources wrap payloads as `{ data: T }` (lists may also include
  * `links` / `meta`). Use the `api*Data` / `apiGetList` helpers for those.
- * Use `apiPostFormData` for multipart uploads (e.g. conversion `med_cert`) —
+ * Use `apiPostFormData` for multipart uploads (SL `leave_attachment`, conversion `med_cert`) —
  * do not force `Content-Type: application/json`.
  * Plain endpoints like `/me` and `/dev/login` are not wrapped — call
  * `axiosClient` directly for those.

@@ -191,6 +191,18 @@ function toPendingValidationRow(
   }
 }
 
+function toPendingSickLeaveRow(row: ApprovalInboxRow): AdminListRow {
+  const mapped = toAdminAllRow(row)
+  return {
+    ...mapped,
+    pendingValidation: {
+      kind: 'new_filing',
+      leaveType: row.leave_type.name,
+      leaveTypeCode: row.leave_type.code,
+    },
+  }
+}
+
 function toAdminAllRow(row: ApprovalInboxRow): AdminListRow {
   const employee = row.employee
   return {
@@ -306,6 +318,22 @@ export function AdminLeaveRequestsPage() {
     isLoading: pendingLoading,
   } = usePendingConversions()
 
+  const pendingSlParams = useMemo(
+    () => ({
+      status: 'pending_approval' as const,
+      code: 'SL',
+      per_page: 50,
+      page: 1,
+    }),
+    [],
+  )
+
+  const {
+    data: pendingSlData,
+    error: pendingSlError,
+    isLoading: pendingSlLoading,
+  } = useAdminLeaves(pendingSlParams)
+
   const {
     data: reminderStats,
     error: reminderErrorFromApi,
@@ -387,11 +415,14 @@ export function AdminLeaveRequestsPage() {
   }, [awaitingAllReset, allValidating, allData, allError])
 
   const pendingItems = useMemo(() => {
-    if (!pendingData) return []
-    return pendingData
-      .map(toPendingValidationRow)
-      .filter((row): row is AdminListRow => row !== null)
-  }, [pendingData])
+    const conversions = pendingData
+      ? pendingData
+          .map(toPendingValidationRow)
+          .filter((row): row is AdminListRow => row !== null)
+      : []
+    const sickLeaves = (pendingSlData?.data ?? []).map(toPendingSickLeaveRow)
+    return [...conversions, ...sickLeaves]
+  }, [pendingData, pendingSlData])
 
   const allRows = useMemo(
     () =>
@@ -502,12 +533,13 @@ export function AdminLeaveRequestsPage() {
     }
   }, [tab, awaitingAllReset, allPage, allTotalPages])
 
-  const showPendingSkeleton = pendingLoading && !pendingData
+  const showPendingSkeleton =
+    (pendingLoading && !pendingData) || (pendingSlLoading && !pendingSlData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
   const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
   const listError =
     tab === 'pending'
-      ? pendingError && !pendingData
+      ? (pendingError && !pendingData) || (pendingSlError && !pendingSlData)
       : allError && !allData
 
   const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
@@ -802,7 +834,7 @@ export function AdminLeaveRequestsPage() {
                       className="px-5 text-center text-body text-status-rejected"
                     >
                       {tab === 'pending'
-                        ? 'Unable to load pending conversions. Please try again.'
+                        ? 'Unable to load pending leave requests. Please try again.'
                         : 'Unable to load leave requests. Please try again.'}
                     </td>
                   </tr>
@@ -953,19 +985,6 @@ function PendingValidationLeaveTypeCell({
     return (
       <span className="block truncate" title={label}>
         {label}
-      </span>
-    )
-  }
-
-  if (display?.kind === 'new_filing') {
-    return (
-      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <span className="truncate" title={display.leaveType}>
-          {display.leaveType}
-        </span>
-        <span className="inline-flex shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-small font-semibold text-text-gray">
-          New filing
-        </span>
       </span>
     )
   }

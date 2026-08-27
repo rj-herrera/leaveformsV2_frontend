@@ -9,12 +9,12 @@ import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
+import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { useToast } from '../../components/ui/ToastProvider'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
-import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
@@ -25,6 +25,12 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import {
+  appliesVlLeadTime,
+  isPendingLeaveEditable,
+  MED_CERT_ACCEPT,
+  requiresMedCert,
+} from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
   parseLeaveFormApiError,
@@ -38,11 +44,9 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Edit allowed only for pending VL with no approval history (API rule). */
+/** Edit allowed only for pending VL/SL with no approval history (API rule). */
 function isLeaveEditable(detail: LeaveDetail): boolean {
-  if (detail.status !== 'pending_approval') return false
-  if (detail.leave_type.code.toUpperCase() !== 'VL') return false
-  return !detail.approval_requirements.some((req) => req.history != null)
+  return isPendingLeaveEditable(detail)
 }
 
 type EditLeaveFormProps = {
@@ -57,12 +61,17 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
   const detailsPath = `/my-leave/requests/${detail.id}`
-  const leaveTypeLabel = detail.leave_type.name || VACATION_LEAVE_THEME.label
+  const leaveTypeLabel = detail.leave_type.name
+  const leaveTypeCode = detail.leave_type.code
+  const needsMedCert = requiresMedCert(leaveTypeCode)
+  const hasExistingAttachment = detail.has_attachment
 
   const [dayType, setDayType] = useState<DayType>(detail.day_type)
   const [startDate, setStartDate] = useState(detail.start_date)
   const [endDate, setEndDate] = useState(detail.end_date)
   const [reason, setReason] = useState(detail.leave_reason)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -92,29 +101,36 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     return formatDurationLabel(leaveDuration, 'full')
   }, [dayType, leaveDuration])
 
-  const leadTimeValidation = useMemo(
-    () =>
-      validateLeaveLeadTime({
-        dayType,
-        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
-        startDateISO: startDate,
-        filedOnISO: todayISO(),
-      }),
-    [dayType, leaveDuration, startDate],
-  )
+  const leadTimeValidation = useMemo(() => {
+    if (!appliesVlLeadTime(leaveTypeCode)) {
+      return { ok: true, isLongLeave: false, message: null }
+    }
+    return validateLeaveLeadTime({
+      dayType,
+      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
+      startDateISO: startDate,
+      filedOnISO: todayISO(),
+    })
+  }, [dayType, leaveDuration, leaveTypeCode, startDate])
 
   const workingDaysOnly = !usesCalendarDayCounting(leaveTypeLabel)
 
   const reasonMissing = reason.trim().length === 0
+  const replacementCert = attachments[0] ?? null
+  const attachmentMissing =
+    needsMedCert && !hasExistingAttachment && replacementCert == null
   const isDirty =
     dayType !== detail.day_type ||
     startDate !== detail.start_date ||
     endDate !== detail.end_date ||
-    reason.trim() !== detail.leave_reason.trim()
+    reason.trim() !== detail.leave_reason.trim() ||
+    replacementCert != null
   const formValid =
     startDate !== '' &&
     endDate !== '' &&
     !reasonMissing &&
+    !attachmentMissing &&
+    !attachmentUploading &&
     leadTimeValidation.ok &&
     isDirty
 
@@ -171,6 +187,9 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
+        ...(needsMedCert && replacementCert
+          ? { leave_attachment: replacementCert }
+          : {}),
       })
 
       await Promise.all([
@@ -225,7 +244,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <p className="mt-1 text-small text-text-gray">
-              Vacation Leave only â leave type cannot be changed after filing.
+              Leave type cannot be changed after filing.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4">
@@ -324,6 +343,32 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                     : (apiErrors.reason ?? null)
                 }
               />
+              {needsMedCert ? (
+                <FileField
+                  label="Medical certificate"
+                  files={attachments}
+                  onChange={(files) => {
+                    setAttachments(files)
+                    if (apiErrors.attachment || apiErrors.form) {
+                      clearApiErrors()
+                    }
+                  }}
+                  onUploadingChange={setAttachmentUploading}
+                  accept={MED_CERT_ACCEPT}
+                  multiple={false}
+                  className="sm:col-span-2"
+                  hint={
+                    hasExistingAttachment
+                      ? 'A medical certificate is already on file. Upload a replacement only if you need to change it.'
+                      : 'PDF, JPG, or PNG.'
+                  }
+                  error={
+                    triedSubmit && attachmentMissing
+                      ? 'A medical certificate is required for Sick Leave.'
+                      : (apiErrors.attachment ?? null)
+                  }
+                />
+              ) : null}
               {apiErrors.form ? (
                 <div
                   className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
@@ -353,9 +398,11 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
             title={
               submitting
                 ? 'Saving…'
-                : !isDirty
-                  ? 'No changes to save'
-                  : undefined
+                : attachmentUploading
+                  ? 'Wait for the attachment upload to finish.'
+                  : !isDirty
+                    ? 'No changes to save'
+                    : undefined
             }
           >
             {submitting ? 'Saving…' : 'Confirm'}

@@ -9,14 +9,12 @@ import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DropzoneFileField } from '../../components/ui/form/DropzoneFileField'
+import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
-
-/** API: pdf / jpg / jpeg / png. */
-const MED_CERT_ACCEPT =
-  '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+import { MED_CERT_ACCEPT } from '../../utils/leaveFiling'
 // File size validation disabled for now; re-enable if API enforces a max again:
 // const MED_CERT_MAX_BYTES = 5120 * 1024
 
@@ -31,6 +29,17 @@ function messageFromApiError(error: unknown): string {
     if (error.message) return error.message
   }
   return 'Unable to submit conversion request. Please try again.'
+}
+
+function reasonErrorFromApi(error: unknown): string | null {
+  if (!(error instanceof ApiError)) return null
+  const body = error.body
+  if (body && typeof body === 'object' && 'errors' in body) {
+    const errors = (body as { errors: Record<string, string[]> }).errors
+    const first = errors.reason?.[0]
+    if (typeof first === 'string' && first.trim()) return first.trim()
+  }
+  return null
 }
 
 /** Confirmed VL, no conversion yet, and viewer is the employee on leave. */
@@ -56,6 +65,8 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
 
   const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
+  const [reason, setReason] = useState('')
+  const [reasonApiError, setReasonApiError] = useState<string | null>(null)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -63,26 +74,32 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
 
   const medCert = attachments[0] ?? null
   const attachmentMissing = medCert == null
+  const reasonMissing = reason.trim().length === 0
   const canSubmit =
-    !attachmentMissing && !attachmentUploading && !submitting
+    !attachmentMissing &&
+    !reasonMissing &&
+    !attachmentUploading &&
+    !submitting
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
     setSubmitError(null)
+    setReasonApiError(null)
     if (!canSubmit) return
     setConfirmOpen(true)
   }
 
   async function handleConfirmConversion() {
-    if (!medCert) return
+    if (!medCert || reasonMissing) return
 
     setConfirmOpen(false)
     setSubmitting(true)
     setSubmitError(null)
+    setReasonApiError(null)
 
     try {
-      await requestConversion(detail.id, medCert)
+      await requestConversion(detail.id, medCert, reason.trim())
 
       await Promise.all([
         mutate(swrKeys.leave(detail.id)),
@@ -93,7 +110,9 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
       toast.success('Leave conversion submitted successfully.')
       navigate('/dashboard')
     } catch (error) {
-      setSubmitError(messageFromApiError(error))
+      const reasonError = reasonErrorFromApi(error)
+      if (reasonError) setReasonApiError(reasonError)
+      else setSubmitError(messageFromApiError(error))
     } finally {
       setSubmitting(false)
     }
@@ -122,6 +141,22 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
             <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5">
+            <TextAreaField
+              label="Conversion Reason"
+              value={reason}
+              onChange={(value) => {
+                setReason(value)
+                if (reasonApiError) setReasonApiError(null)
+              }}
+              placeholder="Enter reason for converting to Sick Leave"
+              rows={3}
+              className="shrink-0"
+              error={
+                triedSubmit && reasonMissing
+                  ? 'Conversion reason is required.'
+                  : reasonApiError
+              }
+            />
             <DropzoneFileField
               label="Supporting Files"
               files={attachments}
@@ -171,9 +206,11 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
                 ? 'Submitting…'
                 : attachmentUploading
                   ? 'Wait for the attachment upload to finish.'
-                  : attachmentMissing
-                    ? 'Upload a medical certificate before confirming.'
-                    : undefined
+                  : reasonMissing
+                    ? 'Enter a conversion reason before confirming.'
+                    : attachmentMissing
+                      ? 'Upload a medical certificate before confirming.'
+                      : undefined
             }
           >
             {submitting ? 'Submitting…' : 'Confirm'}
@@ -233,6 +270,7 @@ export function ConvertLeaveRequestPage() {
           {
             heading: 'Leave Conversion Request',
             fields: [
+              { label: 'Conversion Reason', span: 2 },
               { label: 'Medical certificate', span: 2 },
             ],
           },

@@ -8,13 +8,13 @@ import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
+import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { useToast } from '../../components/ui/ToastProvider'
-import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
-import { swrKeys, isLeaveListKey } from '../../hooks/api/swrKeys'
+import { swrKeys, isAdminLeavesListKey, isLeaveListKey } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
   formatDurationLabel,
@@ -22,6 +22,13 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import {
+  appliesVlLeadTime,
+  FILABLE_LEAVE_TYPE_OPTIONS,
+  isFilableLeaveCode,
+  MED_CERT_ACCEPT,
+  requiresMedCert,
+} from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
   parseLeaveFormApiError,
@@ -34,11 +41,6 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
-
-/** Only VL is supported by POST /leaves for now. */
-const LEAVE_TYPE_OPTIONS = [
-  { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
-]
 
 const EMPTY_FORM = {
   leaveType: '',
@@ -60,6 +62,8 @@ export function FileLeavePage() {
   const [startDate, setStartDate] = useState(EMPTY_FORM.startDate)
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -70,6 +74,8 @@ export function FileLeavePage() {
   const dayTypeEnabled = leaveType !== ''
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
+  const needsMedCert = requiresMedCert(leaveType)
+  const medCert = attachments[0] ?? null
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -95,16 +101,17 @@ export function FileLeavePage() {
     return formatDurationLabel(leaveDuration, 'full')
   }, [dayType, startDate, endDate, leaveDuration])
 
-  const leadTimeValidation = useMemo(
-    () =>
-      validateLeaveLeadTime({
-        dayType: dayType === '' ? 'full' : dayType,
-        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
-        startDateISO: startDate,
-        filedOnISO: todayISO(),
-      }),
-    [dayType, leaveDuration, startDate],
-  )
+  const leadTimeValidation = useMemo(() => {
+    if (!appliesVlLeadTime(leaveType)) {
+      return { ok: true, isLongLeave: false, message: null }
+    }
+    return validateLeaveLeadTime({
+      dayType: dayType === '' ? 'full' : dayType,
+      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
+      startDateISO: startDate,
+      filedOnISO: todayISO(),
+    })
+  }, [dayType, leaveDuration, leaveType, startDate])
 
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
@@ -114,21 +121,25 @@ export function FileLeavePage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
+  const attachmentMissing = needsMedCert && medCert == null
 
   const formValid =
     !leaveTypeMissing &&
+    isFilableLeaveCode(leaveType) &&
     !dayTypeMissing &&
     !startMissing &&
     !endMissing &&
     !reasonMissing &&
-    leadTimeValidation.ok &&
-    leaveType === VACATION_LEAVE_THEME.label
+    !attachmentMissing &&
+    !attachmentUploading &&
+    leadTimeValidation.ok
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
     setDayType(EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
+    setAttachments([])
     clearApiErrors()
   }
 
@@ -145,6 +156,7 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
+    setAttachments([])
     setTriedSubmit(false)
     clearApiErrors()
   }
@@ -158,7 +170,8 @@ export function FileLeavePage() {
   }
 
   async function handleConfirmSubmit() {
-    if (dayType === '' || leaveType !== VACATION_LEAVE_THEME.label) return
+    if (dayType === '' || !isFilableLeaveCode(leaveType)) return
+    if (needsMedCert && !medCert) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -166,15 +179,21 @@ export function FileLeavePage() {
 
     try {
       await createLeave({
+        code: leaveType,
         start_date: startDate,
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
+        ...(needsMedCert && medCert
+          ? { leave_attachment: medCert }
+          : {}),
       })
 
       await Promise.all([
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
+        mutate(swrKeys.pendingApprovals),
+        mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
       ])
 
       toast.success('Leave request submitted successfully.')
@@ -229,8 +248,8 @@ export function FileLeavePage() {
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <p className="mt-1 text-small text-text-gray">
-              Only Vacation Leave can be filed online for now. Other leave types
-              will be available when their APIs are ready.
+              Sick Leave requires a medical certificate and is approved by
+              admin. Vacation Leave is approved by your PIC.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
@@ -240,7 +259,7 @@ export function FileLeavePage() {
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
                 placeholder="Select Leave Type"
-                options={LEAVE_TYPE_OPTIONS}
+                options={[...FILABLE_LEAVE_TYPE_OPTIONS]}
                 error={
                   triedSubmit && leaveTypeMissing
                     ? 'Please select a leave type.'
@@ -356,6 +375,29 @@ export function FileLeavePage() {
                     : (apiErrors.reason ?? null)
                 }
               />
+              {needsMedCert ? (
+                <FileField
+                  label="Medical certificate"
+                  files={attachments}
+                  onChange={(files) => {
+                    setAttachments(files)
+                    if (apiErrors.attachment || apiErrors.form) {
+                      clearApiErrors()
+                    }
+                  }}
+                  onUploadingChange={setAttachmentUploading}
+                  accept={MED_CERT_ACCEPT}
+                  required
+                  multiple={false}
+                  className="sm:col-span-2"
+                  hint="PDF, JPG, or PNG."
+                  error={
+                    triedSubmit && attachmentMissing
+                      ? 'A medical certificate is required to file Sick Leave.'
+                      : (apiErrors.attachment ?? null)
+                  }
+                />
+              ) : null}
               {apiErrors.form ? (
                 <div
                   className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
@@ -381,8 +423,14 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={submitting}
-            title={submitting ? 'Submitting…' : undefined}
+            disabled={submitting || attachmentUploading}
+            title={
+              submitting
+                ? 'Submitting…'
+                : attachmentUploading
+                  ? 'Wait for the attachment upload to finish.'
+                  : undefined
+            }
           >
             {submitting ? 'Submitting…' : 'Submit Request'}
           </Button>

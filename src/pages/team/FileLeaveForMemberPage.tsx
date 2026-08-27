@@ -9,15 +9,16 @@ import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
+import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { useToast } from '../../components/ui/ToastProvider'
-import { VACATION_LEAVE_THEME } from '../../constants/leaveTypeTheme'
 import { useGroupMembers } from '../../hooks/api/useGroupMembers'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { useMemberBalances } from '../../hooks/api/useMemberBalances'
 import {
+  isAdminLeavesListKey,
   isApprovalsListKey,
   swrKeys,
 } from '../../hooks/api/swrKeys'
@@ -28,6 +29,13 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import {
+  appliesVlLeadTime,
+  FILABLE_LEAVE_TYPE_OPTIONS,
+  isFilableLeaveCode,
+  MED_CERT_ACCEPT,
+  requiresMedCert,
+} from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
   parseLeaveFormApiError,
@@ -41,10 +49,9 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Only VL is supported by POST /leaves for now. */
 const LEAVE_TYPE_OPTIONS = [
   { value: '', label: 'Select Leave Type' },
-  { value: VACATION_LEAVE_THEME.label, label: VACATION_LEAVE_THEME.label },
+  ...FILABLE_LEAVE_TYPE_OPTIONS,
 ]
 
 const EMPTY_LEAVE = {
@@ -80,6 +87,8 @@ export function FileLeaveForMemberPage() {
   const [startDate, setStartDate] = useState(EMPTY_LEAVE.startDate)
   const [endDate, setEndDate] = useState(EMPTY_LEAVE.endDate)
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
+  const [attachments, setAttachments] = useState<File[]>([])
+  const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -98,7 +107,6 @@ export function FileLeaveForMemberPage() {
 
   const { data: balances, isLoading: balancesLoading } = useMemberBalances(
     selectedEmpId,
-    'VL',
   )
 
   const selectedMember = useMemo(
@@ -129,18 +137,25 @@ export function FileLeaveForMemberPage() {
   const startDateEnabled =
     leaveFieldsEnabled && leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
+  const needsMedCert = requiresMedCert(leaveType)
+  const medCert = attachments[0] ?? null
 
-  const vlBalance = useMemo(
-    () => balances?.find((row) => row.code === 'VL'),
-    [balances],
+  const selectedBalance = useMemo(
+    () =>
+      leaveType
+        ? balances?.find(
+            (row) => row.code.toUpperCase() === leaveType.toUpperCase(),
+          )
+        : undefined,
+    [balances, leaveType],
   )
 
-  const remainingDays = Number(vlBalance?.available ?? NaN)
+  const remainingDays = Number(selectedBalance?.available ?? NaN)
   const remainingLabel = useMemo(() => {
     if (!leaveType) return '0 day(s)'
-    if (balancesLoading && vlBalance == null) return '—'
-    return remainingLeaveLabel(vlBalance?.available)
-  }, [balancesLoading, leaveType, vlBalance])
+    if (balancesLoading && selectedBalance == null) return '—'
+    return remainingLeaveLabel(selectedBalance?.available)
+  }, [balancesLoading, leaveType, selectedBalance])
 
   const leaveDuration = useMemo(() => {
     if (!startDate || !endDate) return 0
@@ -174,16 +189,17 @@ export function FileLeaveForMemberPage() {
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
 
-  const leadTimeValidation = useMemo(
-    () =>
-      validateLeaveLeadTime({
-        dayType: dayType === '' ? 'full' : dayType,
-        weekdayDuration: dayType === 'full' ? leaveDuration : 0,
-        startDateISO: startDate,
-        filedOnISO: todayISO(),
-      }),
-    [dayType, leaveDuration, startDate],
-  )
+  const leadTimeValidation = useMemo(() => {
+    if (!appliesVlLeadTime(leaveType)) {
+      return { ok: true, isLongLeave: false, message: null }
+    }
+    return validateLeaveLeadTime({
+      dayType: dayType === '' ? 'full' : dayType,
+      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
+      startDateISO: startDate,
+      filedOnISO: todayISO(),
+    })
+  }, [dayType, leaveDuration, leaveType, startDate])
 
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
@@ -195,18 +211,21 @@ export function FileLeaveForMemberPage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
+  const attachmentMissing = needsMedCert && medCert == null
 
   const formValid =
     !groupMissing &&
     !employeeMissing &&
     selectedMember != null &&
     !leaveTypeMissing &&
+    isFilableLeaveCode(leaveType) &&
     !dayTypeMissing &&
     !startMissing &&
     !endMissing &&
     !reasonMissing &&
-    leadTimeValidation.ok &&
-    leaveType === VACATION_LEAVE_THEME.label
+    !attachmentMissing &&
+    !attachmentUploading &&
+    leadTimeValidation.ok
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -218,6 +237,7 @@ export function FileLeaveForMemberPage() {
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     setReason(EMPTY_LEAVE.reason)
+    setAttachments([])
   }
 
   function handleGroupChange(value: string) {
@@ -239,6 +259,7 @@ export function FileLeaveForMemberPage() {
     setDayType(EMPTY_LEAVE.dayType)
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
+    setAttachments([])
     clearApiErrors()
   }
 
@@ -266,13 +287,10 @@ export function FileLeaveForMemberPage() {
   }
 
   async function handleConfirmSubmit() {
-    if (
-      selectedEmpId == null ||
-      dayType === '' ||
-      leaveType !== VACATION_LEAVE_THEME.label
-    ) {
+    if (selectedEmpId == null || dayType === '' || !isFilableLeaveCode(leaveType)) {
       return
     }
+    if (needsMedCert && !medCert) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -281,19 +299,28 @@ export function FileLeaveForMemberPage() {
     try {
       await createLeave({
         emp_id: selectedEmpId,
+        code: leaveType,
         start_date: startDate,
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
+        ...(needsMedCert && medCert
+          ? { leave_attachment: medCert }
+          : {}),
       })
 
       await Promise.all([
-        mutate(swrKeys.memberBalances(selectedEmpId, 'VL')),
+        mutate(swrKeys.memberBalances(selectedEmpId)),
         mutate(swrKeys.pendingApprovals),
         mutate(isApprovalsListKey, undefined, { revalidate: true }),
+        mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
       ])
 
-      toast.success('Leave request filed for member successfully.')
+      toast.success(
+        needsMedCert
+          ? 'Sick Leave filed for member. Admin will review the request.'
+          : 'Leave request filed for member successfully.',
+      )
       navigate('/team/leave-approvals')
     } catch (error) {
       setApiErrors(parseLeaveFormApiError(error))
@@ -392,8 +419,8 @@ export function FileLeaveForMemberPage() {
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
             <p className="mt-1 text-small text-text-gray">
-              Only Vacation Leave can be filed online for now. Other leave types
-              will be available when their APIs are ready.
+              Sick Leave requires a medical certificate and is approved by
+              admin. Vacation Leave is approved by you or another PIC.
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
@@ -534,6 +561,30 @@ export function FileLeaveForMemberPage() {
                     : (apiErrors.reason ?? null)
                 }
               />
+              {needsMedCert ? (
+                <FileField
+                  label="Medical certificate"
+                  files={attachments}
+                  onChange={(files) => {
+                    setAttachments(files)
+                    if (apiErrors.attachment || apiErrors.form) {
+                      clearApiErrors()
+                    }
+                  }}
+                  onUploadingChange={setAttachmentUploading}
+                  accept={MED_CERT_ACCEPT}
+                  required
+                  multiple={false}
+                  disabled={!leaveFieldsEnabled}
+                  className="sm:col-span-2"
+                  hint="PDF, JPG, or PNG."
+                  error={
+                    triedSubmit && leaveFieldsEnabled && attachmentMissing
+                      ? 'A medical certificate is required to file Sick Leave.'
+                      : (apiErrors.attachment ?? null)
+                  }
+                />
+              ) : null}
               {apiErrors.form ? (
                 <div
                   className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
@@ -559,8 +610,14 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || submitting}
-            title={submitting ? 'Submitting…' : undefined}
+            disabled={!leadTimeValidation.ok || submitting || attachmentUploading}
+            title={
+              submitting
+                ? 'Submitting…'
+                : attachmentUploading
+                  ? 'Wait for the attachment upload to finish.'
+                  : undefined
+            }
           >
             {submitting ? 'Submitting…' : 'Submit Request'}
           </Button>

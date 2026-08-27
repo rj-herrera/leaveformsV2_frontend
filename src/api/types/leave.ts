@@ -82,6 +82,8 @@ export type LeaveDetailConversion = {
   to_leave_type: LeaveTypeRef
   has_med_cert: boolean
   med_cert_url: string | null
+  /** Employee’s conversion reason (why VL → SL). Distinct from admin reject `remarks`. */
+  reason: string | null
   reviewed_by_emp_id: number | null
   remarks: string | null
   reviewed_at: string | null
@@ -128,21 +130,27 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — file VL (omit emp_id for self). */
+/** POST /leaves — file VL (JSON) or SL (multipart + `leave_attachment`). Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
+  /** `VL` (default) or `SL`. Other types → 422. */
+  code?: 'VL' | 'SL'
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
+  /** Required for SL (med cert). Prohibited on VL. */
+  leave_attachment?: File
 }
 
-/** PUT|POST /leaves/{id} — edit pending VL. */
+/** PUT|POST /leaves/{id} — edit pending VL or SL (POST + file to replace SL med cert). */
 export type UpdateLeavePayload = {
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
+  /** Optional SL med cert replacement. Omit to keep the existing file. */
+  leave_attachment?: File
 }
 
 /** POST /leaves/{id}/cancel */

@@ -8,7 +8,7 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
-import { cancelLeave } from '../../api/leaves'
+import { cancelLeave, leaveAttachmentPath } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
@@ -27,6 +27,7 @@ import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
 import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
+import { isPendingLeaveEditable, requiresMedCert } from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -153,10 +154,7 @@ export function LeaveRequestDetailsPage() {
 
   const isConversion =
     detail?.status === 'pending_conversion' && detail.conversion != null
-  const canEdit =
-    detail?.status === 'pending_approval' &&
-    detail.leave_type.code.toUpperCase() === 'VL' &&
-    !detail.approval_requirements.some((req) => req.history != null)
+  const canEdit = detail ? isPendingLeaveEditable(detail) : false
   const canCancel = detail?.status === 'pending_approval'
   const canConvertToSick =
     detail?.status === 'confirmed' &&
@@ -190,7 +188,7 @@ export function LeaveRequestDetailsPage() {
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type.name,
           conversionRequestDate: formatShortDate(conversion.created_at),
-          conversionReason: conversion.remarks?.trim() || '—',
+          conversionReason: conversion.reason?.trim() || '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
@@ -214,7 +212,10 @@ export function LeaveRequestDetailsPage() {
       openPreview(MED_CERT_LABEL, conversion?.med_cert_url ?? null)
       return
     }
-    openPreview(ATTACHMENT_LABEL, detail.attachment_url)
+    openPreview(
+      ATTACHMENT_LABEL,
+      detail.has_attachment ? leaveAttachmentPath(detail.id) : null,
+    )
   }
 
   async function handleCancelConfirm(reason: string) {
@@ -377,8 +378,14 @@ export function LeaveRequestDetailsPage() {
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow
                 value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+                alwaysShow={requiresMedCert(detail.leave_type.code)}
                 onView={() =>
-                  openPreview(ATTACHMENT_LABEL, detail.attachment_url)
+                  openPreview(
+                    ATTACHMENT_LABEL,
+                    detail.has_attachment
+                      ? leaveAttachmentPath(detail.id)
+                      : null,
+                  )
                 }
               />
             </dl>
