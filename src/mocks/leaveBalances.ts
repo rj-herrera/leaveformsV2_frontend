@@ -7,7 +7,6 @@ import { appendAdminLogEntry } from './adminLog'
 import {
   MATERNITY_LEAVE_TYPE,
   PATERNITY_LEAVE_TYPE,
-  parentalEntitlementDays,
 } from '../utils/leaveDates'
 
 export type EmploymentStatus = 'regular' | 'probationary' | 'contractual'
@@ -29,7 +28,7 @@ export type LeaveBalanceEmployee = {
   /** ISO date — null if not yet regularized */
   regularizationDate: string | null
   yearsOfServiceLabel: string
-  /** Filed ML/PL requests eligible for parental credit distribution */
+  /** Filed ML/PL requests — used to gate mock parental credit visibility on the dashboard */
   filedParentalRequests: FiledParentalRequest[]
 }
 
@@ -716,38 +715,8 @@ export function applyNewlyRegularizedDistribution(
 }
 
 // ---------------------------------------------------------------------------
-// Parental (Maternity / Paternity)
+// Parental helpers (dashboard gating only — no distribution flow)
 // ---------------------------------------------------------------------------
-
-export type ParentalCandidate = {
-  employee: LeaveBalanceEmployee
-  leaveType: 'Maternity Leave' | 'Paternity Leave'
-  balanceKey: 'ml' | 'pl'
-  entitlement: number
-  currentBalance: number | null
-  dateFiled: string
-  leavePeriod: string
-  reason: string
-  attachmentFileName: string | null
-  attachmentNote: string | null
-  filedByRole: FiledParentalByRole
-  filedByName: string
-}
-
-export type ParentalDistributionDraft = {
-  selectedKeys: string[]
-  groupFilter: string
-  effectiveDate: string
-}
-
-let parentalDraft: ParentalDistributionDraft | null = null
-
-export function parentalCandidateKey(
-  employeeId: string,
-  leaveType: string,
-): string {
-  return `${employeeId}::${leaveType}`
-}
 
 export function isParentalLeaveType(leaveType: string): boolean {
   return (
@@ -773,100 +742,6 @@ export function hasFiledParentalLeaveRequest(
 
 export const PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE =
   'Submit a leave request first before credits can be viewed or applied.'
-
-
-export function formatParentalFiledByLabel(candidate: {
-  filedByRole: FiledParentalByRole
-  filedByName: string
-  employee: { name: string }
-}): string {
-  if (candidate.filedByRole === 'leader') {
-    return `Leader (${candidate.filedByName}) on behalf of ${candidate.employee.name}`
-  }
-  return `Employee (${candidate.filedByName})`
-}
-
-export function getParentalDistributionCandidates(): ParentalCandidate[] {
-  if (!MOCK_DATA_ENABLED) return []
-  const rows: ParentalCandidate[] = []
-  for (const employee of EMPLOYEES) {
-    for (const filing of employee.filedParentalRequests) {
-      const balanceKey = filing.leaveType === 'Maternity Leave' ? 'ml' : 'pl'
-      const entitlement = parentalEntitlementDays(filing.leaveType)
-      rows.push({
-        employee: cloneEmployee(employee),
-        leaveType: filing.leaveType,
-        balanceKey,
-        entitlement,
-        currentBalance: employee.balances[balanceKey],
-        dateFiled: filing.dateFiled,
-        leavePeriod: filing.leavePeriod,
-        reason: filing.reason,
-        attachmentFileName: filing.attachmentFileName,
-        attachmentNote: filing.attachmentNote,
-        filedByRole: filing.filedByRole,
-        filedByName: filing.filedByName,
-      })
-    }
-  }
-  return rows
-}
-
-export function setParentalDistributionDraft(
-  draft: ParentalDistributionDraft,
-): void {
-  parentalDraft = { ...draft, selectedKeys: [...draft.selectedKeys] }
-}
-
-export function getParentalDistributionDraft(): ParentalDistributionDraft | null {
-  return parentalDraft
-    ? { ...parentalDraft, selectedKeys: [...parentalDraft.selectedKeys] }
-    : null
-}
-
-export function clearParentalDistributionDraft(): void {
-  parentalDraft = null
-}
-
-export type ParentalReviewRow = {
-  employee: LeaveBalanceEmployee
-  leaveType: 'Maternity Leave' | 'Paternity Leave'
-  balanceKey: 'ml' | 'pl'
-  before: number
-  toAdd: number
-  after: number
-}
-
-export function getParentalReviewRows(
-  selectedKeys: string[],
-): ParentalReviewRow[] {
-  const keySet = new Set(selectedKeys)
-  return getParentalDistributionCandidates()
-    .filter((c) =>
-      keySet.has(parentalCandidateKey(c.employee.id, c.leaveType)),
-    )
-    .map((c) => {
-      const before = c.currentBalance ?? 0
-      return {
-        employee: c.employee,
-        leaveType: c.leaveType,
-        balanceKey: c.balanceKey,
-        before,
-        toAdd: c.entitlement,
-        after: before + c.entitlement,
-      }
-    })
-}
-
-export function applyParentalDistribution(selectedKeys: string[]): void {
-  const rows = getParentalReviewRows(selectedKeys)
-  for (const row of rows) {
-    const employee = EMPLOYEES.find((e) => e.id === row.employee.id)
-    if (!employee) continue
-    employee.balances[row.balanceKey] = row.after
-  }
-  clearParentalDistributionDraft()
-}
 
 // ---------------------------------------------------------------------------
 // Contractual

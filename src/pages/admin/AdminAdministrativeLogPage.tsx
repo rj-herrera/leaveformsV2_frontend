@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Search } from 'lucide-react'
-import { useLocation } from 'react-router-dom'
+import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { MonthYearPickerField } from '../../components/ui/form/MonthYearPickerField'
-import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { Pagination } from '../../components/ui/Pagination'
 import { TableBodySkeleton } from '../../components/ui/Skeleton'
 import {
@@ -15,110 +14,168 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
-import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
-import { usePagination } from '../../hooks/usePagination'
-import { formatActivityTimestamp } from '../../mocks/activityLog'
 import {
-  filterAdminLogEntries,
-  getAdminLogEntries,
-} from '../../mocks/adminLog'
-import { shouldShowDataSkeleton } from '../../mocks/config'
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_BASE_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import {
+  SICK_LEAVE_THEME,
+  VACATION_LEAVE_THEME,
+} from '../../constants/leaveTypeTheme'
+import { useAdminActivities } from '../../hooks/api/useAdminActivities'
+import { useAdminGroups } from '../../hooks/api/useAdminGroups'
+import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
+import { formatDateTime } from '../../utils/leaveDisplay'
 
-type LeaveTypeFilter = 'ALL' | string
+type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type DateSort = 'desc' | 'asc'
 
+const LEAVE_TYPE_FILTER_OPTIONS = [
+  { value: 'ALL' as const, label: 'All Leave Types' },
+  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
+  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
+]
+
 /** Shared height for all filter bar controls so they align visually. */
 const FILTER_H = 'h-[2.125rem]'
+const PAGE_SIZE_DEBOUNCE_MS = 150
+const SEARCH_DEBOUNCE_MS = 300
+
+function formatActivityTimestamp(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return formatDateTime(iso)
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
 
 export function AdminAdministrativeLogPage() {
-  const location = useLocation()
   const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
-  const showSkeleton = shouldShowDataSkeleton()
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
+  const prevPageSizeRef = useRef<number | null>(null)
 
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState<LeaveTypeFilter>('ALL')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [monthYear, setMonthYear] = useState('')
   const [dateSort, setDateSort] = useState<DateSort>('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [awaitingListReset, setAwaitingListReset] = useState(false)
+  const skipListResetSkeleton = useRef(true)
 
-  /** Re-read mock store whenever this route is entered (e.g. after adjust). */
-  const allEntries = useMemo(
-    () => getAdminLogEntries(),
-    [location.key],
-  )
+  const { data: adminGroups } = useAdminGroups()
 
-  const leaveTypeOptions = useMemo(
-    () => [
-      { value: 'ALL' as const, label: 'All Leave Types' },
-      ...Array.from(
-        new Set(
-          allEntries
-            .map((row) => row.leaveType)
-            .filter((type): type is string => Boolean(type)),
-        ),
-      )
-        .sort((a, b) => a.localeCompare(b))
-        .map((leaveType) => ({
-          value: leaveType,
-          label: leaveType,
-        })),
+  const groupId = groupFilter !== 'ALL' ? Number(groupFilter) : undefined
+
+  const listParams = useMemo(
+    () => ({
+      q: debouncedSearch.length > 0 ? debouncedSearch : undefined,
+      group_id:
+        groupId != null && Number.isInteger(groupId) && groupId > 0
+          ? groupId
+          : undefined,
+      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
+      month: monthYear.length > 0 ? monthYear : undefined,
+      sort: dateSort,
+      page: currentPage,
+      per_page: pageSize,
+    }),
+    [
+      debouncedSearch,
+      groupId,
+      leaveTypeFilter,
+      monthYear,
+      dateSort,
+      currentPage,
+      pageSize,
     ],
-    [allEntries],
   )
+
+  const { data, error, isLoading, isValidating } = useAdminActivities(listParams)
 
   const groupOptions = useMemo(
     () => [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...Array.from(
-        new Set(
-          allEntries
-            .map((row) => row.groupLabel)
-            .filter((group): group is string => Boolean(group)),
-        ),
-      )
-        .sort((a, b) => a.localeCompare(b))
-        .map((group) => ({
-          value: group,
-          label: group,
-        })),
+      ...(adminGroups ?? []).map((group) => ({
+        value: String(group.id),
+        label: group.abbreviation ?? group.name ?? String(group.id),
+      })),
     ],
-    [allEntries],
+    [adminGroups],
   )
 
-  const filteredEntries = useMemo(() => {
-    const filtered = filterAdminLogEntries(allEntries, {
-      search,
-      leaveType: leaveTypeFilter,
-      group: groupFilter,
-      monthYear,
+  useEffect(() => {
+    setCurrentPage(1)
+    if (skipListResetSkeleton.current) {
+      skipListResetSkeleton.current = false
+      return
+    }
+    setAwaitingListReset(true)
+  }, [debouncedSearch, leaveTypeFilter, groupFilter, monthYear, dateSort])
+
+  useEffect(() => {
+    const previous = prevPageSizeRef.current
+    prevPageSizeRef.current = pageSize
+
+    if (previous == null || previous === pageSize) return
+
+    setCurrentPage((page) => {
+      const firstVisibleIndex = (page - 1) * previous
+      return Math.max(1, Math.floor(firstVisibleIndex / pageSize) + 1)
     })
+  }, [pageSize])
 
-    return [...filtered].sort((a, b) =>
-      dateSort === 'desc'
-        ? b.occurredAt.localeCompare(a.occurredAt)
-        : a.occurredAt.localeCompare(b.occurredAt),
-    )
-  }, [allEntries, search, leaveTypeFilter, groupFilter, monthYear, dateSort])
+  useEffect(() => {
+    if (!awaitingListReset) return
+    if (!isValidating) {
+      setAwaitingListReset(false)
+    }
+  }, [awaitingListReset, isValidating, data, error])
 
-  const filterResetKey = [
-    search,
-    leaveTypeFilter,
-    groupFilter,
-    monthYear,
-    dateSort,
-  ].join('|')
+  const rows = awaitingListReset ? [] : (data?.data ?? [])
+  const totalItems = awaitingListReset ? 0 : (data?.meta?.total ?? 0)
+  const totalPages = awaitingListReset
+    ? 1
+    : Math.max(1, data?.meta?.last_page ?? 1)
 
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredEntries, pageSize, filterResetKey)
+  useEffect(() => {
+    if (awaitingListReset) return
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [awaitingListReset, currentPage, totalPages])
+
+  const showSkeleton = (isLoading && !data) || awaitingListReset
+  const showStaleWhilePaging = Boolean(
+    isValidating && data && !awaitingListReset,
+  )
 
   const hasActiveFilters =
     search.trim().length > 0 ||
@@ -173,8 +230,10 @@ export function AdminAdministrativeLogPage() {
                 <FilterSelect
                   label="Filter by leave type"
                   value={leaveTypeFilter}
-                  onChange={setLeaveTypeFilter}
-                  options={leaveTypeOptions}
+                  onChange={(value) =>
+                    setLeaveTypeFilter(value as LeaveTypeFilter)
+                  }
+                  options={LEAVE_TYPE_FILTER_OPTIONS}
                   fitContent
                   selectHeight={FILTER_H}
                 />
@@ -192,7 +251,14 @@ export function AdminAdministrativeLogPage() {
           </div>
 
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
-            <table className="w-full min-w-[900px] table-fixed text-left">
+            <table
+              className={[
+                'w-full min-w-[900px] table-fixed text-left',
+                showStaleWhilePaging ? 'opacity-80' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               <colgroup>
                 <col className="w-[16%]" />
                 <col className="w-[22%]" />
@@ -248,7 +314,15 @@ export function AdminAdministrativeLogPage() {
                     cols={6}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
-                ) : paginatedItems.length === 0 ? (
+                ) : error && !data ? (
+                  <TableEmptyRow
+                    colSpan={6}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                    message="Could not load administrative log. Try again."
+                  />
+                ) : rows.length === 0 ? (
                   <TableEmptyRow
                     colSpan={6}
                     pageSize={pageSize}
@@ -261,43 +335,50 @@ export function AdminAdministrativeLogPage() {
                     }
                   />
                 ) : (
-                  paginatedItems.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
-                    >
-                      <td className="whitespace-nowrap px-5 text-body text-text-black">
-                        {formatActivityTimestamp(entry.occurredAt)}
-                      </td>
-                      <td
-                        className="truncate px-5 text-body text-text-black"
-                        title={entry.activity}
+                  rows.map((entry) => {
+                    const leaveTypeName = entry.leave_type?.name ?? '—'
+                    const performedBy = entry.performed_by.name ?? '—'
+                    const employeeNumber =
+                      entry.employee?.employee_number ?? '—'
+                    const employeeName = entry.employee?.name ?? '—'
+                    return (
+                      <tr
+                        key={entry.id}
+                        className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                       >
-                        {entry.activity}
-                      </td>
-                      <td
-                        className="truncate px-5 text-body text-text-black"
-                        title={entry.leaveType ?? undefined}
-                      >
-                        {entry.leaveType ?? '—'}
-                      </td>
-                      <td
-                        className="truncate px-5 text-body text-text-black"
-                        title={entry.actorName}
-                      >
-                        {entry.actorName}
-                      </td>
-                      <td className="px-5 text-body text-text-black">
-                        {entry.employeeNumber ?? '—'}
-                      </td>
-                      <td
-                        className="truncate px-5 text-body text-text-black"
-                        title={entry.targetEmployeeName}
-                      >
-                        {entry.targetEmployeeName}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="whitespace-nowrap px-5 text-body text-text-black">
+                          {formatActivityTimestamp(entry.timestamp)}
+                        </td>
+                        <td
+                          className="truncate px-5 text-body text-text-black"
+                          title={entry.activity}
+                        >
+                          {entry.activity}
+                        </td>
+                        <td
+                          className="truncate px-5 text-body text-text-black"
+                          title={leaveTypeName !== '—' ? leaveTypeName : undefined}
+                        >
+                          {leaveTypeName}
+                        </td>
+                        <td
+                          className="truncate px-5 text-body text-text-black"
+                          title={performedBy !== '—' ? performedBy : undefined}
+                        >
+                          {performedBy}
+                        </td>
+                        <td className="px-5 text-body text-text-black">
+                          {employeeNumber}
+                        </td>
+                        <td
+                          className="truncate px-5 text-body text-text-black"
+                          title={employeeName !== '—' ? employeeName : undefined}
+                        >
+                          {employeeName}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -308,7 +389,7 @@ export function AdminAdministrativeLogPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={filteredEntries.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />

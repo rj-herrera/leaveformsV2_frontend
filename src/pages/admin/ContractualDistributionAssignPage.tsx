@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
+import type { AdminContractualEntitlementRow } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
@@ -15,167 +16,210 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import { useAdminContractualEntitlements } from '../../hooks/api/useAdminContractualEntitlements'
+import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
+import { formatAvailableNumber } from '../../utils/adminBalances'
 import {
-  formatBalanceValue,
-  getContractualCandidates,
-  getContractualDistributionDraft,
-  setContractualDistributionDraft,
-  type ContractualAssignment,
-  type LeaveBalanceEmployee,
-} from '../../mocks/leaveBalances'
+  CONTRACTUAL_MAX_PER_TYPE,
+  rowHasValidCredit,
+  setContractualEntitlementDraft,
+  type ContractualAssignLocationState,
+  type ContractualRowAmounts,
+} from '../../utils/contractualEntitlementDraft'
 import {
   distributionReviewPath,
   leaveBalancesLandingPath,
 } from '../../utils/distributionPaths'
 
-type RowAmounts = {
-  vlToAdd: string
-  slToAdd: string
-}
-
 type GroupFilter = 'ALL' | string
 
-const CONTRACTUAL_EFFECTIVE_DATE = '2026-07-28'
+const FETCH_PER_PAGE = 500
+const PAGE_SIZE_DEBOUNCE_MS = 150
+const EMPTY_AMOUNTS: ContractualRowAmounts = { vlToAdd: '', slToAdd: '' }
 
-function parseAmount(value: string): number {
-  const n = Number(value)
-  if (!Number.isFinite(n) || n <= 0) return 0
-  return Math.round(n * 2) / 2
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
 }
 
-function amountsFromAssignments(
-  assignments: ContractualAssignment[] | undefined,
-): RowAmounts {
-  let vlToAdd = ''
-  let slToAdd = ''
-  for (const a of assignments ?? []) {
-    if (a.leaveTypeKey === 'vl' && a.amount > 0) vlToAdd = String(a.amount)
-    if (a.leaveTypeKey === 'sl' && a.amount > 0) slToAdd = String(a.amount)
+function groupLabelOf(row: AdminContractualEntitlementRow): string {
+  return (
+    row.employee.group?.abbreviation ?? row.employee.group?.name ?? '—'
+  )
+}
+
+function readAssignLocationState(
+  state: unknown,
+): ContractualAssignLocationState | null {
+  if (!state || typeof state !== 'object') return null
+  const raw = state as Partial<ContractualAssignLocationState>
+  if (!Array.isArray(raw.empIds) || raw.empIds.length === 0) return null
+  const empIds = raw.empIds
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0)
+  if (empIds.length === 0) return null
+
+  const amountsByEmpId: Record<string, ContractualRowAmounts> = {}
+  if (raw.amountsByEmpId && typeof raw.amountsByEmpId === 'object') {
+    for (const [key, value] of Object.entries(raw.amountsByEmpId)) {
+      amountsByEmpId[key] = {
+        vlToAdd:
+          value && typeof value.vlToAdd === 'string' ? value.vlToAdd : '',
+        slToAdd:
+          value && typeof value.slToAdd === 'string' ? value.slToAdd : '',
+      }
+    }
   }
-  return { vlToAdd, slToAdd }
-}
 
-function buildAssignments(amounts: RowAmounts): ContractualAssignment[] {
-  const list: ContractualAssignment[] = []
-  const vl = parseAmount(amounts.vlToAdd)
-  const sl = parseAmount(amounts.slToAdd)
-  if (vl > 0) list.push({ leaveTypeKey: 'vl', amount: vl })
-  if (sl > 0) list.push({ leaveTypeKey: 'sl', amount: sl })
-  return list
-}
-
-function rowHasValidCredit(amounts: RowAmounts): boolean {
-  return parseAmount(amounts.vlToAdd) > 0 || parseAmount(amounts.slToAdd) > 0
+  return {
+    empIds,
+    amountsByEmpId,
+    groupFilter:
+      typeof raw.groupFilter === 'string' ? raw.groupFilter : 'ALL',
+  }
 }
 
 export function ContractualDistributionAssignPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
   const headerCheckboxRef = useRef<HTMLInputElement>(null)
-  const showSkeleton = shouldShowDataSkeleton()
 
-  const candidates = useMemo(() => getContractualCandidates(), [])
-
-  const [search, setSearch] = useState('')
-  const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [amountsById, setAmountsById] = useState<Record<string, RowAmounts>>(
-    () => ({}),
+  const [restoreFromReview] = useState(() =>
+    readAssignLocationState(location.state),
   )
-  const [selectionReady, setSelectionReady] = useState(false)
 
   useEffect(() => {
-    if (selectionReady) return
-    const draft = getContractualDistributionDraft()
-    const allIds = candidates.map((c) => c.id)
-    const initialAmounts: Record<string, RowAmounts> = {}
+    if (location.state == null) return
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
 
-    for (const employee of candidates) {
-      initialAmounts[employee.id] = amountsFromAssignments(
-        draft?.assignmentsByEmployeeId[employee.id],
-      )
-    }
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>(
+    () => (restoreFromReview?.groupFilter as GroupFilter) || 'ALL',
+  )
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set(restoreFromReview?.empIds ?? []),
+  )
+  const [amountsById, setAmountsById] = useState<
+    Record<string, ContractualRowAmounts>
+  >(() => restoreFromReview?.amountsByEmpId ?? {})
 
-    if (draft && draft.selectedEmployeeIds.length > 0) {
-      const valid = new Set(allIds)
-      setSelectedIds(
-        new Set(draft.selectedEmployeeIds.filter((id) => valid.has(id))),
-      )
-      setGroupFilter((draft.groupFilter as GroupFilter) || 'ALL')
-    } else {
-      setSelectedIds(new Set(allIds))
-    }
+  const { data: adminGroups } = useAdminGroups()
 
-    setAmountsById(initialAmounts)
-    setSelectionReady(true)
-  }, [candidates, selectionReady])
+  const listParams = useMemo(
+    () => ({
+      sort: 'asc' as const,
+      page: 1,
+      per_page: FETCH_PER_PAGE,
+    }),
+    [],
+  )
+
+  const { data, error, isLoading } = useAdminContractualEntitlements(listParams)
+
+  const allRows = data?.data ?? []
 
   const groupOptions = useMemo(() => {
-    const groups = Array.from(
-      new Set(candidates.map((c) => c.groupLabel)),
+    const fromApi = (adminGroups ?? []).map((group) => ({
+      value: String(group.id),
+      label: group.abbreviation ?? group.name ?? String(group.id),
+    }))
+    if (fromApi.length > 0) {
+      return [{ value: 'ALL' as const, label: 'All Groups' }, ...fromApi]
+    }
+    const labels = Array.from(
+      new Set(allRows.map(groupLabelOf).filter((label) => label !== '—')),
     ).sort((a, b) => a.localeCompare(b))
     return [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...groups.map((group) => ({ value: group, label: group })),
+      ...labels.map((label) => ({ value: label, label })),
     ]
-  }, [candidates])
+  }, [adminGroups, allRows])
 
-  const filteredCandidates = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return candidates.filter((c) => {
+    return allRows.filter((row) => {
+      const emp = row.employee
+      const name = (emp.name ?? '').toLowerCase()
+      const number = emp.employee_number.toLowerCase()
       const matchesSearch =
-        query.length === 0 ||
-        c.name.toLowerCase().includes(query) ||
-        c.employeeNumber.toLowerCase().includes(query)
-      const matchesGroup = groupFilter === 'ALL' || c.groupLabel === groupFilter
+        query.length === 0 || name.includes(query) || number.includes(query)
+
+      let matchesGroup = true
+      if (groupFilter !== 'ALL') {
+        if (adminGroups && adminGroups.length > 0) {
+          matchesGroup = String(emp.group?.id ?? '') === groupFilter
+        } else {
+          matchesGroup = groupLabelOf(row) === groupFilter
+        }
+      }
+
       return matchesSearch && matchesGroup
     })
-  }, [candidates, search, groupFilter])
+  }, [allRows, search, groupFilter, adminGroups])
 
   const filterResetKey = [search, groupFilter].join('|')
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredCandidates, pageSize, filterResetKey)
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems,
+    totalItems,
+  } = usePagination(filteredRows, pageSize, filterResetKey)
 
-  const hasActiveFilters =
-    search.trim().length > 0 || groupFilter !== 'ALL'
-
-  function clearFilters() {
-    setSearch('')
-    setGroupFilter('ALL')
-  }
-
-  const filteredIds = filteredCandidates.map((c) => c.id)
-  const selectedInFilterCount = filteredIds.filter((id) =>
-    selectedIds.has(id),
-  ).length
+  const filteredIds = filteredRows.map((row) => row.employee.id)
+  const selectedInFilter = filteredIds.filter((id) => selectedIds.has(id))
   const allFilteredSelected =
-    filteredIds.length > 0 && selectedInFilterCount === filteredIds.length
+    filteredIds.length > 0 && selectedInFilter.length === filteredIds.length
   const someFilteredSelected =
-    selectedInFilterCount > 0 && selectedInFilterCount < filteredIds.length
+    selectedInFilter.length > 0 &&
+    selectedInFilter.length < filteredIds.length
 
   useEffect(() => {
     const el = headerCheckboxRef.current
     if (el) el.indeterminate = someFilteredSelected
   }, [someFilteredSelected])
 
-  const checkedEmployees = candidates.filter((e) => selectedIds.has(e.id))
+  const showSkeleton = isLoading && !data
+  const hasActiveFilters = search.trim().length > 0 || groupFilter !== 'ALL'
+
+  const checkedRows = allRows.filter((row) =>
+    selectedIds.has(row.employee.id),
+  )
   const canContinue =
-    checkedEmployees.length > 0 &&
-    checkedEmployees.every((e) =>
-      rowHasValidCredit(amountsById[e.id] ?? { vlToAdd: '', slToAdd: '' }),
+    checkedRows.length > 0 &&
+    checkedRows.every((row) =>
+      rowHasValidCredit(amountsById[String(row.employee.id)] ?? EMPTY_AMOUNTS),
     )
 
-  function toggleId(id: string) {
+  function clearFilters() {
+    setSearch('')
+    setGroupFilter('ALL')
+  }
+
+  function toggleId(id: number) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -197,14 +241,15 @@ export function ContractualDistributionAssignPage() {
   }
 
   function updateAmount(
-    employeeId: string,
-    field: keyof RowAmounts,
+    employeeId: number,
+    field: keyof ContractualRowAmounts,
     value: string,
   ) {
+    const key = String(employeeId)
     setAmountsById((prev) => ({
       ...prev,
-      [employeeId]: {
-        ...(prev[employeeId] ?? { vlToAdd: '', slToAdd: '' }),
+      [key]: {
+        ...(prev[key] ?? EMPTY_AMOUNTS),
         [field]: value,
       },
     }))
@@ -212,20 +257,16 @@ export function ContractualDistributionAssignPage() {
 
   function handleContinue() {
     if (!canContinue) return
-    const existingDraft = getContractualDistributionDraft()
-    const selectedEmployeeIds = Array.from(selectedIds)
-    const assignmentsByEmployeeId: Record<string, ContractualAssignment[]> = {}
-    for (const id of selectedEmployeeIds) {
-      assignmentsByEmployeeId[id] = buildAssignments(
-        amountsById[id] ?? { vlToAdd: '', slToAdd: '' },
-      )
+    const empIds = Array.from(selectedIds)
+    const amountsForSelected: Record<string, ContractualRowAmounts> = {}
+    for (const id of empIds) {
+      amountsForSelected[String(id)] =
+        amountsById[String(id)] ?? EMPTY_AMOUNTS
     }
-    setContractualDistributionDraft({
-      selectedEmployeeIds,
-      assignmentsByEmployeeId,
+    setContractualEntitlementDraft({
+      empIds,
+      amountsByEmpId: amountsForSelected,
       groupFilter,
-      effectiveDate:
-        existingDraft?.effectiveDate || CONTRACTUAL_EFFECTIVE_DATE,
     })
     navigate(distributionReviewPath('contractual'))
   }
@@ -264,7 +305,7 @@ export function ContractualDistributionAssignPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className={`${TABLE_SEARCH_INPUT_BASE_CLASS} py-1.5`}
+                  className={TABLE_SEARCH_INPUT_CLASS}
                 />
               </label>
 
@@ -274,6 +315,7 @@ export function ContractualDistributionAssignPage() {
                   value={groupFilter}
                   onChange={setGroupFilter}
                   options={groupOptions}
+                  selectHeight="h-[2.125rem]"
                 />
               </div>
             </div>
@@ -298,7 +340,7 @@ export function ContractualDistributionAssignPage() {
                       ref={headerCheckboxRef}
                       type="checkbox"
                       checked={allFilteredSelected}
-                      disabled={filteredIds.length === 0}
+                      disabled={filteredIds.length === 0 || showSkeleton}
                       onChange={toggleSelectAllFiltered}
                       aria-label="Select all filtered contractual employees"
                       className="size-4 accent-primary disabled:cursor-not-allowed"
@@ -328,11 +370,19 @@ export function ContractualDistributionAssignPage() {
                 </tr>
               </thead>
               <tbody>
-                {showSkeleton || !selectionReady ? (
+                {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
                     cols={8}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                  />
+                ) : error && !data ? (
+                  <TableEmptyRow
+                    colSpan={8}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                    message="Could not load contractual employees. Try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
@@ -347,17 +397,17 @@ export function ContractualDistributionAssignPage() {
                     }
                   />
                 ) : (
-                  paginatedItems.map((employee) => (
+                  paginatedItems.map((row) => (
                     <AssignRow
-                      key={employee.id}
-                      employee={employee}
-                      checked={selectedIds.has(employee.id)}
-                      onToggle={() => toggleId(employee.id)}
+                      key={row.employee.id}
+                      row={row}
+                      checked={selectedIds.has(row.employee.id)}
+                      onToggle={() => toggleId(row.employee.id)}
                       amounts={
-                        amountsById[employee.id] ?? { vlToAdd: '', slToAdd: '' }
+                        amountsById[String(row.employee.id)] ?? EMPTY_AMOUNTS
                       }
                       onChange={(field, value) =>
-                        updateAmount(employee.id, field, value)
+                        updateAmount(row.employee.id, field, value)
                       }
                     />
                   ))
@@ -367,11 +417,11 @@ export function ContractualDistributionAssignPage() {
           </div>
 
           <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
-            {!showSkeleton && selectionReady ? (
+            {!showSkeleton ? (
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={filteredCandidates.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
@@ -385,7 +435,13 @@ export function ContractualDistributionAssignPage() {
         </section>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <p className="text-small text-text-gray">
+          {selectedIds.size} selected
+          {data?.meta?.eligible_count != null
+            ? ` · ${data.meta.eligible_count} eligible`
+            : null}
+        </p>
         <Button
           type="button"
           variant="primary"
@@ -400,18 +456,21 @@ export function ContractualDistributionAssignPage() {
 }
 
 function AssignRow({
-  employee,
+  row,
   checked,
   onToggle,
   amounts,
   onChange,
 }: {
-  employee: LeaveBalanceEmployee
+  row: AdminContractualEntitlementRow
   checked: boolean
   onToggle: () => void
-  amounts: RowAmounts
-  onChange: (field: keyof RowAmounts, value: string) => void
+  amounts: ContractualRowAmounts
+  onChange: (field: keyof ContractualRowAmounts, value: string) => void
 }) {
+  const emp = row.employee
+  const name = emp.name ?? 'employee'
+
   return (
     <tr
       className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
@@ -421,47 +480,47 @@ function AssignRow({
           type="checkbox"
           checked={checked}
           onChange={onToggle}
-          aria-label={`Include ${employee.name}`}
+          aria-label={`Include ${name}`}
           className="size-4 accent-primary"
         />
       </td>
-      <td className="px-4 text-body text-text-black">
-        {employee.employeeNumber}
-      </td>
+      <td className="px-4 text-body text-text-black">{emp.employee_number}</td>
       <td
         className="truncate px-4 text-body text-text-black"
-        title={employee.name}
+        title={emp.name ?? undefined}
       >
-        {employee.name}
+        {emp.name ?? '—'}
       </td>
-      <td className="px-4 text-body text-text-black">{employee.groupLabel}</td>
+      <td className="px-4 text-body text-text-black">{groupLabelOf(row)}</td>
       <td className="px-3 text-center text-body text-text-black">
-        {formatBalanceValue(employee.balances.vl)}
+        {formatAvailableNumber(row.vl_available)}
       </td>
       <td className="px-3 text-center">
         <input
           type="number"
-          min={0}
-          step={0.5}
+          min={0.01}
+          max={CONTRACTUAL_MAX_PER_TYPE}
+          step={0.01}
           value={amounts.vlToAdd}
           onChange={(e) => onChange('vlToAdd', e.target.value)}
           disabled={!checked}
-          aria-label={`VL to add for ${employee.name}`}
+          aria-label={`VL to add for ${name}`}
           className="mx-auto w-24 rounded-md border border-border bg-surface px-2 py-1 text-center text-body text-text-black outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </td>
       <td className="px-3 text-center text-body text-text-black">
-        {formatBalanceValue(employee.balances.sl)}
+        {formatAvailableNumber(row.sl_available)}
       </td>
       <td className="px-3 text-center">
         <input
           type="number"
-          min={0}
-          step={0.5}
+          min={0.01}
+          max={CONTRACTUAL_MAX_PER_TYPE}
+          step={0.01}
           value={amounts.slToAdd}
           onChange={(e) => onChange('slToAdd', e.target.value)}
           disabled={!checked}
-          aria-label={`SL to add for ${employee.name}`}
+          aria-label={`SL to add for ${name}`}
           className="mx-auto w-24 rounded-md border border-border bg-surface px-2 py-1 text-center text-body text-text-black outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </td>

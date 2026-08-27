@@ -32,3 +32,7 @@ export type ActivityType =
   | 'conversion_requested'
   | 'conversion_approved'
   | 'conversion_rejected'
+  | 'annual_credits_distributed'
+  | 'regularization_credits_distributed'
+  | 'contractual_credits_distributed'
+  | 'credits_adjusted'

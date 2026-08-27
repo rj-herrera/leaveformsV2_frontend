@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Search } from 'lucide-react'
+import type { AdminNewlyRegularizedRow } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
@@ -15,20 +16,21 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import { useAdminGroups } from '../../hooks/api/useAdminGroups'
+import { useAdminNewlyRegularized } from '../../hooks/api/useAdminNewlyRegularized'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
 import {
-  computeRegularizationDate,
   formatDisplayDate,
-  formatMonthsAndDays,
-  getNewlyRegularizedCandidates,
-  getNewlyRegularizedDraft,
   setNewlyRegularizedDraft,
-  todayIsoDate,
-  type NewlyRegularizedCandidate,
-} from '../../mocks/leaveBalances'
+  type NewlyRegularizedSelectLocationState,
+} from '../../utils/newlyRegularizedDraft'
 import {
   distributionReviewPath,
   leaveBalancesLandingPath,
@@ -36,98 +38,166 @@ import {
 
 type GroupFilter = 'ALL' | string
 
-const NEWLY_REG_EFFECTIVE_DATE = '2026-07-28'
+const FETCH_PER_PAGE = 500
+const PAGE_SIZE_DEBOUNCE_MS = 150
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+
+function groupLabelOf(row: AdminNewlyRegularizedRow): string {
+  return (
+    row.employee.group?.abbreviation ?? row.employee.group?.name ?? '—'
+  )
+}
+
+function readSelectLocationState(
+  state: unknown,
+): NewlyRegularizedSelectLocationState | null {
+  if (!state || typeof state !== 'object') return null
+  const raw = state as Partial<NewlyRegularizedSelectLocationState>
+  if (!Array.isArray(raw.empIds) || raw.empIds.length === 0) return null
+  const empIds = raw.empIds
+    .map(Number)
+    .filter((id) => Number.isInteger(id) && id > 0)
+  if (empIds.length === 0) return null
+  return {
+    empIds,
+    groupFilter:
+      typeof raw.groupFilter === 'string' ? raw.groupFilter : 'ALL',
+  }
+}
 
 export function NewlyRegularizedEmployeesPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
   const headerCheckboxRef = useRef<HTMLInputElement>(null)
-  const showSkeleton = shouldShowDataSkeleton()
 
-  const [search, setSearch] = useState('')
-  const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
-  const [selectionReady, setSelectionReady] = useState(false)
-
-  /** Backend returns eligible-only; mock mirrors that. */
-  const candidates = useMemo(
-    () => getNewlyRegularizedCandidates().filter((c) => c.eligible),
-    [],
+  const [restoreFromReview] = useState(() =>
+    readSelectLocationState(location.state),
   )
 
   useEffect(() => {
-    if (selectionReady) return
-    const draft = getNewlyRegularizedDraft()
-    const eligibleIds = new Set(candidates.map((c) => c.employee.id))
-    if (draft && draft.selectedEmployeeIds.length > 0) {
-      setSelectedIds(
-        new Set(draft.selectedEmployeeIds.filter((id) => eligibleIds.has(id))),
-      )
-      setGroupFilter((draft.groupFilter as GroupFilter) || 'ALL')
-    } else {
-      setSelectedIds(new Set(eligibleIds))
-    }
-    setSelectionReady(true)
-  }, [candidates, selectionReady])
+    if (location.state == null) return
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
+
+  const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState<GroupFilter>(
+    () => (restoreFromReview?.groupFilter as GroupFilter) || 'ALL',
+  )
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set(restoreFromReview?.empIds ?? []),
+  )
+
+  const { data: adminGroups } = useAdminGroups()
+
+  const listParams = useMemo(
+    () => ({
+      sort: 'asc' as const,
+      page: 1,
+      per_page: FETCH_PER_PAGE,
+    }),
+    [],
+  )
+
+  const { data, error, isLoading } = useAdminNewlyRegularized(listParams)
+
+  const allRows = data?.data ?? []
+  const year = data?.meta?.year
 
   const groupOptions = useMemo(() => {
-    const groups = Array.from(
-      new Set(candidates.map((c) => c.employee.groupLabel)),
+    const fromApi = (adminGroups ?? []).map((group) => ({
+      value: String(group.id),
+      label: group.abbreviation ?? group.name ?? String(group.id),
+    }))
+    if (fromApi.length > 0) {
+      return [{ value: 'ALL' as const, label: 'All Groups' }, ...fromApi]
+    }
+    const labels = Array.from(
+      new Set(allRows.map(groupLabelOf).filter((label) => label !== '—')),
     ).sort((a, b) => a.localeCompare(b))
     return [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...groups.map((group) => ({ value: group, label: group })),
+      ...labels.map((label) => ({ value: label, label })),
     ]
-  }, [candidates])
+  }, [adminGroups, allRows])
 
-  const filteredCandidates = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return candidates.filter((c) => {
+    return allRows.filter((row) => {
+      const emp = row.employee
+      const name = (emp.name ?? '').toLowerCase()
+      const number = emp.employee_number.toLowerCase()
       const matchesSearch =
-        query.length === 0 ||
-        c.employee.name.toLowerCase().includes(query) ||
-        c.employee.employeeNumber.toLowerCase().includes(query)
-      const matchesGroup =
-        groupFilter === 'ALL' || c.employee.groupLabel === groupFilter
+        query.length === 0 || name.includes(query) || number.includes(query)
+
+      let matchesGroup = true
+      if (groupFilter !== 'ALL') {
+        if (adminGroups && adminGroups.length > 0) {
+          matchesGroup = String(emp.group?.id ?? '') === groupFilter
+        } else {
+          matchesGroup = groupLabelOf(row) === groupFilter
+        }
+      }
+
       return matchesSearch && matchesGroup
     })
-  }, [candidates, search, groupFilter])
+  }, [allRows, search, groupFilter, adminGroups])
 
   const filterResetKey = [search, groupFilter].join('|')
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(filteredCandidates, pageSize, filterResetKey)
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems,
+    totalItems,
+  } = usePagination(filteredRows, pageSize, filterResetKey)
 
-  const hasActiveFilters =
-    search.trim().length > 0 || groupFilter !== 'ALL'
+  const pendingInFilter = filteredRows.filter((row) => !row.already_granted)
+  const pendingIdsInFilter = pendingInFilter.map((row) => row.employee.id)
+  const selectedPendingInFilter = pendingIdsInFilter.filter((id) =>
+    selectedIds.has(id),
+  )
+  const allPendingSelected =
+    pendingIdsInFilter.length > 0 &&
+    selectedPendingInFilter.length === pendingIdsInFilter.length
+  const somePendingSelected =
+    selectedPendingInFilter.length > 0 &&
+    selectedPendingInFilter.length < pendingIdsInFilter.length
+
+  useEffect(() => {
+    const el = headerCheckboxRef.current
+    if (el) el.indeterminate = somePendingSelected
+  }, [somePendingSelected])
+
+  const showSkeleton = isLoading && !data
+  const hasActiveFilters = search.trim().length > 0 || groupFilter !== 'ALL'
+  const canContinue = selectedIds.size > 0 && year != null
+  const pendingTotal = allRows.filter((row) => !row.already_granted).length
 
   function clearFilters() {
     setSearch('')
     setGroupFilter('ALL')
   }
 
-  const filteredIds = filteredCandidates.map((c) => c.employee.id)
-  const selectedInFilterCount = filteredIds.filter((id) =>
-    selectedIds.has(id),
-  ).length
-  const allFilteredSelected =
-    filteredIds.length > 0 && selectedInFilterCount === filteredIds.length
-  const someFilteredSelected =
-    selectedInFilterCount > 0 && selectedInFilterCount < filteredIds.length
-
-  useEffect(() => {
-    const el = headerCheckboxRef.current
-    if (el) el.indeterminate = someFilteredSelected
-  }, [someFilteredSelected])
-
-  const canContinue = selectedIds.size > 0
-
-  function toggleId(id: string) {
+  function toggleId(id: number, alreadyGranted: boolean) {
+    if (alreadyGranted) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -136,24 +206,24 @@ export function NewlyRegularizedEmployeesPage() {
     })
   }
 
-  function toggleSelectAllFiltered() {
+  function toggleSelectAllPendingFiltered() {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (allFilteredSelected) {
-        for (const id of filteredIds) next.delete(id)
+      if (allPendingSelected) {
+        for (const id of pendingIdsInFilter) next.delete(id)
       } else {
-        for (const id of filteredIds) next.add(id)
+        for (const id of pendingIdsInFilter) next.add(id)
       }
       return next
     })
   }
 
   function handleContinue() {
-    if (!canContinue) return
+    if (!canContinue || year == null) return
     setNewlyRegularizedDraft({
-      selectedEmployeeIds: Array.from(selectedIds),
+      year,
+      empIds: Array.from(selectedIds),
       groupFilter,
-      effectiveDate: NEWLY_REG_EFFECTIVE_DATE,
     })
     navigate(distributionReviewPath('newly-regularized'))
   }
@@ -169,7 +239,7 @@ export function NewlyRegularizedEmployeesPage() {
       </Link>
 
       <h1 className="shrink-0 text-h1 text-text-black">
-        Select newly regularized employees
+        Select eligible employees
       </h1>
 
       <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
@@ -192,7 +262,7 @@ export function NewlyRegularizedEmployeesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search employee name or number"
-                  className={`${TABLE_SEARCH_INPUT_BASE_CLASS} py-1.5`}
+                  className={TABLE_SEARCH_INPUT_CLASS}
                 />
               </label>
 
@@ -202,6 +272,7 @@ export function NewlyRegularizedEmployeesPage() {
                   value={groupFilter}
                   onChange={setGroupFilter}
                   options={groupOptions}
+                  selectHeight="h-[2.125rem]"
                 />
               </div>
             </div>
@@ -211,12 +282,12 @@ export function NewlyRegularizedEmployeesPage() {
             <table className="w-full min-w-[960px] table-fixed text-left">
               <colgroup>
                 <col className="w-[5%]" />
-                <col className="w-[20%]" />
                 <col className="w-[12%]" />
+                <col className="w-[18%]" />
                 <col className="w-[10%]" />
                 <col className="w-[16%]" />
                 <col className="w-[17%]" />
-                <col className="w-[20%]" />
+                <col className="w-[22%]" />
               </colgroup>
               <thead>
                 <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
@@ -224,10 +295,12 @@ export function NewlyRegularizedEmployeesPage() {
                     <input
                       ref={headerCheckboxRef}
                       type="checkbox"
-                      checked={allFilteredSelected}
-                      disabled={filteredIds.length === 0}
-                      onChange={toggleSelectAllFiltered}
-                      aria-label="Select all employees"
+                      checked={allPendingSelected}
+                      disabled={
+                        pendingIdsInFilter.length === 0 || showSkeleton
+                      }
+                      onChange={toggleSelectAllPendingFiltered}
+                      aria-label="Select all pending employees matching filters"
                       className="size-4 accent-primary disabled:cursor-not-allowed"
                     />
                   </th>
@@ -252,11 +325,19 @@ export function NewlyRegularizedEmployeesPage() {
                 </tr>
               </thead>
               <tbody>
-                {showSkeleton || !selectionReady ? (
+                {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
                     cols={7}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                  />
+                ) : error && !data ? (
+                  <TableEmptyRow
+                    colSpan={7}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                    message="Could not load eligible employees. Try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
@@ -274,9 +355,11 @@ export function NewlyRegularizedEmployeesPage() {
                   paginatedItems.map((row) => (
                     <CandidateRow
                       key={row.employee.id}
-                      candidate={row}
+                      row={row}
                       checked={selectedIds.has(row.employee.id)}
-                      onToggle={() => toggleId(row.employee.id)}
+                      onToggle={() =>
+                        toggleId(row.employee.id, row.already_granted)
+                      }
                     />
                   ))
                 )}
@@ -285,11 +368,11 @@ export function NewlyRegularizedEmployeesPage() {
           </div>
 
           <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
-            {!showSkeleton && selectionReady ? (
+            {!showSkeleton ? (
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={filteredCandidates.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
@@ -303,9 +386,12 @@ export function NewlyRegularizedEmployeesPage() {
         </section>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <p className="text-small text-text-gray">
+          {selectedIds.size} selected
+          {data ? ` · ${pendingTotal} pending this year` : null}
+        </p>
         <Button
-          type="button"
           variant="primary"
           disabled={!canContinue}
           onClick={handleContinue}
@@ -318,49 +404,53 @@ export function NewlyRegularizedEmployeesPage() {
 }
 
 function CandidateRow({
-  candidate,
+  row,
   checked,
   onToggle,
 }: {
-  candidate: NewlyRegularizedCandidate
+  row: AdminNewlyRegularizedRow
   checked: boolean
   onToggle: () => void
 }) {
-  const { employee } = candidate
-  const regularizationDate =
-    employee.regularizationDate ?? computeRegularizationDate(employee.dateHired)
+  const emp = row.employee
+  const groupLabel = groupLabelOf(row)
+  const disabled = row.already_granted
 
   return (
     <tr
-      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
+      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS} ${disabled ? 'opacity-60' : ''}`}
     >
       <td className="px-3 text-center">
         <input
           type="checkbox"
-          checked={checked}
+          checked={checked && !disabled}
+          disabled={disabled}
           onChange={onToggle}
-          aria-label={`Select ${employee.name}`}
-          className="size-4 accent-primary"
+          aria-label={
+            disabled
+              ? `${emp.name ?? 'Employee'} already granted`
+              : `Select ${emp.name ?? 'employee'}`
+          }
+          title={disabled ? 'Already granted this year' : undefined}
+          className="size-4 accent-primary disabled:cursor-not-allowed"
         />
       </td>
-      <td className="px-3 text-body text-text-black">
-        {employee.employeeNumber}
-      </td>
+      <td className="px-3 text-body text-text-black">{emp.employee_number}</td>
       <td
         className="truncate px-3 text-body text-text-black"
-        title={employee.name}
+        title={emp.name ?? undefined}
       >
-        {employee.name}
+        {emp.name ?? '—'}
       </td>
-      <td className="px-3 text-body text-text-black">{employee.groupLabel}</td>
+      <td className="px-3 text-body text-text-black">{groupLabel}</td>
       <td className="px-3 text-body text-text-black">
-        {formatDisplayDate(employee.dateHired)}
-      </td>
-      <td className="px-3 text-body text-text-black">
-        {formatDisplayDate(regularizationDate)}
+        {formatDisplayDate(row.date_hired)}
       </td>
       <td className="px-3 text-body text-text-black">
-        {formatMonthsAndDays(employee.dateHired, todayIsoDate())}
+        {formatDisplayDate(row.regularization_date)}
+      </td>
+      <td className="px-3 text-body text-text-black">
+        {row.months_of_service || '—'}
       </td>
     </tr>
   )
