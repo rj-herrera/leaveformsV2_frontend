@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { mutate } from 'swr'
 import { ArrowLeft } from 'lucide-react'
+import { ApiError } from '../../api/axios-client'
+import { distributeAnnualEntitlements } from '../../api/adminAnnualEntitlements'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { Pagination } from '../../components/ui/Pagination'
@@ -16,29 +19,59 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import { useAdminAnnualEntitlements } from '../../hooks/api/useAdminAnnualEntitlements'
+import {
+  isAdminAnnualEntitlementsListKey,
+  isAdminBalancesListKey,
+} from '../../hooks/api/swrKeys'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
+import { formatAvailableNumber } from '../../utils/adminBalances'
 import {
-  applyAnnualDistribution,
-  formatBalanceValue,
-  getAnnualDistributionDraft,
-  getAnnualReviewRows,
-} from '../../mocks/leaveBalances'
+  clearAnnualEntitlementDraft,
+  formatYearsOfService,
+  getAnnualEntitlementDraft,
+  type AnnualEntitlementSelectLocationState,
+} from '../../utils/annualEntitlementDraft'
 import {
   distributionEmployeesPath,
   leaveBalancesLandingPath,
 } from '../../utils/distributionPaths'
 
-function formatEffectiveDate(iso: string): string {
-  const date = new Date(`${iso}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+const FETCH_PER_PAGE = 500
+const PAGE_SIZE_DEBOUNCE_MS = 150
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+
+function messageFromApiError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return fallback
 }
 
 export function AnnualDistributionReviewPage() {
@@ -49,43 +82,88 @@ export function AnnualDistributionReviewPage() {
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
-  const showSkeleton = shouldShowDataSkeleton()
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
+
+  const draft = useMemo(() => getAnnualEntitlementDraft(), [])
 
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const draft = useMemo(() => getAnnualDistributionDraft(), [])
-  const reviewRows = useMemo(
-    () =>
-      draft ? getAnnualReviewRows(draft.selectedEmployeeIds) : [],
-    [draft],
-  )
-
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(reviewRows, pageSize, 'annual-review')
-
-  useEffect(() => {
-    if (!draft || draft.selectedEmployeeIds.length === 0) {
-      navigate(distributionEmployeesPath('annual'), { replace: true })
+  const listParams = useMemo(() => {
+    if (!draft || draft.empIds.length === 0) return null
+    return {
+      year: draft.year,
+      emp_ids: draft.empIds,
+      sort: 'asc' as const,
+      page: 1,
+      per_page: FETCH_PER_PAGE,
     }
-  }, [draft, navigate])
+  }, [draft])
 
-  if (!draft || draft.selectedEmployeeIds.length === 0) {
-    return <Navigate to={distributionEmployeesPath('annual')} replace />
+  const { data, error, isLoading } = useAdminAnnualEntitlements(listParams)
+
+  const rows = data?.data ?? []
+  const hasAlreadyGranted = rows.some((row) => row.already_granted)
+  const showSkeleton = isLoading && !data
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems,
+    totalItems,
+  } = usePagination(rows, pageSize, 'annual-review')
+
+  async function handleConfirmApply() {
+    if (!draft || draft.empIds.length === 0) return
+
+    setConfirmOpen(false)
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      await distributeAnnualEntitlements({
+        year: draft.year,
+        emp_ids: draft.empIds,
+      })
+      clearAnnualEntitlementDraft()
+      await Promise.all([
+        mutate(isAdminAnnualEntitlementsListKey, undefined, {
+          revalidate: true,
+        }),
+        mutate(isAdminBalancesListKey, undefined, { revalidate: true }),
+      ])
+      toast.success(TOAST_ANNUAL_DISTRIBUTION_APPLIED)
+      navigate(leaveBalancesLandingPath())
+    } catch (err) {
+      setSubmitError(
+        messageFromApiError(
+          err,
+          'Unable to apply annual leave credits. Please try again.',
+        ),
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  function handleConfirmApply() {
-    applyAnnualDistribution(draft!.selectedEmployeeIds)
-    setConfirmOpen(false)
-    toast.success(TOAST_ANNUAL_DISTRIBUTION_APPLIED)
-    navigate(leaveBalancesLandingPath())
+  if (!draft || draft.empIds.length === 0) {
+    return <Navigate to={distributionEmployeesPath('annual')} replace />
   }
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={distributionEmployeesPath('annual')}
+        state={
+          {
+            empIds: draft.empIds,
+            groupFilter: draft.groupFilter,
+          } satisfies AnnualEntitlementSelectLocationState
+        }
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -98,17 +176,16 @@ export function AnnualDistributionReviewPage() {
 
       <section className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <h2 className="text-h2 text-text-black">Distribution Summary</h2>
-        <dl className="mt-3 grid gap-3 grid-cols-3">
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
           <SummaryItem label="Type" value="Annual Leave Credit Distribution" />
           <SummaryItem
-            label="Effective date"
-            value={formatEffectiveDate(draft.effectiveDate)}
-          />
-          <SummaryItem
             label="Selected employees"
-            value={String(reviewRows.length)}
+            value={String(draft.empIds.length)}
           />
         </dl>
+        {submitError ? (
+          <p className="mt-3 text-small text-status-rejected">{submitError}</p>
+        ) : null}
       </section>
 
       <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
@@ -177,6 +254,14 @@ export function AnnualDistributionReviewPage() {
                     cols={10}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
+                ) : error && !data ? (
+                  <TableEmptyRow
+                    colSpan={10}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                    message="Could not load selected employees. Go back and try again."
+                  />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
                     colSpan={10}
@@ -185,46 +270,51 @@ export function AnnualDistributionReviewPage() {
                     variant="no-data"
                   />
                 ) : (
-                  paginatedItems.map((row) => (
-                    <tr
-                      key={row.employee.id}
-                      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
-                    >
-                      <td className="px-4 text-body text-text-black">
-                        {row.employee.employeeNumber}
-                      </td>
-                      <td
-                        className="truncate px-4 text-body text-text-black"
-                        title={row.employee.name}
+                  paginatedItems.map((row) => {
+                    const emp = row.employee
+                    const groupLabel =
+                      emp.group?.abbreviation ?? emp.group?.name ?? '—'
+                    return (
+                      <tr
+                        key={emp.id}
+                        className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS} ${row.already_granted ? 'opacity-60' : ''}`}
                       >
-                        {row.employee.name}
-                      </td>
-                      <td className="px-4 text-body text-text-black">
-                        {row.employee.groupLabel}
-                      </td>
-                      <td className="px-4 text-body text-text-black">
-                        {row.yearsOfServiceLabel}
-                      </td>
-                      <td className="px-3 text-center text-body text-text-black">
-                        {formatBalanceValue(row.vlBefore)}
-                      </td>
-                      <td className="px-3 text-center text-body text-text-black">
-                        {formatBalanceValue(row.vlToAdd)}
-                      </td>
-                      <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
-                        {formatBalanceValue(row.vlAfter)}
-                      </td>
-                      <td className="px-3 text-center text-body text-text-black">
-                        {formatBalanceValue(row.slBefore)}
-                      </td>
-                      <td className="px-3 text-center text-body text-text-black">
-                        {formatBalanceValue(row.slToAdd)}
-                      </td>
-                      <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
-                        {formatBalanceValue(row.slAfter)}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="px-4 text-body text-text-black">
+                          {emp.employee_number}
+                        </td>
+                        <td
+                          className="truncate px-4 text-body text-text-black"
+                          title={emp.name ?? undefined}
+                        >
+                          {emp.name ?? '—'}
+                        </td>
+                        <td className="px-4 text-body text-text-black">
+                          {groupLabel}
+                        </td>
+                        <td className="px-4 text-body text-text-black">
+                          {formatYearsOfService(row.years_of_service)}
+                        </td>
+                        <td className="px-3 text-center text-body text-text-black">
+                          {formatAvailableNumber(row.vl_available)}
+                        </td>
+                        <td className="px-3 text-center text-body text-text-black">
+                          {formatAvailableNumber(row.vl_grant)}
+                        </td>
+                        <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
+                          {formatAvailableNumber(row.vl_after)}
+                        </td>
+                        <td className="px-3 text-center text-body text-text-black">
+                          {formatAvailableNumber(row.sl_available)}
+                        </td>
+                        <td className="px-3 text-center text-body text-text-black">
+                          {formatAvailableNumber(row.sl_grant)}
+                        </td>
+                        <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
+                          {formatAvailableNumber(row.sl_after)}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -235,7 +325,7 @@ export function AnnualDistributionReviewPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={reviewRows.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
@@ -253,20 +343,25 @@ export function AnnualDistributionReviewPage() {
         <Button
           type="button"
           variant="primary"
+          disabled={submitting || showSkeleton || Boolean(error && !data)}
           onClick={() => setConfirmOpen(true)}
         >
-          Confirm
+          {submitting ? 'Applying…' : 'Confirm'}
         </Button>
       </div>
 
       <ConfirmReasonModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={() => handleConfirmApply()}
+        onConfirm={() => void handleConfirmApply()}
         requireReason={false}
         confirmVariant="primary"
         title="Confirm Distribution"
-        description="Apply this annual leave credit distribution?"
+        description={
+          hasAlreadyGranted
+            ? 'If anyone in this selection was already granted this year, the server will reject the whole batch. Continue only if all selected employees are still pending.'
+            : 'Apply this annual leave credit distribution?'
+        }
         confirmLabel="Apply"
         cancelLabel="Cancel"
       />

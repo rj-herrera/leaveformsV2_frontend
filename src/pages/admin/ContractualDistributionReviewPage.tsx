@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { mutate } from 'swr'
 import { ArrowLeft } from 'lucide-react'
-import { useAuth } from '../../auth/AuthContext'
+import { ApiError } from '../../api/axios-client'
+import {
+  distributeContractualEntitlements,
+  type ContractualEntitlementEmployeePayload,
+} from '../../api/adminContractualEntitlements'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { Pagination } from '../../components/ui/Pagination'
@@ -17,82 +22,199 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import { useAdminContractualEntitlements } from '../../hooks/api/useAdminContractualEntitlements'
+import {
+  isAdminBalancesListKey,
+  isAdminContractualEntitlementsListKey,
+} from '../../hooks/api/swrKeys'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import { shouldShowDataSkeleton } from '../../mocks/config'
+import { formatAvailableNumber } from '../../utils/adminBalances'
 import {
-  applyContractualDistribution,
-  formatBalanceValue,
-  getContractualDistributionDraft,
-  getContractualReviewRows,
-} from '../../mocks/leaveBalances'
+  addAvailableAndGrant,
+  clearContractualEntitlementDraft,
+  formatContractualAmountForApi,
+  getContractualEntitlementDraft,
+  parseContractualAmount,
+  type ContractualAssignLocationState,
+} from '../../utils/contractualEntitlementDraft'
 import {
   distributionAssignPath,
   leaveBalancesLandingPath,
 } from '../../utils/distributionPaths'
 
-function formatEffectiveDate(iso: string): string {
-  const date = new Date(`${iso}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+const FETCH_PER_PAGE = 500
+const PAGE_SIZE_DEBOUNCE_MS = 150
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs)
+    return () => window.clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+
+function messageFromApiError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return fallback
 }
 
 export function ContractualDistributionReviewPage() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { user } = useAuth()
   const {
     availableSlotRef,
     sectionHeaderRef,
     paginationRef,
     tableAreaRef,
-    pageSize,
+    pageSize: measuredPageSize,
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
-  const showSkeleton = shouldShowDataSkeleton()
+  const pageSize = useDebouncedValue(measuredPageSize, PAGE_SIZE_DEBOUNCE_MS)
+
+  const draft = useMemo(() => getContractualEntitlementDraft(), [])
 
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const draft = useMemo(() => getContractualDistributionDraft(), [])
-  const reviewRows = useMemo(
-    () => (draft ? getContractualReviewRows(draft) : []),
-    [draft],
-  )
-
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } =
-    usePagination(reviewRows, pageSize, 'contractual-review')
-
-  const selectedEmployeeCount = draft?.selectedEmployeeIds.length ?? 0
-  const hasAssignments = reviewRows.length > 0
-
-  useEffect(() => {
-    if (!draft || draft.selectedEmployeeIds.length === 0 || !hasAssignments) {
-      navigate(distributionAssignPath('contractual'), { replace: true })
+  const listParams = useMemo(() => {
+    if (!draft || draft.empIds.length === 0) return null
+    return {
+      emp_ids: draft.empIds,
+      sort: 'asc' as const,
+      page: 1,
+      per_page: FETCH_PER_PAGE,
     }
-  }, [draft, hasAssignments, navigate])
+  }, [draft])
 
-  if (!draft || draft.selectedEmployeeIds.length === 0 || !hasAssignments) {
-    return <Navigate to={distributionAssignPath('contractual')} replace />
+  const { data, error, isLoading } = useAdminContractualEntitlements(listParams)
+
+  const reviewRows = useMemo(() => {
+    if (!draft) return []
+    const byId = new Map(
+      (data?.data ?? []).map((row) => [row.employee.id, row]),
+    )
+    return draft.empIds.flatMap((empId) => {
+      const row = byId.get(empId)
+      if (!row) return []
+      const amounts = draft.amountsByEmpId[String(empId)] ?? {
+        vlToAdd: '',
+        slToAdd: '',
+      }
+      const vlGrant = parseContractualAmount(amounts.vlToAdd)
+      const slGrant = parseContractualAmount(amounts.slToAdd)
+      return [
+        {
+          employee: row.employee,
+          groupLabel:
+            row.employee.group?.abbreviation ??
+            row.employee.group?.name ??
+            '—',
+          vlBefore: row.vl_available,
+          vlToAdd: vlGrant,
+          vlAfter: addAvailableAndGrant(row.vl_available, vlGrant),
+          slBefore: row.sl_available,
+          slToAdd: slGrant,
+          slAfter: addAvailableAndGrant(row.sl_available, slGrant),
+        },
+      ]
+    })
+  }, [data, draft])
+
+  const showSkeleton = isLoading && !data
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems,
+    totalItems,
+  } = usePagination(reviewRows, pageSize, 'contractual-review')
+
+  function buildPayload(): ContractualEntitlementEmployeePayload[] {
+    if (!draft) return []
+    return draft.empIds.flatMap((empId) => {
+      const amounts = draft.amountsByEmpId[String(empId)] ?? {
+        vlToAdd: '',
+        slToAdd: '',
+      }
+      const vl = parseContractualAmount(amounts.vlToAdd)
+      const sl = parseContractualAmount(amounts.slToAdd)
+      if (vl == null && sl == null) return []
+      const entry: ContractualEntitlementEmployeePayload = { emp_id: empId }
+      if (vl != null) entry.vl_to_add = formatContractualAmountForApi(vl)
+      if (sl != null) entry.sl_to_add = formatContractualAmountForApi(sl)
+      return [entry]
+    })
   }
 
-  function handleConfirmApply(remarks: string) {
-    applyContractualDistribution(draft!, {
-      remarks,
-      performedBy: user.name,
-    })
+  async function handleConfirmApply() {
+    if (!draft || draft.empIds.length === 0) return
+    const employees = buildPayload()
+    if (employees.length === 0) return
+
     setConfirmOpen(false)
-    toast.success(TOAST_CONTRACTUAL_DISTRIBUTION_APPLIED)
-    navigate(leaveBalancesLandingPath())
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      await distributeContractualEntitlements({ employees })
+      clearContractualEntitlementDraft()
+      await Promise.all([
+        mutate(isAdminContractualEntitlementsListKey, undefined, {
+          revalidate: true,
+        }),
+        mutate(isAdminBalancesListKey, undefined, { revalidate: true }),
+      ])
+      toast.success(TOAST_CONTRACTUAL_DISTRIBUTION_APPLIED)
+      navigate(leaveBalancesLandingPath())
+    } catch (err) {
+      setSubmitError(
+        messageFromApiError(
+          err,
+          'Unable to apply contractual leave credits. Please try again.',
+        ),
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!draft || draft.empIds.length === 0) {
+    return <Navigate to={distributionAssignPath('contractual')} replace />
   }
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
       <Link
         to={distributionAssignPath('contractual')}
+        state={
+          {
+            empIds: draft.empIds,
+            amountsByEmpId: draft.amountsByEmpId,
+            groupFilter: draft.groupFilter,
+          } satisfies ContractualAssignLocationState
+        }
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -105,17 +227,16 @@ export function ContractualDistributionReviewPage() {
 
       <section className="shrink-0 rounded-lg border border-border bg-surface px-5 py-4">
         <h2 className="text-h2 text-text-black">Distribution Summary</h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
           <SummaryItem label="Type" value="Contractual Employees" />
           <SummaryItem
-            label="Effective date"
-            value={formatEffectiveDate(draft.effectiveDate)}
-          />
-          <SummaryItem
             label="Selected employees"
-            value={String(selectedEmployeeCount)}
+            value={String(draft.empIds.length)}
           />
         </dl>
+        {submitError ? (
+          <p className="mt-3 text-small text-status-rejected">{submitError}</p>
+        ) : null}
       </section>
 
       <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
@@ -130,104 +251,120 @@ export function ContractualDistributionReviewPage() {
           </div>
 
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
-          <table className="w-full min-w-[1100px] table-fixed text-left">
-            <colgroup>
-              <col className="w-[10%]" />
-              <col className="w-[16%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[11%]" />
-              <col className="w-[10%]" />
-            </colgroup>
-            <thead>
-              <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee No.
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Employee Name
-                </th>
-                <th className="px-4 py-3 font-bold uppercase tracking-wide">
-                  Group
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  VL Before
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  VL To Add
-                </th>
-                <th className="px-3 py-3 text-center text-leave-vacation font-bold uppercase tracking-wide">
-                  VL After
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  SL Before
-                </th>
-                <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
-                  SL To Add
-                </th>
-                <th className="px-3 py-3 text-center text-leave-sick font-bold uppercase tracking-wide">
-                  SL After
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {showSkeleton ? (
-                <TableBodySkeleton
-                  rows={pageSize}
-                  cols={9}
-                  rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
-                />
-              ) : paginatedItems.length === 0 ? (
-                <TableEmptyRow
-                  colSpan={9}
-                  pageSize={pageSize}
-                  rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
-                  variant="no-data"
-                />
-              ) : (
-                paginatedItems.map((row) => (
-                  <tr
-                    key={row.employee.id}
-                    className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
-                  >
-                    <td className="px-4 text-body text-text-black">
-                      {row.employee.employeeNumber}
-                    </td>
-                    <td
-                      className="truncate px-4 text-body text-text-black"
-                      title={row.employee.name}
+            <table className="w-full min-w-[1100px] table-fixed text-left">
+              <colgroup>
+                <col className="w-[10%]" />
+                <col className="w-[16%]" />
+                <col className="w-[9%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[11%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee No.
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Employee Name
+                  </th>
+                  <th className="px-4 py-3 font-bold uppercase tracking-wide">
+                    Group
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    VL Before
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    VL To Add
+                  </th>
+                  <th className="px-3 py-3 text-center text-leave-vacation font-bold uppercase tracking-wide">
+                    VL After
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    SL Before
+                  </th>
+                  <th className="px-3 py-3 text-center font-bold uppercase tracking-wide">
+                    SL To Add
+                  </th>
+                  <th className="px-3 py-3 text-center text-leave-sick font-bold uppercase tracking-wide">
+                    SL After
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {showSkeleton ? (
+                  <TableBodySkeleton
+                    rows={pageSize}
+                    cols={9}
+                    rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
+                  />
+                ) : error && !data ? (
+                  <TableEmptyRow
+                    colSpan={9}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                    message="Could not load selected employees. Go back and try again."
+                  />
+                ) : paginatedItems.length === 0 ? (
+                  <TableEmptyRow
+                    colSpan={9}
+                    pageSize={pageSize}
+                    rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
+                    variant="no-data"
+                  />
+                ) : (
+                  paginatedItems.map((row) => (
+                    <tr
+                      key={row.employee.id}
+                      className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                     >
-                      {row.employee.name}
-                    </td>
-                    <td className="px-4 text-body text-text-black">
-                      {row.employee.groupLabel}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.vlBefore)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.vlToAdd)}
-                    </td>
-                    <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
-                      {formatBalanceValue(row.vlAfter)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.slBefore)}
-                    </td>
-                    <td className="px-3 text-center text-body text-text-black">
-                      {formatBalanceValue(row.slToAdd)}
-                    </td>
-                    <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
-                      {formatBalanceValue(row.slAfter)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      <td className="px-4 text-body text-text-black">
+                        {row.employee.employee_number}
+                      </td>
+                      <td
+                        className="truncate px-4 text-body text-text-black"
+                        title={row.employee.name ?? undefined}
+                      >
+                        {row.employee.name ?? '—'}
+                      </td>
+                      <td className="px-4 text-body text-text-black">
+                        {row.groupLabel}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatAvailableNumber(row.vlBefore)}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {row.vlToAdd != null
+                          ? formatAvailableNumber(row.vlToAdd)
+                          : '—'}
+                      </td>
+                      <td className="bg-leave-vacation/10 px-3 text-center text-body font-semibold text-leave-vacation">
+                        {row.vlToAdd != null
+                          ? formatAvailableNumber(row.vlAfter)
+                          : '—'}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {formatAvailableNumber(row.slBefore)}
+                      </td>
+                      <td className="px-3 text-center text-body text-text-black">
+                        {row.slToAdd != null
+                          ? formatAvailableNumber(row.slToAdd)
+                          : '—'}
+                      </td>
+                      <td className="bg-leave-sick/10 px-3 text-center text-body font-semibold text-leave-sick">
+                        {row.slToAdd != null
+                          ? formatAvailableNumber(row.slAfter)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
 
           <div ref={paginationRef} className={TABLE_PAGINATION_WRAP}>
@@ -235,7 +372,7 @@ export function ContractualDistributionReviewPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={reviewRows.length}
+                totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
               />
@@ -253,23 +390,28 @@ export function ContractualDistributionReviewPage() {
         <Button
           type="button"
           variant="primary"
+          disabled={
+            submitting ||
+            showSkeleton ||
+            Boolean(error && !data) ||
+            reviewRows.length === 0
+          }
           onClick={() => setConfirmOpen(true)}
         >
-          Confirm
+          {submitting ? 'Applying…' : 'Confirm'}
         </Button>
       </div>
 
       <ConfirmReasonModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmApply}
-        requireReason
+        onConfirm={() => void handleConfirmApply()}
+        requireReason={false}
         confirmVariant="primary"
         title="Confirm distribution"
         description="Apply these contractual leave credit grants?"
-        reasonLabel="Remarks"
-        reasonPlaceholder="Enter remarks for this distribution…"
         confirmLabel="Apply"
+        cancelLabel="Cancel"
       />
     </div>
   )

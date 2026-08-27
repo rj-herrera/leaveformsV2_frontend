@@ -26,8 +26,14 @@ export async function listAdminLeaves(
   return apiGetList<ApprovalInboxRow>('/admin/leaves', { params })
 }
 
-/** GET /admin/groups — org-wide group_list for the All Leave Requests filter. */
+/** GET /admin/groups — org-wide group_list for admin filters (`dept_id` for cascade). */
 export async function listAdminGroups(): Promise<LeaveOrgRef[]> {
   const { data } = await apiGetList<LeaveOrgRef>('/admin/groups')
+  return data
+}
+
+/** GET /admin/departments — org-wide department_list for admin filters. */
+export async function listAdminDepartments(): Promise<LeaveOrgRef[]> {
+  const { data } = await apiGetList<LeaveOrgRef>('/admin/departments')
   return data
 }

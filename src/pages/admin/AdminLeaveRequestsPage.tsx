@@ -34,22 +34,16 @@ import {
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
 import type { LeaveRequestStatus } from '../../constants/leaveStatus'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { TOAST_REMINDER_SENT_TO_ALL } from '../../constants/toastMessages'
 import { useAdminLeaves } from '../../hooks/api/useAdminLeaves'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
+import { useAdminReminders } from '../../hooks/api/useAdminReminders'
 import { usePendingConversions } from '../../hooks/api/usePendingConversions'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import {
-  formatReminderSentLabel,
-  getLastApproverReminderSentAt,
-  setLastApproverReminderSentAt,
-  wasApproverReminderSentToday,
-} from '../../utils/adminReminder'
+import { ApiError } from '../../api/axios-client'
+import { sendAdminBulkReminder, statsAfterBulkSend, statsAfterReminder429 } from '../../api/reminders'
+import { formatReminderSentLabel } from '../../utils/adminReminder'
 import {
   formatDurationDays,
   formatLeavePeriod,
@@ -63,8 +57,11 @@ import {
   type ListTab,
 } from '../../utils/listTab'
 import { compareEmployeeNumber } from '../../utils/sort'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
@@ -104,12 +101,6 @@ type AdminListRow = {
   apiStatus?: LeaveStatus
 }
 
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
-
 const ADMIN_ALL_STATUS_FILTER_OPTIONS: {
   value: AdminAllStatusFilter
   label: string
@@ -127,6 +118,23 @@ const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
 }
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
+
+function messageFromReminderError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to send reminder. Please try again.'
+}
 
 function toPendingValidationRow(
   conversion: LeaveConversionResource,
@@ -173,6 +181,18 @@ function toPendingValidationRow(
     filedOnLabel: formatShortDate(conversion.created_at),
     status: mapApiLeaveStatusToUi(leave.status),
     apiStatus: leave.status,
+  }
+}
+
+function toPendingDirectFilingRow(row: ApprovalInboxRow): AdminListRow {
+  const mapped = toAdminAllRow(row)
+  return {
+    ...mapped,
+    pendingValidation: {
+      kind: 'new_filing',
+      leaveType: row.leave_type.name,
+      leaveTypeCode: row.leave_type.code,
+    },
   }
 }
 
@@ -281,18 +301,49 @@ export function AdminLeaveRequestsPage() {
   const [awaitingAllReset, setAwaitingAllReset] = useState(false)
   const skipAllResetSkeleton = useRef(true)
 
-  const [lastReminderSent, setLastReminderSent] = useState(
-    () => getLastApproverReminderSentAt(),
-  )
   const [reminderConfirmOpen, setReminderConfirmOpen] = useState(false)
-
-  const reminderSentToday = wasApproverReminderSentToday(lastReminderSent)
+  const [reminderSending, setReminderSending] = useState(false)
+  const [reminderError, setReminderError] = useState<string | null>(null)
 
   const {
     data: pendingData,
     error: pendingError,
     isLoading: pendingLoading,
   } = usePendingConversions()
+
+  const pendingAdminApprovedParams = useMemo(
+    () => ({
+      status: 'pending_approval' as const,
+      per_page: 50,
+      page: 1,
+    }),
+    [],
+  )
+
+  const {
+    data: pendingSlData,
+    error: pendingSlError,
+    isLoading: pendingSlLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'SL' })
+
+  const {
+    data: pendingPtbData,
+    error: pendingPtbError,
+    isLoading: pendingPtbLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'PTB' })
+
+  const {
+    data: pendingElData,
+    error: pendingElError,
+    isLoading: pendingElLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'EL' })
+
+  const {
+    data: reminderStats,
+    error: reminderErrorFromApi,
+    isLoading: reminderLoading,
+    mutate: mutateReminders,
+  } = useAdminReminders(tab === 'all')
 
   const apiSort = sortDir
 
@@ -327,15 +378,6 @@ export function AdminLeaveRequestsPage() {
     isLoading: allLoading,
     isValidating: allValidating,
   } = useAdminLeaves(tab === 'all' ? allListParams : null)
-
-  const {
-    data: pendingApprovalData,
-    isLoading: pendingApprovalLoading,
-  } = useAdminLeaves(
-    tab === 'all'
-      ? { status: 'pending_approval', page: 1, per_page: 50 }
-      : null,
-  )
 
   const { data: adminGroups } = useAdminGroups(tab === 'all')
 
@@ -377,33 +419,22 @@ export function AdminLeaveRequestsPage() {
   }, [awaitingAllReset, allValidating, allData, allError])
 
   const pendingItems = useMemo(() => {
-    if (!pendingData) return []
-    return pendingData
-      .map(toPendingValidationRow)
-      .filter((row): row is AdminListRow => row !== null)
-  }, [pendingData])
+    const conversions = pendingData
+      ? pendingData
+          .map(toPendingValidationRow)
+          .filter((row): row is AdminListRow => row !== null)
+      : []
+    const sickLeaves = (pendingSlData?.data ?? []).map(toPendingDirectFilingRow)
+    const ptbLeaves = (pendingPtbData?.data ?? []).map(toPendingDirectFilingRow)
+    const elLeaves = (pendingElData?.data ?? []).map(toPendingDirectFilingRow)
+    return [...conversions, ...sickLeaves, ...ptbLeaves, ...elLeaves]
+  }, [pendingData, pendingSlData, pendingPtbData, pendingElData])
 
   const allRows = useMemo(
     () =>
       awaitingAllReset ? [] : (allData?.data ?? []).map(toAdminAllRow),
     [allData, awaitingAllReset],
   )
-
-  const reminderStats = useMemo(() => {
-    const rows = pendingApprovalData?.data ?? []
-    const requestCount = rows.length
-    // List rows lack eligible-approver IDs; remaining approval slots approximate
-    // how many approver actions are still outstanding.
-    const pendingSlots = rows.reduce(
-      (sum, row) =>
-        sum + Math.max(0, row.approvals_required - row.approvals_completed),
-      0,
-    )
-    return {
-      requestCount,
-      approverCount: pendingSlots > 0 ? pendingSlots : requestCount,
-    }
-  }, [pendingApprovalData])
 
   const pendingGroupOptions = useMemo(() => {
     const groups = Array.from(
@@ -508,12 +539,19 @@ export function AdminLeaveRequestsPage() {
     }
   }, [tab, awaitingAllReset, allPage, allTotalPages])
 
-  const showPendingSkeleton = pendingLoading && !pendingData
+  const showPendingSkeleton =
+    (pendingLoading && !pendingData) ||
+    (pendingSlLoading && !pendingSlData) ||
+    (pendingPtbLoading && !pendingPtbData) ||
+    (pendingElLoading && !pendingElData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
   const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
   const listError =
     tab === 'pending'
-      ? pendingError && !pendingData
+      ? (pendingError && !pendingData) ||
+        (pendingSlError && !pendingSlData) ||
+        (pendingPtbError && !pendingPtbData) ||
+        (pendingElError && !pendingElData)
       : allError && !allData
 
   const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
@@ -563,19 +601,43 @@ export function AdminLeaveRequestsPage() {
     )
   }
 
-  function handleSendReminderConfirm() {
-    const nowIso = new Date().toISOString()
-    setLastApproverReminderSentAt(nowIso)
-    setLastReminderSent(nowIso)
+  async function handleSendReminderConfirm() {
     setReminderConfirmOpen(false)
-    toast.success(TOAST_REMINDER_SENT_TO_ALL)
+    setReminderSending(true)
+    setReminderError(null)
+
+    try {
+      const result = await sendAdminBulkReminder()
+      await mutateReminders(statsAfterBulkSend(reminderStats, result), {
+        revalidate: true,
+      })
+      toast.success(TOAST_REMINDER_SENT_TO_ALL)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        await mutateReminders(
+          (current) => statsAfterReminder429(current, err.body, {}),
+          { revalidate: true },
+        )
+      }
+      setReminderError(messageFromReminderError(err))
+    } finally {
+      setReminderSending(false)
+    }
   }
+
+  const approverCount = reminderStats?.approver_count ?? 0
+  const requestCount = reminderStats?.request_count ?? 0
+  const lastReminderSent = reminderStats?.last_sent_at ?? null
+  const canSendReminder =
+    Boolean(reminderStats?.can_send) && requestCount > 0 && !reminderSending
 
   const showReminderBanner =
     tab === 'all' &&
-    (pendingApprovalLoading ||
-      reminderStats.requestCount > 0 ||
-      reminderStats.approverCount > 0 ||
+    (reminderLoading ||
+      reminderErrorFromApi != null ||
+      reminderError != null ||
+      requestCount > 0 ||
+      approverCount > 0 ||
       lastReminderSent !== null)
 
   return (
@@ -603,23 +665,33 @@ export function AdminLeaveRequestsPage() {
               Pending Approver Reminders
             </p>
             <p className="mt-0.5 text-small text-text-black">
-              {pendingApprovalLoading
+              {reminderLoading && !reminderStats
                 ? 'Loading reminder summary…'
-                : `${reminderStats.approverCount} approver(s) have ${reminderStats.requestCount} leave request(s) awaiting their action.`}
+                : reminderErrorFromApi
+                  ? 'Unable to load reminder summary.'
+                  : `${approverCount} approver(s) have ${requestCount} leave request(s) awaiting their action.`}
             </p>
             <p className="mt-1 text-small text-text-gray">
               Last Reminder Sent:{' '}
               {formatReminderSentLabel(lastReminderSent)}
             </p>
+            {reminderError ? (
+              <p className="mt-1 text-small font-semibold text-status-rejected">
+                {reminderError}
+              </p>
+            ) : null}
           </div>
           <Button
             variant="primary"
-            disabled={reminderSentToday || pendingApprovalLoading}
-            onClick={() => setReminderConfirmOpen(true)}
+            disabled={!canSendReminder || reminderLoading}
+            onClick={() => {
+              setReminderError(null)
+              setReminderConfirmOpen(true)
+            }}
             className="shrink-0 bg-status-pending-conversion enabled:hover:bg-status-pending-conversion/90 focus:ring-status-pending-conversion/30"
           >
             <Send className="size-4" aria-hidden="true" />
-            Send Reminder to All
+            {reminderSending ? 'Sending…' : 'Send Reminder to All'}
           </Button>
         </div>
       ) : null}
@@ -774,7 +846,7 @@ export function AdminLeaveRequestsPage() {
                       className="px-5 text-center text-body text-status-rejected"
                     >
                       {tab === 'pending'
-                        ? 'Unable to load pending conversions. Please try again.'
+                        ? 'Unable to load pending leave requests. Please try again.'
                         : 'Unable to load leave requests. Please try again.'}
                     </td>
                   </tr>
@@ -832,7 +904,9 @@ export function AdminLeaveRequestsPage() {
       <ConfirmReasonModal
         open={reminderConfirmOpen}
         onClose={() => setReminderConfirmOpen(false)}
-        onConfirm={() => handleSendReminderConfirm()}
+        onConfirm={() => {
+          void handleSendReminderConfirm()
+        }}
         requireReason={false}
         title="Send Reminder to All"
         description="Send a reminder to approvers who have leave requests awaiting their action?"
@@ -923,19 +997,6 @@ function PendingValidationLeaveTypeCell({
     return (
       <span className="block truncate" title={label}>
         {label}
-      </span>
-    )
-  }
-
-  if (display?.kind === 'new_filing') {
-    return (
-      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <span className="truncate" title={display.leaveType}>
-          {display.leaveType}
-        </span>
-        <span className="inline-flex shrink-0 rounded-full bg-surface-muted px-2 py-0.5 text-small font-semibold text-text-gray">
-          New filing
-        </span>
       </span>
     )
   }

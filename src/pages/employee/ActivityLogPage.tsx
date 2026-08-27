@@ -18,22 +18,15 @@ import {
   TABLE_ROW_HEIGHT,
   TABLE_ROW_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { useActivities } from '../../hooks/api/useActivities'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { formatDateTime } from '../../utils/leaveDisplay'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type TimestampSort = 'desc' | 'asc'
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
 

@@ -27,10 +27,6 @@ import {
   TABLE_SEARCH_INPUT_CLASS,
 } from '../../components/ui/tableStyles'
 import type { LeaveRequestStatus } from '../../constants/leaveStatus'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { useApprovals } from '../../hooks/api/useApprovals'
 import { usePendingApprovals } from '../../hooks/api/usePendingApprovals'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
@@ -48,8 +44,11 @@ import {
   type ListTab,
 } from '../../utils/listTab'
 import { compareEmployeeNumber } from '../../utils/sort'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
@@ -73,12 +72,6 @@ type ApprovalRowView = {
   filedOnLabel: string
   status: LeaveRequestStatus
 }
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 const APPROVALS_STATUS_FILTER_OPTIONS: {
   value: ApprovalsStatusFilter

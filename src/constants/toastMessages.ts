@@ -27,10 +27,6 @@ export function toastLeaveCreditsAdjusted(employeeName: string) {
 export const TOAST_ANNUAL_DISTRIBUTION_APPLIED =
   'Annual leave credits distributed successfully to the selected employees.'
 
-/** Admin maternity / paternity leave credit distribution. */
-export const TOAST_PARENTAL_DISTRIBUTION_APPLIED =
-  'Leave credits distributed successfully to the selected employees'
-
 /** Admin contractual leave credit distribution. */
 export const TOAST_CONTRACTUAL_DISTRIBUTION_APPLIED =
   'Leave credits distributed successfully to the selected contractual employees.'

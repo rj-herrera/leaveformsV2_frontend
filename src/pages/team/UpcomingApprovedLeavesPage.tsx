@@ -24,10 +24,6 @@ import {
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
   APPROVALS_TABLE_ROW_MIN_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
@@ -36,16 +32,13 @@ import {
   formatLeavePeriod,
 } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 import { addDaysIso } from '../../utils/teamCalendarGrid'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 function groupOptionLabel(group: {
   abbreviation: string | null

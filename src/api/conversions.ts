@@ -4,13 +4,15 @@ import type {
   RejectConversionPayload,
 } from './types'
 
-/** POST /leaves/{id}/conversion — multipart `med_cert` (201). */
+/** POST /leaves/{id}/conversion — multipart `med_cert` + required `reason` (201). */
 export async function requestConversion(
   leaveId: number,
   medCert: File,
+  reason: string,
 ): Promise<LeaveConversionResource> {
   const form = new FormData()
   form.append('med_cert', medCert)
+  form.append('reason', reason)
   return apiPostFormData<LeaveConversionResource>(
     `/leaves/${leaveId}/conversion`,
     form,

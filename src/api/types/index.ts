@@ -9,6 +9,8 @@ export type {
 
 export type {
   ActivityLedgerEntry,
+  AdminActivityEmployee,
+  AdminLeaveActivityResource,
   LeaveActivityResource,
 } from './activity'
 
@@ -17,7 +19,27 @@ export type {
   ApprovalInboxRow,
 } from './approval'
 
-export type { LeaveBalanceResource } from './balance'
+export type {
+  AdminAnnualEntitlementMeta,
+  AdminAnnualEntitlementRow,
+} from './annualEntitlement'
+
+export type {
+  AdminNewlyRegularizedMeta,
+  AdminNewlyRegularizedRow,
+} from './newlyRegularized'
+
+export type {
+  AdminContractualEntitlementMeta,
+  AdminContractualEntitlementRow,
+} from './contractualEntitlement'
+
+export type {
+  AdminBalanceTypeRow,
+  AdminEmployeeBalanceRow,
+  EmploymentStatusApi,
+  LeaveBalanceResource,
+} from './balance'
 
 export type {
   TeamCalendarEmployee,

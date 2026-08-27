@@ -6,6 +6,7 @@ export type LeaveFormApiErrors = {
   endDate: string | null
   dayType: string | null
   reason: string | null
+  attachment: string | null
   /**
    * Shared message for the Start/End pair (overlap, range, working-day, etc.).
    * Prefer showing this once under the date fields.
@@ -20,6 +21,7 @@ const EMPTY: LeaveFormApiErrors = {
   endDate: null,
   dayType: null,
   reason: null,
+  attachment: null,
   dates: null,
   form: null,
 }
@@ -29,7 +31,9 @@ const KNOWN_KEYS = new Set([
   'end_date',
   'day_type',
   'leave_reason',
+  'leave_attachment',
   'emp_id',
+  'code',
 ])
 
 function firstFieldMessage(
@@ -69,10 +73,13 @@ export function parseLeaveFormApiError(
       const endDate = firstFieldMessage(errors, 'end_date')
       const dayType = firstFieldMessage(errors, 'day_type')
       const reason = firstFieldMessage(errors, 'leave_reason')
+      const attachment = firstFieldMessage(errors, 'leave_attachment')
       const empId = firstFieldMessage(errors, 'emp_id')
+      const code = firstFieldMessage(errors, 'code')
 
       const unmapped: string[] = []
       if (empId) unmapped.push(empId)
+      if (code) unmapped.push(code)
       for (const [key, msgs] of Object.entries(errors)) {
         if (KNOWN_KEYS.has(key)) continue
         for (const msg of msgs ?? []) {
@@ -83,12 +90,13 @@ export function parseLeaveFormApiError(
       const dates = startDate ?? endDate
       const form = unmapped[0] ?? null
 
-      if (dates || dayType || reason || form) {
+      if (dates || dayType || reason || attachment || form) {
         return {
           startDate,
           endDate,
           dayType,
           reason,
+          attachment,
           dates,
           form,
         }

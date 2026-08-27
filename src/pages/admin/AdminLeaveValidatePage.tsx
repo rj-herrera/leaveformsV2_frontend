@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import { Check, TriangleAlert, X } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
+import { approveLeave, rejectLeave } from '../../api/approvals'
 import {
   approveConversion,
   conversionMedCertPath,
@@ -25,12 +26,15 @@ import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
 import {
   TOAST_LEAVE_CONVERSION_APPROVED,
   TOAST_LEAVE_CONVERSION_REJECTED,
+  TOAST_LEAVE_REQUEST_APPROVED,
+  TOAST_LEAVE_REQUEST_REJECTED,
 } from '../../constants/toastMessages'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isAdminLeavesListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
+import { isAdminApproved, requiresAttachment } from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -183,7 +187,7 @@ export function AdminLeaveValidatePage() {
     ],
   )
 
-  const canAct = useMemo(() => {
+  const canActConversion = useMemo(() => {
     if (!detail || !conversion) return false
     if (detail.status !== 'pending_conversion') return false
     if (conversion.status !== 'pending_review') return false
@@ -194,6 +198,19 @@ export function AdminLeaveValidatePage() {
         approver.approver_type === 'admin',
     )
   }, [conversion, detail, eligibleApprovers, user.id, user.roles.admin])
+
+  const canActSickLeave = useMemo(() => {
+    if (!detail || !user.roles.admin) return false
+    if (detail.status !== 'pending_approval') return false
+    if (!isAdminApproved(detail.leave_type.code)) return false
+    return eligibleApprovers.some(
+      (approver) =>
+        String(approver.emp_id) === String(user.id) &&
+        approver.approver_type === 'admin',
+    )
+  }, [detail, eligibleApprovers, user.id, user.roles.admin])
+
+  const canAct = canActConversion || canActSickLeave
 
   const decisionSettled =
     detail?.status === 'confirmed' ||
@@ -224,7 +241,7 @@ export function AdminLeaveValidatePage() {
           originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
           requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
           conversionRequestDate: formatShortDate(conversion.created_at),
-          conversionReason: '—',
+          conversionReason: conversion.reason?.trim() || '—',
           conversionAttachment: conversion.has_med_cert
             ? MED_CERT_LABEL
             : null,
@@ -271,29 +288,40 @@ export function AdminLeaveValidatePage() {
     await Promise.all([
       mutate(swrKeys.leave(leaveIdToRefresh)),
       mutate(swrKeys.pendingConversions),
+      mutate(swrKeys.pendingApprovals),
       mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
     ])
   }
 
   async function handleRejectConfirm(reason: string) {
-    if (!detail || !conversion) return
+    if (!detail) return
+    if (canActConversion && !conversion) return
 
     setRejectOpen(false)
     setPendingAction('reject')
     setActionError(null)
 
     try {
-      await rejectConversion(conversion.id, {
-        remarks: reason.trim(),
-      })
+      if (canActConversion && conversion) {
+        await rejectConversion(conversion.id, {
+          remarks: reason.trim(),
+        })
+        toast.success(TOAST_LEAVE_CONVERSION_REJECTED)
+      } else {
+        await rejectLeave(detail.id, {
+          remarks: reason.trim(),
+        })
+        toast.success(TOAST_LEAVE_REQUEST_REJECTED)
+      }
       await revalidateCaches(detail.id)
-      toast.success(TOAST_LEAVE_CONVERSION_REJECTED)
       navigate(backToList)
     } catch (err) {
       setActionError(
         messageFromApiError(
           err,
-          'Unable to reject conversion request. Please try again.',
+          canActConversion
+            ? 'Unable to reject conversion request. Please try again.'
+            : 'Unable to reject leave request. Please try again.',
         ),
       )
     } finally {
@@ -302,22 +330,30 @@ export function AdminLeaveValidatePage() {
   }
 
   async function handleApproveConfirm() {
-    if (!detail || !conversion) return
+    if (!detail) return
+    if (canActConversion && !conversion) return
 
     setApproveOpen(false)
     setPendingAction('approve')
     setActionError(null)
 
     try {
-      await approveConversion(conversion.id)
+      if (canActConversion && conversion) {
+        await approveConversion(conversion.id)
+        toast.success(TOAST_LEAVE_CONVERSION_APPROVED)
+      } else {
+        await approveLeave(detail.id)
+        toast.success(TOAST_LEAVE_REQUEST_APPROVED)
+      }
       await revalidateCaches(detail.id)
-      toast.success(TOAST_LEAVE_CONVERSION_APPROVED)
       navigate(backToList)
     } catch (err) {
       setActionError(
         messageFromApiError(
           err,
-          'Unable to approve conversion request. Please try again.',
+          canActConversion
+            ? 'Unable to approve conversion request. Please try again.'
+            : 'Unable to approve leave request. Please try again.',
         ),
       )
     } finally {
@@ -364,7 +400,9 @@ export function AdminLeaveValidatePage() {
         <StatusBadge
           status={uiStatus}
           label={
-            detail.status === 'pending_conversion'
+            detail.status === 'pending_conversion' ||
+            (detail.status === 'pending_approval' &&
+              isAdminApproved(detail.leave_type.code))
               ? 'PENDING VALIDATION'
               : undefined
           }
@@ -428,6 +466,7 @@ export function AdminLeaveValidatePage() {
             <LeaveInfoRow label="Reason" value={detail.leave_reason} />
             <LeaveAttachmentRow
               value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+              alwaysShow={requiresAttachment(detail.leave_type.code)}
               onView={() =>
                 openPreview(
                   ATTACHMENT_LABEL,
@@ -487,8 +526,14 @@ export function AdminLeaveValidatePage() {
         onConfirm={(reason) => {
           void handleRejectConfirm(reason)
         }}
-        title="Reject leave conversion"
-        description="Please provide a reason for rejecting this conversion request."
+        title={
+          canActConversion ? 'Reject leave conversion' : 'Reject leave request'
+        }
+        description={
+          canActConversion
+            ? 'Please provide a reason for rejecting this conversion request.'
+            : 'Please provide a reason for rejecting this leave request.'
+        }
         confirmLabel="Reject"
         cancelLabel="Cancel"
         confirmVariant="danger"
@@ -502,8 +547,14 @@ export function AdminLeaveValidatePage() {
           void handleApproveConfirm()
         }}
         requireReason={false}
-        title="Approve leave conversion"
-        description="Are you sure you want to approve this leave conversion request?"
+        title={
+          canActConversion ? 'Approve leave conversion' : 'Approve leave request'
+        }
+        description={
+          canActConversion
+            ? 'Are you sure you want to approve this leave conversion request?'
+            : 'Are you sure you want to approve this leave request?'
+        }
         confirmLabel="Approve"
         cancelLabel="Cancel"
         confirmVariant="primary"

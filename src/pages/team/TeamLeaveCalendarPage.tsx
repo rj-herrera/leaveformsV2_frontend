@@ -10,12 +10,14 @@ import { CalendarLeaveTooltip } from '../../components/leave/CalendarLeaveToolti
 import {
   getLeaveTypeAvatarClasses,
   getLeaveTypeChipClasses,
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
 import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
 import { formatLeavePeriod } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 import {
   addDaysIso,
   formatLongDateLabel,
@@ -34,14 +36,7 @@ import {
 } from '../../utils/teamCalendarGrid'
 
 type CalendarView = 'month' | 'week'
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 function groupOptionLabel(group: {
   abbreviation: string | null

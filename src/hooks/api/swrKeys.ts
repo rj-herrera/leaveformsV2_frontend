@@ -1,6 +1,11 @@
 import type { ListMyLeavesParams } from '../../api/leaves'
 import type { ListActivitiesParams } from '../../api/activities'
+import type { ListAdminActivitiesParams } from '../../api/adminActivities'
+import type { ListAdminAnnualEntitlementsParams } from '../../api/adminAnnualEntitlements'
+import type { ListAdminBalancesParams } from '../../api/adminBalances'
 import type { ListAdminLeavesParams } from '../../api/adminLeaves'
+import type { ListAdminContractualEntitlementsParams } from '../../api/adminContractualEntitlements'
+import type { ListAdminNewlyRegularizedParams } from '../../api/adminNewlyRegularized'
 import type { ListApprovalsParams } from '../../api/approvals'
 import type { ListTeamCalendarParams } from '../../api/calendar'
 
@@ -35,6 +40,18 @@ export const swrKeys = {
       params?.page ?? null,
     ] as const,
 
+  adminActivities: (params?: ListAdminActivitiesParams) =>
+    [
+      'admin-activities',
+      params?.q ?? null,
+      params?.group_id ?? null,
+      params?.code ?? null,
+      params?.month ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
   pendingApprovals: ['approvals', 'pending'] as const,
 
   approvals: (params?: ListApprovalsParams) =>
@@ -59,12 +76,71 @@ export const swrKeys = {
 
   adminGroups: ['admin-groups'] as const,
 
+  adminDepartments: ['admin-departments'] as const,
+
+  adminReminders: ['admin-reminders'] as const,
+
   adminLeaves: (params?: ListAdminLeavesParams) =>
     [
       'admin-leaves',
       params?.status ?? null,
       params?.code ?? null,
       params?.group_id ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
+  adminBalances: (params?: ListAdminBalancesParams) =>
+    [
+      'admin-balances',
+      params?.q ?? null,
+      params?.department_id ?? null,
+      params?.group_id ?? null,
+      params?.employment_status ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
+  adminAnnualEntitlements: (params?: ListAdminAnnualEntitlementsParams) =>
+    [
+      'admin-annual-entitlements',
+      params?.year ?? null,
+      params?.q ?? null,
+      params?.group_id ?? null,
+      typeof params?.emp_ids === 'string'
+        ? params.emp_ids
+        : params?.emp_ids?.join(',') ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
+  adminNewlyRegularized: (params?: ListAdminNewlyRegularizedParams) =>
+    [
+      'admin-newly-regularized',
+      params?.year ?? null,
+      params?.q ?? null,
+      params?.group_id ?? null,
+      typeof params?.emp_ids === 'string'
+        ? params.emp_ids
+        : params?.emp_ids?.join(',') ?? null,
+      params?.sort ?? null,
+      params?.per_page ?? null,
+      params?.page ?? null,
+    ] as const,
+
+  adminContractualEntitlements: (
+    params?: ListAdminContractualEntitlementsParams,
+  ) =>
+    [
+      'admin-contractual-entitlements',
+      params?.q ?? null,
+      params?.group_id ?? null,
+      typeof params?.emp_ids === 'string'
+        ? params.emp_ids
+        : params?.emp_ids?.join(',') ?? null,
       params?.sort ?? null,
       params?.per_page ?? null,
       params?.page ?? null,
@@ -108,5 +184,50 @@ export function isAdminLeavesListKey(key: unknown): boolean {
     Array.isArray(key) &&
     key[0] === 'admin-leaves' &&
     key.length === 7
+  )
+}
+
+/** True for paginated admin balances keys `['admin-balances', ...]`. */
+export function isAdminBalancesListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-balances' &&
+    key.length === 8
+  )
+}
+
+/** True for admin annual entitlement list keys. */
+export function isAdminAnnualEntitlementsListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-annual-entitlements' &&
+    key.length === 8
+  )
+}
+
+/** True for admin newly-regularized list keys. */
+export function isAdminNewlyRegularizedListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-newly-regularized' &&
+    key.length === 8
+  )
+}
+
+/** True for admin contractual entitlement list keys. */
+export function isAdminContractualEntitlementsListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-contractual-entitlements' &&
+    key.length === 7
+  )
+}
+
+/** True for paginated admin activities keys `['admin-activities', ...]`. */
+export function isAdminActivitiesListKey(key: unknown): boolean {
+  return (
+    Array.isArray(key) &&
+    key[0] === 'admin-activities' &&
+    key.length === 8
   )
 }

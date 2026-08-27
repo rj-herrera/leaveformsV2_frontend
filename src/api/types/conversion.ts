@@ -28,6 +28,8 @@ export type LeaveConversionResource = {
   to_leave_type?: LeaveTypeRef
   has_med_cert: boolean
   med_cert_url: string | null
+  /** Employee’s conversion reason (why VL → SL). Distinct from admin reject `remarks`. */
+  reason: string | null
   reviewed_by_emp_id: number | null
   reviewed_by: {
     id: number
