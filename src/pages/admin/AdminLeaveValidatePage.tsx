@@ -34,7 +34,7 @@ import { isAdminLeavesListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import type { ApproverRow } from '../../types/approverRow'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import { requiresMedCert } from '../../utils/leaveFiling'
+import { isAdminApproved, requiresAttachment } from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -199,7 +199,7 @@ export function AdminLeaveValidatePage() {
   const canActSickLeave = useMemo(() => {
     if (!detail || !user.roles.admin) return false
     if (detail.status !== 'pending_approval') return false
-    if (!requiresMedCert(detail.leave_type.code)) return false
+    if (!isAdminApproved(detail.leave_type.code)) return false
     return eligibleApprovers.some(
       (approver) =>
         String(approver.emp_id) === String(user.id) &&
@@ -386,7 +386,7 @@ export function AdminLeaveValidatePage() {
           label={
             detail.status === 'pending_conversion' ||
             (detail.status === 'pending_approval' &&
-              requiresMedCert(detail.leave_type.code))
+              isAdminApproved(detail.leave_type.code))
               ? 'PENDING VALIDATION'
               : undefined
           }
@@ -450,7 +450,7 @@ export function AdminLeaveValidatePage() {
             <LeaveInfoRow label="Reason" value={detail.leave_reason} />
             <LeaveAttachmentRow
               value={detail.has_attachment ? ATTACHMENT_LABEL : null}
-              alwaysShow={requiresMedCert(detail.leave_type.code)}
+              alwaysShow={requiresAttachment(detail.leave_type.code)}
               onView={() =>
                 openPreview(
                   ATTACHMENT_LABEL,

@@ -130,26 +130,26 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — file VL (JSON) or SL (multipart + `leave_attachment`). Omit emp_id for self. */
+/** POST /leaves — file VL (JSON) or SL/PTB/EL (multipart + `leave_attachment`). Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
-  /** `VL` (default) or `SL`. Other types → 422. */
-  code?: 'VL' | 'SL'
+  /** `VL` (default), `SL`, `PTB`, or `EL`. Other types → 422. */
+  code?: 'VL' | 'SL' | 'PTB' | 'EL'
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SL (med cert). Prohibited on VL. */
+  /** Required for SL/PTB (med cert) and EL (supporting document). Prohibited on VL. */
   leave_attachment?: File
 }
 
-/** PUT|POST /leaves/{id} — edit pending VL or SL (POST + file to replace SL med cert). */
+/** PUT|POST /leaves/{id} — edit pending VL, SL, PTB, or EL (POST + file to replace attachment). */
 export type UpdateLeavePayload = {
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Optional SL med cert replacement. Omit to keep the existing file. */
+  /** Optional SL/PTB/EL attachment replacement. Omit to keep the existing file. */
   leave_attachment?: File
 }
 

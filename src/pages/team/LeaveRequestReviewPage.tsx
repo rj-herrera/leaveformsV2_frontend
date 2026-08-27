@@ -36,6 +36,7 @@ import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
+import { requiresAttachment } from '../../utils/leaveFiling'
 
 const ATTACHMENT_LABEL = 'Leave attachment'
 const MED_CERT_LABEL = 'Medical certificate'
@@ -193,9 +194,9 @@ export function LeaveRequestReviewPage() {
   const departmentLabel = orgLabel(employee?.department)
   const groupLabel = orgLabel(employee?.group)
 
-  /** SL and VL→SL conversion always show the Attachment row. */
+  /** SL / PTB / EL and VL→SL conversion always show the Attachment row. */
   const showAttachmentField =
-    detail?.leave_type.code.toUpperCase() === 'SL' ||
+    (detail != null && requiresAttachment(detail.leave_type.code)) ||
     detail?.status === 'pending_conversion' ||
     detail?.status === 'converted_to_sl'
 

@@ -162,9 +162,15 @@ export function isWorkingDayISO(
   return date ? isWorkingDay(date, nonWorkingDates) : false
 }
 
-/** Maternity uses consecutive calendar days; all other types use working days. */
+/** Maternity and PTB use consecutive calendar days; other types use working days. */
 export function usesCalendarDayCounting(leaveType: string): boolean {
-  return leaveType === MATERNITY_LEAVE_TYPE
+  const key = leaveType.trim().toLowerCase()
+  return (
+    leaveType === MATERNITY_LEAVE_TYPE ||
+    key === 'ptb' ||
+    key === 'ptb leave' ||
+    key === 'pulmonary tuberculosis leave'
+  )
 }
 
 /** Move to the nearest weekday in the given direction (skips Sat/Sun). */

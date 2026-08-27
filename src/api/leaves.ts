@@ -57,12 +57,17 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL as JSON, SL as multipart with required med cert (201). */
+/** POST /leaves — VL as JSON; SL/PTB/EL as multipart with required attachment (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {
   const code = (payload.code ?? 'VL').toUpperCase()
-  if (code === 'SL' || payload.leave_attachment) {
+  if (
+    code === 'SL' ||
+    code === 'PTB' ||
+    code === 'EL' ||
+    payload.leave_attachment
+  ) {
     const form = new FormData()
     appendLeaveFields(form, { ...payload, code })
     return apiPostFormData<LeaveDetail>('/leaves', form)
@@ -78,7 +83,7 @@ export async function createLeave(
   })
 }
 
-/** PUT JSON, or POST multipart when replacing the SL med cert. */
+/** PUT JSON, or POST multipart when replacing the SL/PTB/EL attachment. */
 export async function updateLeave(
   leaveId: number,
   payload: UpdateLeavePayload,

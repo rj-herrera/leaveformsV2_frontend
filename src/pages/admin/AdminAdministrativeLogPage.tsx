@@ -20,24 +20,17 @@ import {
   APPROVALS_TABLE_ROW_HEIGHT,
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { useAdminActivities } from '../../hooks/api/useAdminActivities'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { formatDateTime } from '../../utils/leaveDisplay'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type DateSort = 'desc' | 'asc'
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 /** Shared height for all filter bar controls so they align visually. */
 const FILTER_H = 'h-[2.125rem]'

@@ -27,9 +27,11 @@ import {
 } from '../../utils/leaveDates'
 import {
   appliesVlLeadTime,
+  attachmentFieldLabel,
   isPendingLeaveEditable,
   MED_CERT_ACCEPT,
-  requiresMedCert,
+  requiresAttachment,
+  requiresFullDay,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -44,7 +46,7 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Edit allowed only for pending VL/SL with no approval history (API rule). */
+/** Edit allowed only for pending VL/SL/PTB/EL with no approval history (API rule). */
 function isLeaveEditable(detail: LeaveDetail): boolean {
   return isPendingLeaveEditable(detail)
 }
@@ -63,10 +65,17 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const detailsPath = `/my-leave/requests/${detail.id}`
   const leaveTypeLabel = detail.leave_type.name
   const leaveTypeCode = detail.leave_type.code
-  const needsMedCert = requiresMedCert(leaveTypeCode)
+  const needsAttachment = requiresAttachment(leaveTypeCode)
+  const fullDayOnly = requiresFullDay(leaveTypeCode)
   const hasExistingAttachment = detail.has_attachment
+  const attachmentLabel = attachmentFieldLabel(leaveTypeCode)
+  const dayTypeOptions = fullDayOnly
+    ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
+    : DAY_TYPE_OPTIONS
 
-  const [dayType, setDayType] = useState<DayType>(detail.day_type)
+  const [dayType, setDayType] = useState<DayType>(
+    fullDayOnly ? 'full' : detail.day_type,
+  )
   const [startDate, setStartDate] = useState(detail.start_date)
   const [endDate, setEndDate] = useState(detail.end_date)
   const [reason, setReason] = useState(detail.leave_reason)
@@ -87,12 +96,12 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     if (!startDate || !endDate) return 0
     if (dayType === 'half_am' || dayType === 'half_pm') return 0.5
     return countLeaveDurationDays(
-      leaveTypeLabel,
+      leaveTypeCode,
       startDate,
       endDate,
       nonWorkingDates,
     )
-  }, [dayType, startDate, endDate, leaveTypeLabel, nonWorkingDates])
+  }, [dayType, startDate, endDate, leaveTypeCode, nonWorkingDates])
 
   const durationLabel = useMemo(() => {
     if (dayType === 'half_am' || dayType === 'half_pm') {
@@ -113,12 +122,12 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     })
   }, [dayType, leaveDuration, leaveTypeCode, startDate])
 
-  const workingDaysOnly = !usesCalendarDayCounting(leaveTypeLabel)
+  const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
 
   const reasonMissing = reason.trim().length === 0
   const replacementCert = attachments[0] ?? null
   const attachmentMissing =
-    needsMedCert && !hasExistingAttachment && replacementCert == null
+    needsAttachment && !hasExistingAttachment && replacementCert == null
   const isDirty =
     dayType !== detail.day_type ||
     startDate !== detail.start_date ||
@@ -187,7 +196,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
-        ...(needsMedCert && replacementCert
+        ...(needsAttachment && replacementCert
           ? { leave_attachment: replacementCert }
           : {}),
       })
@@ -255,7 +264,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                 value={dayType}
                 onChange={handleDayTypeChange}
                 placeholder="Select Day Type"
-                options={[...DAY_TYPE_OPTIONS]}
+                options={[...dayTypeOptions]}
+                disabled={fullDayOnly}
                 error={apiErrors.dayType}
               />
               <DateFieldCustom
@@ -343,9 +353,9 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                     : (apiErrors.reason ?? null)
                 }
               />
-              {needsMedCert ? (
+              {needsAttachment ? (
                 <FileField
-                  label="Medical certificate"
+                  label={attachmentLabel}
                   files={attachments}
                   onChange={(files) => {
                     setAttachments(files)
@@ -359,12 +369,12 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                   className="sm:col-span-2"
                   hint={
                     hasExistingAttachment
-                      ? 'A medical certificate is already on file. Upload a replacement only if you need to change it.'
+                      ? `A ${attachmentLabel.toLowerCase()} is already on file. Upload a replacement only if you need to change it.`
                       : 'PDF, JPG, or PNG.'
                   }
                   error={
                     triedSubmit && attachmentMissing
-                      ? 'A medical certificate is required for Sick Leave.'
+                      ? `${attachmentLabel} is required for this leave type.`
                       : (apiErrors.attachment ?? null)
                   }
                 />

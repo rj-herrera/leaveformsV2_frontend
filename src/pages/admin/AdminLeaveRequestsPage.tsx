@@ -34,10 +34,6 @@ import {
   APPROVALS_TABLE_ROW_HEIGHT_CLASS,
 } from '../../components/ui/tableStyles'
 import type { LeaveRequestStatus } from '../../constants/leaveStatus'
-import {
-  SICK_LEAVE_THEME,
-  VACATION_LEAVE_THEME,
-} from '../../constants/leaveTypeTheme'
 import { TOAST_REMINDER_SENT_TO_ALL } from '../../constants/toastMessages'
 import { useAdminLeaves } from '../../hooks/api/useAdminLeaves'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
@@ -61,8 +57,11 @@ import {
   type ListTab,
 } from '../../utils/listTab'
 import { compareEmployeeNumber } from '../../utils/sort'
+import {
+  LEAVE_TYPE_FILTER_OPTIONS,
+  type LeaveTypeFilter,
+} from '../../utils/leaveFiling'
 
-type LeaveTypeFilter = 'ALL' | 'VL' | 'SL'
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
 type SortDir = 'desc' | 'asc'
@@ -101,12 +100,6 @@ type AdminListRow = {
   status: LeaveRequestStatus
   apiStatus?: LeaveStatus
 }
-
-const LEAVE_TYPE_FILTER_OPTIONS = [
-  { value: 'ALL' as const, label: 'All Leave Types' },
-  { value: 'VL' as const, label: VACATION_LEAVE_THEME.label },
-  { value: 'SL' as const, label: SICK_LEAVE_THEME.label },
-]
 
 const ADMIN_ALL_STATUS_FILTER_OPTIONS: {
   value: AdminAllStatusFilter
@@ -191,7 +184,7 @@ function toPendingValidationRow(
   }
 }
 
-function toPendingSickLeaveRow(row: ApprovalInboxRow): AdminListRow {
+function toPendingDirectFilingRow(row: ApprovalInboxRow): AdminListRow {
   const mapped = toAdminAllRow(row)
   return {
     ...mapped,
@@ -318,10 +311,9 @@ export function AdminLeaveRequestsPage() {
     isLoading: pendingLoading,
   } = usePendingConversions()
 
-  const pendingSlParams = useMemo(
+  const pendingAdminApprovedParams = useMemo(
     () => ({
       status: 'pending_approval' as const,
-      code: 'SL',
       per_page: 50,
       page: 1,
     }),
@@ -332,7 +324,19 @@ export function AdminLeaveRequestsPage() {
     data: pendingSlData,
     error: pendingSlError,
     isLoading: pendingSlLoading,
-  } = useAdminLeaves(pendingSlParams)
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'SL' })
+
+  const {
+    data: pendingPtbData,
+    error: pendingPtbError,
+    isLoading: pendingPtbLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'PTB' })
+
+  const {
+    data: pendingElData,
+    error: pendingElError,
+    isLoading: pendingElLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'EL' })
 
   const {
     data: reminderStats,
@@ -420,9 +424,11 @@ export function AdminLeaveRequestsPage() {
           .map(toPendingValidationRow)
           .filter((row): row is AdminListRow => row !== null)
       : []
-    const sickLeaves = (pendingSlData?.data ?? []).map(toPendingSickLeaveRow)
-    return [...conversions, ...sickLeaves]
-  }, [pendingData, pendingSlData])
+    const sickLeaves = (pendingSlData?.data ?? []).map(toPendingDirectFilingRow)
+    const ptbLeaves = (pendingPtbData?.data ?? []).map(toPendingDirectFilingRow)
+    const elLeaves = (pendingElData?.data ?? []).map(toPendingDirectFilingRow)
+    return [...conversions, ...sickLeaves, ...ptbLeaves, ...elLeaves]
+  }, [pendingData, pendingSlData, pendingPtbData, pendingElData])
 
   const allRows = useMemo(
     () =>
@@ -534,12 +540,18 @@ export function AdminLeaveRequestsPage() {
   }, [tab, awaitingAllReset, allPage, allTotalPages])
 
   const showPendingSkeleton =
-    (pendingLoading && !pendingData) || (pendingSlLoading && !pendingSlData)
+    (pendingLoading && !pendingData) ||
+    (pendingSlLoading && !pendingSlData) ||
+    (pendingPtbLoading && !pendingPtbData) ||
+    (pendingElLoading && !pendingElData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
   const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
   const listError =
     tab === 'pending'
-      ? (pendingError && !pendingData) || (pendingSlError && !pendingSlData)
+      ? (pendingError && !pendingData) ||
+        (pendingSlError && !pendingSlData) ||
+        (pendingPtbError && !pendingPtbData) ||
+        (pendingElError && !pendingElData)
       : allError && !allData
 
   const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows

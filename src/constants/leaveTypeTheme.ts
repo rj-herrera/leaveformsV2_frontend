@@ -1,15 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   AlertTriangle,
-  Baby,
   BriefcaseMedical,
   Leaf,
   Sprout,
   Sun,
 } from 'lucide-react'
-import type { UserGender } from '../auth/AuthContext'
 
-export type SelectableLeaveType = 'emergency' | 'ptb' | 'parental'
+export type SelectableLeaveType = 'emergency' | 'ptb'
 
 export type LeaveTypeTheme = {
   label: string
@@ -29,34 +27,30 @@ export const SICK_LEAVE_THEME: LeaveTypeTheme = {
   iconBgClass: 'bg-leave-sick',
 }
 
+export const PTB_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'PTB Leave',
+  icon: Sprout,
+  iconBgClass: 'bg-leave-ptb',
+}
+
+export const EMERGENCY_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Emergency Leave',
+  icon: AlertTriangle,
+  iconBgClass: 'bg-leave-emergency',
+}
+
 export const SELECTABLE_LEAVE_DEFAULT: LeaveTypeTheme = {
   label: 'Select Leave Type',
   icon: Leaf,
   iconBgClass: 'bg-text-gray',
 }
 
-export function getSelectableLeaveThemes(
-  parentalLabel: string,
-  gender: UserGender,
-): Record<SelectableLeaveType, LeaveTypeTheme> {
-  return {
-    emergency: {
-      label: 'Emergency Leave',
-      icon: AlertTriangle,
-      iconBgClass: 'bg-leave-emergency',
-    },
-    ptb: {
-      label: 'PTB Leave',
-      icon: Sprout,
-      iconBgClass: 'bg-leave-ptb',
-    },
-    parental: {
-      label: parentalLabel,
-      icon: Baby,
-      iconBgClass:
-        gender === 'female' ? 'bg-leave-maternity' : 'bg-leave-paternity',
-    },
-  }
+export const SELECTABLE_LEAVE_THEMES: Record<
+  SelectableLeaveType,
+  LeaveTypeTheme
+> = {
+  emergency: EMERGENCY_LEAVE_THEME,
+  ptb: PTB_LEAVE_THEME,
 }
 
 /** Left-border chip colors for Team Leave Calendar bars. */
@@ -68,9 +62,12 @@ export function getLeaveTypeChipClasses(leaveType: string): string {
     case 'sl':
     case 'sick leave':
       return 'border-l-leave-sick bg-leave-sick/15'
+    case 'el':
     case 'emergency leave':
       return 'border-l-leave-emergency bg-leave-emergency/20'
+    case 'ptb':
     case 'ptb leave':
+    case 'pulmonary tuberculosis leave':
       return 'border-l-leave-ptb bg-leave-ptb/15'
     case 'maternity leave':
       return 'border-l-leave-maternity bg-leave-maternity/15'
@@ -90,9 +87,12 @@ export function getLeaveTypeAvatarClasses(leaveType: string): string {
     case 'sl':
     case 'sick leave':
       return 'bg-leave-sick/15 text-leave-sick'
+    case 'el':
     case 'emergency leave':
       return 'bg-leave-emergency/20 text-leave-emergency'
+    case 'ptb':
     case 'ptb leave':
+    case 'pulmonary tuberculosis leave':
       return 'bg-leave-ptb/15 text-leave-ptb'
     case 'maternity leave':
       return 'bg-leave-maternity/15 text-leave-maternity'

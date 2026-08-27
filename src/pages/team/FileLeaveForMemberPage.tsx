@@ -30,11 +30,15 @@ import {
   type DayType,
 } from '../../utils/leaveDates'
 import {
+  allowsLwop,
   appliesVlLeadTime,
+  attachmentFieldLabel,
   FILABLE_LEAVE_TYPE_OPTIONS,
+  filableLeaveLabel,
   isFilableLeaveCode,
   MED_CERT_ACCEPT,
-  requiresMedCert,
+  requiresAttachment,
+  requiresFullDay,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -137,8 +141,14 @@ export function FileLeaveForMemberPage() {
   const startDateEnabled =
     leaveFieldsEnabled && leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
-  const needsMedCert = requiresMedCert(leaveType)
+  const needsAttachment = requiresAttachment(leaveType)
+  const fullDayOnly = requiresFullDay(leaveType)
   const medCert = attachments[0] ?? null
+  const attachmentLabel = attachmentFieldLabel(leaveType)
+  const selectedTypeLabel = filableLeaveLabel(leaveType)
+  const dayTypeOptions = fullDayOnly
+    ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
+    : DAY_TYPE_OPTIONS
 
   const selectedBalance = useMemo(
     () =>
@@ -183,8 +193,20 @@ export function FileLeaveForMemberPage() {
     return formatDurationLabel(leaveDuration, 'full')
   }, [dayType, startDate, endDate, leaveDuration])
 
+  const exceedsCredits =
+    leaveType !== '' &&
+    !allowsLwop(leaveType) &&
+    durationDays > 0 &&
+    Number.isFinite(remainingDays) &&
+    durationDays > remainingDays
+  const noCredits =
+    leaveType !== '' &&
+    !allowsLwop(leaveType) &&
+    Number.isFinite(remainingDays) &&
+    remainingDays <= 0
   const mayBeLwop =
     leaveType !== '' &&
+    allowsLwop(leaveType) &&
     durationDays > 0 &&
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
@@ -211,7 +233,7 @@ export function FileLeaveForMemberPage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = needsMedCert && medCert == null
+  const attachmentMissing = needsAttachment && medCert == null
 
   const formValid =
     !groupMissing &&
@@ -225,7 +247,9 @@ export function FileLeaveForMemberPage() {
     !reasonMissing &&
     !attachmentMissing &&
     !attachmentUploading &&
-    leadTimeValidation.ok
+    leadTimeValidation.ok &&
+    !exceedsCredits &&
+    !noCredits
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -256,7 +280,7 @@ export function FileLeaveForMemberPage() {
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
-    setDayType(EMPTY_LEAVE.dayType)
+    setDayType(requiresFullDay(value) ? 'full' : EMPTY_LEAVE.dayType)
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     setAttachments([])
@@ -290,7 +314,7 @@ export function FileLeaveForMemberPage() {
     if (selectedEmpId == null || dayType === '' || !isFilableLeaveCode(leaveType)) {
       return
     }
-    if (needsMedCert && !medCert) return
+    if (needsAttachment && !medCert) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -304,7 +328,7 @@ export function FileLeaveForMemberPage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
-        ...(needsMedCert && medCert
+        ...(needsAttachment && medCert
           ? { leave_attachment: medCert }
           : {}),
       })
@@ -317,8 +341,8 @@ export function FileLeaveForMemberPage() {
       ])
 
       toast.success(
-        needsMedCert
-          ? 'Sick Leave filed for member. Admin will review the request.'
+        needsAttachment
+          ? 'Leave request filed for member. Admin will review the attachment.'
           : 'Leave request filed for member successfully.',
       )
       navigate('/team/leave-approvals')
@@ -418,10 +442,6 @@ export function FileLeaveForMemberPage() {
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
-            <p className="mt-1 text-small text-text-gray">
-              Sick Leave requires a medical certificate and is approved by
-              admin. Vacation Leave is approved by you or another PIC.
-            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2">
@@ -447,8 +467,8 @@ export function FileLeaveForMemberPage() {
                 value={dayType}
                 onChange={handleDayTypeChange}
                 placeholder="Select Day Type"
-                options={[...DAY_TYPE_OPTIONS]}
-                disabled={!dayTypeEnabled}
+                options={[...dayTypeOptions]}
+                disabled={!dayTypeEnabled || fullDayOnly}
                 error={
                   triedSubmit && dayTypeEnabled && dayTypeMissing
                     ? 'Please select a day type.'
@@ -501,7 +521,35 @@ export function FileLeaveForMemberPage() {
                   </p>
                 </div>
               ) : null}
-              {mayBeLwop ? (
+              {noCredits ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    This member has no remaining {selectedTypeLabel} credits.
+                    This leave type cannot be filed without available credits.
+                  </p>
+                </div>
+              ) : exceedsCredits ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    Duration exceeds remaining {selectedTypeLabel} credits.
+                    Shorten the leave, or file remaining days as Vacation Leave.
+                  </p>
+                </div>
+              ) : mayBeLwop ? (
                 <div
                   className="rounded-md border border-status-pending/50 bg-status-pending/10 px-3 py-2.5 sm:col-span-2"
                   role="status"
@@ -561,9 +609,9 @@ export function FileLeaveForMemberPage() {
                     : (apiErrors.reason ?? null)
                 }
               />
-              {needsMedCert ? (
+              {needsAttachment ? (
                 <FileField
-                  label="Medical certificate"
+                  label={attachmentLabel}
                   files={attachments}
                   onChange={(files) => {
                     setAttachments(files)
@@ -580,7 +628,7 @@ export function FileLeaveForMemberPage() {
                   hint="PDF, JPG, or PNG."
                   error={
                     triedSubmit && leaveFieldsEnabled && attachmentMissing
-                      ? 'A medical certificate is required to file Sick Leave.'
+                      ? `${attachmentLabel} is required for this leave type.`
                       : (apiErrors.attachment ?? null)
                   }
                 />

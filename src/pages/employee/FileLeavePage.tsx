@@ -14,6 +14,7 @@ import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
+import { useMyBalances } from '../../hooks/api/useMyBalances'
 import { swrKeys, isAdminLeavesListKey, isLeaveListKey } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
@@ -23,11 +24,15 @@ import {
   type DayType,
 } from '../../utils/leaveDates'
 import {
+  allowsLwop,
   appliesVlLeadTime,
+  attachmentFieldLabel,
   FILABLE_LEAVE_TYPE_OPTIONS,
+  filableLeaveLabel,
   isFilableLeaveCode,
   MED_CERT_ACCEPT,
-  requiresMedCert,
+  requiresAttachment,
+  requiresFullDay,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -56,6 +61,7 @@ export function FileLeavePage() {
   const { mutate } = useSWRConfig()
   const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
+  const { data: balances } = useMyBalances()
 
   const [leaveType, setLeaveType] = useState(EMPTY_FORM.leaveType)
   const [dayType, setDayType] = useState<'' | DayType>(EMPTY_FORM.dayType)
@@ -74,8 +80,14 @@ export function FileLeavePage() {
   const dayTypeEnabled = leaveType !== ''
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
-  const needsMedCert = requiresMedCert(leaveType)
-  const medCert = attachments[0] ?? null
+  const needsAttachment = requiresAttachment(leaveType)
+  const fullDayOnly = requiresFullDay(leaveType)
+  const attachment = attachments[0] ?? null
+  const attachmentLabel = attachmentFieldLabel(leaveType)
+  const selectedTypeLabel = filableLeaveLabel(leaveType)
+  const dayTypeOptions = fullDayOnly
+    ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
+    : DAY_TYPE_OPTIONS
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -116,12 +128,34 @@ export function FileLeavePage() {
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
+  const selectedBalance = useMemo(
+    () =>
+      leaveType
+        ? balances?.find(
+            (row) => row.code.toUpperCase() === leaveType.toUpperCase(),
+          )
+        : undefined,
+    [balances, leaveType],
+  )
+  const remainingDays = Number(selectedBalance?.available ?? NaN)
+  const exceedsCredits =
+    leaveType !== '' &&
+    !allowsLwop(leaveType) &&
+    leaveDuration > 0 &&
+    Number.isFinite(remainingDays) &&
+    leaveDuration > remainingDays
+  const noCredits =
+    leaveType !== '' &&
+    !allowsLwop(leaveType) &&
+    Number.isFinite(remainingDays) &&
+    remainingDays <= 0
+
   const leaveTypeMissing = leaveType === ''
   const dayTypeMissing = dayType === ''
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = needsMedCert && medCert == null
+  const attachmentMissing = needsAttachment && attachment == null
 
   const formValid =
     !leaveTypeMissing &&
@@ -132,11 +166,13 @@ export function FileLeavePage() {
     !reasonMissing &&
     !attachmentMissing &&
     !attachmentUploading &&
-    leadTimeValidation.ok
+    leadTimeValidation.ok &&
+    !exceedsCredits &&
+    !noCredits
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
-    setDayType(EMPTY_FORM.dayType)
+    setDayType(requiresFullDay(value) ? 'full' : EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setAttachments([])
@@ -171,7 +207,7 @@ export function FileLeavePage() {
 
   async function handleConfirmSubmit() {
     if (dayType === '' || !isFilableLeaveCode(leaveType)) return
-    if (needsMedCert && !medCert) return
+    if (needsAttachment && !attachment) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -184,8 +220,8 @@ export function FileLeavePage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
-        ...(needsMedCert && medCert
-          ? { leave_attachment: medCert }
+        ...(needsAttachment && attachment
+          ? { leave_attachment: attachment }
           : {}),
       })
 
@@ -247,10 +283,6 @@ export function FileLeavePage() {
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
-            <p className="mt-1 text-small text-text-gray">
-              Sick Leave requires a medical certificate and is approved by
-              admin. Vacation Leave is approved by your PIC.
-            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2">
@@ -271,8 +303,8 @@ export function FileLeavePage() {
                 value={dayType}
                 onChange={handleDayTypeChange}
                 placeholder="Select Day Type"
-                options={[...DAY_TYPE_OPTIONS]}
-                disabled={!dayTypeEnabled}
+                options={[...dayTypeOptions]}
+                disabled={!dayTypeEnabled || fullDayOnly}
                 error={
                   triedSubmit && dayTypeEnabled && dayTypeMissing
                     ? 'Please select a day type.'
@@ -330,6 +362,35 @@ export function FileLeavePage() {
                 readOnly
                 className="sm:col-span-2"
               />
+              {noCredits ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    You have no remaining {selectedTypeLabel} credits. This
+                    leave type cannot be filed without available credits.
+                  </p>
+                </div>
+              ) : exceedsCredits ? (
+                <div
+                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  role="alert"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    aria-hidden="true"
+                  />
+                  <p className="text-small font-semibold text-status-rejected">
+                    Duration exceeds remaining {selectedTypeLabel} credits.
+                    Shorten the leave, or file remaining days as Vacation Leave.
+                  </p>
+                </div>
+              ) : null}
               {leadTimeValidation.isLongLeave ? (
                 <div
                   className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
@@ -375,9 +436,9 @@ export function FileLeavePage() {
                     : (apiErrors.reason ?? null)
                 }
               />
-              {needsMedCert ? (
+              {needsAttachment ? (
                 <FileField
-                  label="Medical certificate"
+                  label={attachmentLabel}
                   files={attachments}
                   onChange={(files) => {
                     setAttachments(files)
@@ -393,7 +454,7 @@ export function FileLeavePage() {
                   hint="PDF, JPG, or PNG."
                   error={
                     triedSubmit && attachmentMissing
-                      ? 'A medical certificate is required to file Sick Leave.'
+                      ? `${attachmentLabel} is required for this leave type.`
                       : (apiErrors.attachment ?? null)
                   }
                 />

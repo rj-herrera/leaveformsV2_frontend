@@ -27,7 +27,7 @@ import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
 import type { LeaveConversionInfo } from '../../mocks/leaveRequests'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import { isPendingLeaveEditable, requiresMedCert } from '../../utils/leaveFiling'
+import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -378,7 +378,7 @@ export function LeaveRequestDetailsPage() {
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow
                 value={detail.has_attachment ? ATTACHMENT_LABEL : null}
-                alwaysShow={requiresMedCert(detail.leave_type.code)}
+                alwaysShow={requiresAttachment(detail.leave_type.code)}
                 onView={() =>
                   openPreview(
                     ATTACHMENT_LABEL,

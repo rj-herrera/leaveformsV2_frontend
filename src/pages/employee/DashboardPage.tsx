@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../auth/AuthContext'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { LeaveTypeIconBadge } from '../../components/ui/LeaveTypeIconBadge'
@@ -31,8 +30,8 @@ import {
   type StatusFilter,
 } from '../../constants/leaveStatus'
 import {
-  getSelectableLeaveThemes,
   SELECTABLE_LEAVE_DEFAULT,
+  SELECTABLE_LEAVE_THEMES,
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
   type SelectableLeaveType,
@@ -41,10 +40,6 @@ import { useMyBalances } from '../../hooks/api/useMyBalances'
 import { useMyLeaves } from '../../hooks/api/useMyLeaves'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import {
-  PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE,
-} from '../../mocks/leaveBalances'
-import { canViewParentalLeaveCredits } from '../../mocks/leaveRequests'
 import {
   formatDurationDays,
   formatLeavePeriod,
@@ -55,13 +50,12 @@ import {
 type LeaveTypeFilter = 'ALL' | string
 type FiledOnSort = 'desc' | 'asc'
 
-/** Other leave types (EL/PTB/parental) — keep mock until those APIs exist. */
-const MOCK_OTHER_BALANCES = {
-  emergency: 3,
-  ptb: 7,
-  maternity: 105,
-  paternity: 7,
-} as const
+const SELECTABLE_LEAVE_OPTIONS = (
+  ['emergency', 'ptb'] as const
+).map((id) => ({
+  id,
+  ...SELECTABLE_LEAVE_THEMES[id],
+}))
 
 /** Format API decimal strings (e.g. `"12.00"`) for balance cards. */
 function formatBalanceDays(value: string | undefined): string {
@@ -72,7 +66,6 @@ function formatBalanceDays(value: string | undefined): string {
 }
 
 export function DashboardPage() {
-  const { user } = useAuth()
   const {
     availableSlotRef,
     sectionHeaderRef,
@@ -98,6 +91,14 @@ export function DashboardPage() {
     () => balances?.find((b) => b.code.toUpperCase() === 'SL'),
     [balances],
   )
+  const elBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'EL'),
+    [balances],
+  )
+  const ptbBalance = useMemo(
+    () => balances?.find((b) => b.code.toUpperCase() === 'PTB'),
+    [balances],
+  )
 
   const [isLeaveTypeOpen, setIsLeaveTypeOpen] = useState(false)
   const [selectedLeaveType, setSelectedLeaveType] =
@@ -108,26 +109,9 @@ export function DashboardPage() {
 
   const leaveRequests = leavesPage?.data ?? []
 
-  const parentalLabel =
-    user.gender === 'female' ? 'Maternity Leave' : 'Paternity Leave'
-
-  const selectableLeaveThemes = useMemo(
-    () => getSelectableLeaveThemes(parentalLabel, user.gender),
-    [parentalLabel, user.gender],
-  )
-
   const selectedLeaveTheme = selectedLeaveType
-    ? selectableLeaveThemes[selectedLeaveType]
+    ? SELECTABLE_LEAVE_THEMES[selectedLeaveType]
     : SELECTABLE_LEAVE_DEFAULT
-
-  const leaveTypeOptions = useMemo(
-    () =>
-      (['emergency', 'ptb', 'parental'] as const).map((id) => ({
-        id,
-        ...selectableLeaveThemes[id],
-      })),
-    [selectableLeaveThemes],
-  )
 
   const leaveTypeFilterOptions = useMemo(() => {
     const types = Array.from(
@@ -141,22 +125,16 @@ export function DashboardPage() {
   }, [leaveRequests])
 
   const selectedOption = selectedLeaveType
-    ? leaveTypeOptions.find((option) => option.id === selectedLeaveType)
+    ? SELECTABLE_LEAVE_OPTIONS.find((option) => option.id === selectedLeaveType)
     : undefined
 
-  const canViewSelectedParentalCredits =
-    selectedLeaveType !== 'parental' ||
-    canViewParentalLeaveCredits(user.id, parentalLabel)
-
-  const selectedAvailableDays = (() => {
-    if (!selectedLeaveType) return null
-    if (selectedLeaveType === 'emergency') return MOCK_OTHER_BALANCES.emergency
-    if (selectedLeaveType === 'ptb') return MOCK_OTHER_BALANCES.ptb
-    if (!canViewSelectedParentalCredits) return null
-    return user.gender === 'female'
-      ? MOCK_OTHER_BALANCES.maternity
-      : MOCK_OTHER_BALANCES.paternity
-  })()
+  const selectedAvailableDays = selectedLeaveType
+    ? formatBalanceDays(
+        selectedLeaveType === 'emergency'
+          ? elBalance?.available
+          : ptbBalance?.available,
+      )
+    : null
 
   const filteredRequests = useMemo(() => {
     return leaveRequests
@@ -199,7 +177,7 @@ export function DashboardPage() {
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-5`}>
-      {/* Balance cards — VL/SL from GET /balances; other types still mock */}
+      {/* Balance cards — VL/SL fixed; EL/PTB via the third-card picker */}
       <section className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
         {showBalanceSkeleton ? (
           <>
@@ -305,7 +283,7 @@ export function DashboardPage() {
                   role="listbox"
                   className="absolute top-14 right-5 left-5 z-10 overflow-hidden rounded-md border border-border bg-white shadow-sm"
                 >
-                  {leaveTypeOptions.map((option) => (
+                  {SELECTABLE_LEAVE_OPTIONS.map((option) => (
                     <li key={option.id}>
                       <button
                         type="button"
@@ -331,21 +309,12 @@ export function DashboardPage() {
               )}
 
               <div className="flex flex-1 flex-col items-center justify-center text-center">
-                {selectedLeaveType === 'parental' &&
-                !canViewSelectedParentalCredits ? (
-                  <p className="px-2 text-small text-text-gray">
-                    {PARENTAL_CREDITS_REQUIRES_REQUEST_MESSAGE}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
-                      {selectedAvailableDays ?? '—'}
-                    </p>
-                    <p className="text-body text-text-gray mt-1.5">
-                      days available
-                    </p>
-                  </>
-                )}
+                <p className="text-[2.5rem] text-4xl leading-none font-bold text-text-black">
+                  {selectedAvailableDays ?? '—'}
+                </p>
+                <p className="text-body text-text-gray mt-1.5">
+                  days available
+                </p>
               </div>
             </article>
           </>
