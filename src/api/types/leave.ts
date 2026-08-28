@@ -150,20 +150,20 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — VL/ML/PL as JSON; SL/PTB/EL as multipart + `leave_attachment[]`. Omit emp_id for self. */
+/** POST /leaves — VL/LL/ML/PL as JSON; SL/PTB/EL as multipart + `leave_attachment[]`. Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
-  /** `VL` (default), `SL`, `PTB`, `EL`, `ML`, or `PL`. Other types → 422. */
-  code?: 'VL' | 'SL' | 'PTB' | 'EL' | 'ML' | 'PL'
+  /** `VL` (default), `SL`, `PTB`, `EL`, `LL`, `ML`, or `PL`. Other types → 422. */
+  code?: 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SL/PTB (med certs) and EL (supporting documents): 1–5 files. Prohibited on VL/ML/PL. */
+  /** Required for SL/PTB (med certs) and EL (supporting documents): 1–5 files. Prohibited on VL/LL/ML/PL. */
   leave_attachment?: File[]
 }
 
-/** PUT /leaves/{id} — edit pending VL, SL, PTB, EL, ML, or PL dates/reason. Files use attachment endpoints. */
+/** PUT /leaves/{id} — edit pending VL, SL, PTB, EL, LL, ML, or PL dates/reason. Files use attachment endpoints. */
 export type UpdateLeavePayload = {
   start_date: string
   end_date: string

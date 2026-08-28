@@ -35,6 +35,12 @@ export const PATERNITY_ENTITLEMENT_WORKING_DAYS = 7
 
 export const MATERNITY_LEAVE_TYPE = 'Maternity Leave'
 export const PATERNITY_LEAVE_TYPE = 'Paternity Leave'
+export const LONG_LEAVE_TYPE = 'Long Leave'
+
+/** Inclusive calendar months for Long Leave (matches `leave.long_leave`). */
+export const LONG_LEAVE_MIN_MONTHS = 1
+export const LONG_LEAVE_MAX_MONTHS = 3
+export const LONG_LEAVE_MIN_TENURE_YEARS = 5
 
 function toISODate(year: number, monthIndex: number, day: number): string {
   const m = String(monthIndex + 1).padStart(2, '0')
@@ -162,13 +168,16 @@ export function isWorkingDayISO(
   return date ? isWorkingDay(date, nonWorkingDates) : false
 }
 
-/** Maternity and PTB use consecutive calendar days; other types use working days. */
+/** Maternity, PTB, and Long Leave use consecutive calendar days; other types use working days. */
 export function usesCalendarDayCounting(leaveType: string): boolean {
   const key = leaveType.trim().toLowerCase()
   return (
     leaveType === MATERNITY_LEAVE_TYPE ||
+    leaveType === LONG_LEAVE_TYPE ||
     key === 'ml' ||
     key === 'maternity leave' ||
+    key === 'll' ||
+    key === 'long leave' ||
     key === 'ptb' ||
     key === 'ptb leave' ||
     key === 'pulmonary tuberculosis leave'
@@ -349,4 +358,93 @@ export function fixedLeaveEndDate(
     )
   }
   return ''
+}
+
+/** Complete years from hire date to `asOfISO` (local calendar), matching Long Leave tenure. */
+export function completeYearsOfService(
+  dateHired: string | null | undefined,
+  asOfISO: string = todayISO(),
+): number {
+  const hired = parseLocalISO(dateHired ?? '')
+  const asOf = parseLocalISO(asOfISO)
+  if (!hired || !asOf || hired > asOf) return 0
+
+  let years = asOf.getFullYear() - hired.getFullYear()
+  if (
+    asOf.getMonth() < hired.getMonth() ||
+    (asOf.getMonth() === hired.getMonth() && asOf.getDate() < hired.getDate())
+  ) {
+    years -= 1
+  }
+  return Math.max(0, years)
+}
+
+/** Carbon `addMonthsNoOverflow`: keep the day when it exists in the target month. */
+function addMonthsNoOverflow(date: Date, months: number): Date {
+  const day = date.getDate()
+  const result = new Date(date.getFullYear(), date.getMonth() + months, 1)
+  const lastDay = new Date(
+    result.getFullYear(),
+    result.getMonth() + 1,
+    0,
+  ).getDate()
+  result.setDate(Math.min(day, lastDay))
+  return result
+}
+
+/** Start + N months, minus 1 day (inclusive calendar-month span). */
+export function addMonthsNoOverflowMinusOneDay(
+  startISO: string,
+  months: number,
+): string {
+  const start = parseLocalISO(startISO)
+  if (!start || months < 1) return ''
+  const end = addMonthsNoOverflow(start, months)
+  end.setDate(end.getDate() - 1)
+  return toLocalISODate(end)
+}
+
+/** Inclusive LL window: end ≥ start + 1 month − 1 day and ≤ start + 3 months − 1 day. */
+export function longLeaveEndBounds(
+  startISO: string,
+): { min: string; max: string } | null {
+  const min = addMonthsNoOverflowMinusOneDay(startISO, LONG_LEAVE_MIN_MONTHS)
+  const max = addMonthsNoOverflowMinusOneDay(startISO, LONG_LEAVE_MAX_MONTHS)
+  if (!min || !max) return null
+  return { min, max }
+}
+
+export function isLongLeaveEndInBounds(
+  startISO: string,
+  endISO: string,
+): boolean {
+  const bounds = longLeaveEndBounds(startISO)
+  if (!bounds || !endISO) return false
+  return endISO >= bounds.min && endISO <= bounds.max
+}
+
+/** Keep an existing end date if it still fits; otherwise snap to the 1-month minimum. */
+export function clampLongLeaveEndDate(
+  startISO: string,
+  currentEnd: string,
+): string {
+  const bounds = longLeaveEndBounds(startISO)
+  if (!bounds) return ''
+  if (!currentEnd || currentEnd < bounds.min || currentEnd > bounds.max) {
+    return bounds.min
+  }
+  return currentEnd
+}
+
+export function leaveEndPickerLimits(
+  leaveType: string,
+  startISO: string,
+): { min?: string; max?: string } {
+  const key = leaveType.trim().toUpperCase()
+  if (key === 'LL' || leaveType === LONG_LEAVE_TYPE) {
+    const bounds = longLeaveEndBounds(startISO)
+    if (!bounds) return {}
+    return { min: bounds.min, max: bounds.max }
+  }
+  return { min: startISO || undefined }
 }

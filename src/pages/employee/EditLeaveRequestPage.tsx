@@ -19,9 +19,12 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import {
+  clampLongLeaveEndDate,
   countLeaveDurationDays,
   fixedLeaveEndDate,
   formatDurationLabel,
+  isLongLeaveEndInBounds,
+  leaveEndPickerLimits,
   todayISO,
   usesCalendarDayCounting,
   type DayType,
@@ -32,6 +35,7 @@ import {
   attachmentFieldHint,
   attachmentFieldLabel,
   isFixedRangeLeave,
+  isLongLeave,
   isPendingLeaveEditable,
   MED_CERT_ACCEPT,
   requiresAttachment,
@@ -72,6 +76,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const needsAttachment = requiresAttachment(leaveTypeCode)
   const fullDayOnly = requiresFullDay(leaveTypeCode)
   const fixedRange = isFixedRangeLeave(leaveTypeCode)
+  const longLeave = isLongLeave(leaveTypeCode)
   const storedAttachments = detail.attachments ?? []
   const attachmentLabel = attachmentFieldLabel(leaveTypeCode)
   const dayTypeOptions = fullDayOnly
@@ -129,6 +134,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   }, [dayType, leaveDuration, leaveTypeCode, startDate])
 
   const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
+  const endPickerLimits = leaveEndPickerLimits(leaveTypeCode, startDate)
 
   const reasonMissing = reason.trim().length === 0
   const keptExisting = storedAttachments.filter(
@@ -155,7 +161,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     !attachmentMissing &&
     !attachmentUploading &&
     leadTimeValidation.ok &&
-    isDirty
+    isDirty &&
+    !(longLeave && !isLongLeaveEndInBounds(startDate, endDate))
 
   function handleDayTypeChange(value: string) {
     const next = value as DayType
@@ -170,6 +177,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     setStartDate(value)
     if (isFixedRangeLeave(leaveTypeCode)) {
       setEndDate(fixedLeaveEndDate(leaveTypeCode, value, nonWorkingDates))
+    } else if (longLeave) {
+      setEndDate(clampLongLeaveEndDate(value, endDate))
     } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
@@ -310,7 +319,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                 weekdaysOnly={workingDaysOnly}
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
-                min={startDate || undefined}
+                min={endPickerLimits.min}
+                max={endPickerLimits.max}
                 disabled={dayType !== 'full' || fixedRange}
                 invalid={Boolean(apiErrors.dates) && dayType === 'full'}
               />

@@ -69,7 +69,7 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL/ML/PL as JSON; SL/PTB/EL as multipart with required attachments (201). */
+/** POST /leaves — VL/LL/ML/PL as JSON; SL/PTB/EL as multipart with required attachments (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {

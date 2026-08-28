@@ -17,9 +17,12 @@ import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { useMyBalances } from '../../hooks/api/useMyBalances'
 import { swrKeys, isAdminLeavesListKey, isLeaveListKey } from '../../hooks/api/swrKeys'
 import {
+  clampLongLeaveEndDate,
   countLeaveDurationDays,
   fixedLeaveEndDate,
   formatDurationLabel,
+  isLongLeaveEndInBounds,
+  leaveEndPickerLimits,
   todayISO,
   usesCalendarDayCounting,
   type DayType,
@@ -34,6 +37,7 @@ import {
   filableLeaveTypeOptionsForGender,
   isFilableLeaveCode,
   isFixedRangeLeave,
+  isLongLeave,
   MED_CERT_ACCEPT,
   requiresAttachment,
   requiresFullDay,
@@ -89,7 +93,10 @@ export function FileLeavePage() {
   const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
   const selectedTypeLabel = filableLeaveLabel(leaveType)
-  const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender)
+  const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender, {
+    dateHired: user.dateHired,
+  })
+  const endPickerLimits = leaveEndPickerLimits(leaveType, startDate)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
@@ -162,6 +169,12 @@ export function FileLeavePage() {
   const reasonMissing = reason.trim().length === 0
   const attachmentMissing = needsAttachment && attachments.length === 0
 
+  const longLeaveRangeInvalid =
+    isLongLeave(leaveType) &&
+    startDate !== '' &&
+    endDate !== '' &&
+    !isLongLeaveEndInBounds(startDate, endDate)
+
   const formValid =
     !leaveTypeMissing &&
     isFilableLeaveCode(leaveType) &&
@@ -173,7 +186,8 @@ export function FileLeavePage() {
     !attachmentUploading &&
     leadTimeValidation.ok &&
     !exceedsCredits &&
-    !noCredits
+    !noCredits &&
+    !longLeaveRangeInvalid
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
@@ -250,6 +264,8 @@ export function FileLeavePage() {
     setStartDate(value)
     if (isFixedRangeLeave(leaveType)) {
       setEndDate(fixedLeaveEndDate(leaveType, value, nonWorkingDates))
+    } else if (isLongLeave(leaveType)) {
+      setEndDate(clampLongLeaveEndDate(value, endDate))
     } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
@@ -340,7 +356,8 @@ export function FileLeavePage() {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 disabled={!endDateEnabled || dayType !== 'full' || fixedRange}
-                min={startDate || undefined}
+                min={endPickerLimits.min}
+                max={endPickerLimits.max}
                 invalid={Boolean(apiErrors.dates) && !endMissing}
                 error={
                   triedSubmit && endDateEnabled && endMissing

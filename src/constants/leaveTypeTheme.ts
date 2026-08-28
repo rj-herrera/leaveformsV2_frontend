@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Baby,
   BriefcaseMedical,
+  CalendarRange,
   Leaf,
   Sprout,
   Sun,
@@ -38,6 +39,12 @@ export const EMERGENCY_LEAVE_THEME: LeaveTypeTheme = {
   label: 'Emergency Leave',
   icon: AlertTriangle,
   iconBgClass: 'bg-leave-emergency',
+}
+
+export const LONG_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Long Leave',
+  icon: CalendarRange,
+  iconBgClass: 'bg-leave-long',
 }
 
 export const MATERNITY_LEAVE_THEME: LeaveTypeTheme = {
@@ -78,6 +85,9 @@ export function getLeaveTypeChipClasses(leaveType: string): string {
     case 'el':
     case 'emergency leave':
       return 'border-l-leave-emergency bg-leave-emergency/20'
+    case 'll':
+    case 'long leave':
+      return 'border-l-leave-long bg-leave-long/15'
     case 'ptb':
     case 'ptb leave':
     case 'pulmonary tuberculosis leave':
@@ -105,6 +115,9 @@ export function getLeaveTypeAvatarClasses(leaveType: string): string {
     case 'el':
     case 'emergency leave':
       return 'bg-leave-emergency/20 text-leave-emergency'
+    case 'll':
+    case 'long leave':
+      return 'bg-leave-long/15 text-leave-long'
     case 'ptb':
     case 'ptb leave':
     case 'pulmonary tuberculosis leave':
