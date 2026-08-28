@@ -43,6 +43,7 @@ import { usePagination } from '../../hooks/usePagination'
 import {
   formatDurationDays,
   formatLeavePeriod,
+  formatLeaveTypeName,
   formatShortDate,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
@@ -120,7 +121,15 @@ export function DashboardPage() {
 
     return [
       { value: 'ALL' as const, label: 'All leave types' },
-      ...types.map((type) => ({ value: type, label: type })),
+      ...types.map((type) => {
+        const request = leaveRequests.find(
+          (item) => item.leave_type.name === type,
+        )
+        return {
+          value: type,
+          label: request ? formatLeaveTypeName(request.leave_type) : type,
+        }
+      }),
     ]
   }, [leaveRequests])
 
@@ -425,7 +434,7 @@ export function DashboardPage() {
                         className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
                       >
                         <td className="truncate px-5">
-                          {request.leave_type.name}
+                          {formatLeaveTypeName(request.leave_type)}
                         </td>
                         <td className="px-5 whitespace-nowrap">{filedOn}</td>
                         <td className="truncate px-5">
