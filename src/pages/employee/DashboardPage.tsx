@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
+import { ReservedCreditsSection } from '../../components/leave/ReservedCreditsSection'
 import { LeaveTypeIconBadge } from '../../components/ui/LeaveTypeIconBadge'
 import { Pagination } from '../../components/ui/Pagination'
 import {
@@ -145,6 +146,13 @@ export function DashboardPage() {
       )
     : null
 
+  const selectedReservedDays =
+    selectedLeaveType === 'emergency'
+      ? elBalance?.reserved
+      : selectedLeaveType === 'ptb'
+        ? ptbBalance?.reserved
+        : undefined
+
   const filteredRequests = useMemo(() => {
     return leaveRequests
       .filter((request) => {
@@ -194,7 +202,6 @@ export function DashboardPage() {
               label={VACATION_LEAVE_THEME.label}
               icon={VACATION_LEAVE_THEME.icon}
               iconBgClass={VACATION_LEAVE_THEME.iconBgClass}
-              showReserved
             />
             <BalanceCardSkeleton
               label={SICK_LEAVE_THEME.label}
@@ -225,22 +232,7 @@ export function DashboardPage() {
                 </p>
                 <p className="text-body text-text-gray mt-1.5">days available</p>
               </div>
-              <div className="mt-4 border-t border-border pt-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-small font-semibold text-text-black">
-                      Reserved Credits
-                    </p>
-                    <p className="text-small text-text-gray mt-0.5">
-                      Subject for approval
-                    </p>
-                  </div>
-                  <p className="text-body font-semibold text-text-black">
-                  {formatBalanceDays(vlBalance?.reserved)}{' '}
-                  {formatBalanceDays(vlBalance?.reserved) === '1' ? 'day' : 'days'}
-                  </p>
-                </div>
-              </div>
+              <ReservedCreditsSection reserved={vlBalance?.reserved} />
             </article>
 
             <article className="flex flex-col rounded-lg border border-border bg-white p-5">
@@ -259,6 +251,7 @@ export function DashboardPage() {
                 </p>
                 <p className="text-body text-text-gray mt-1.5">days available</p>
               </div>
+              <ReservedCreditsSection reserved={slBalance?.reserved} />
             </article>
 
             <article className="relative flex flex-col rounded-lg border border-border bg-white p-5">
@@ -325,6 +318,7 @@ export function DashboardPage() {
                   days available
                 </p>
               </div>
+              <ReservedCreditsSection reserved={selectedReservedDays} />
             </article>
           </>
         )}

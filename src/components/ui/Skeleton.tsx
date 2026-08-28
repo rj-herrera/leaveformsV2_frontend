@@ -46,12 +46,10 @@ export function BalanceCardSkeleton({
   label,
   icon,
   iconBgClass,
-  showReserved = false,
 }: {
   label: string
   icon: LucideIcon
   iconBgClass: string
-  showReserved?: boolean
 }) {
   return (
     <article className="flex flex-col rounded-lg border border-border bg-white p-5">
@@ -63,21 +61,6 @@ export function BalanceCardSkeleton({
         <Skeleton className="h-10 w-16" />
         <p className="text-body text-text-gray">days available</p>
       </div>
-      {showReserved ? (
-        <div className="mt-4 border-t border-border pt-4">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="text-small font-semibold text-text-black">
-                Reserved Credits
-              </p>
-              <p className="text-small text-text-gray mt-0.5">
-                Subject for approval
-              </p>
-            </div>
-            <Skeleton className="h-4 w-14" />
-          </div>
-        </div>
-      ) : null}
     </article>
   )
 }
