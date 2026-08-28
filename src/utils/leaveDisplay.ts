@@ -1,9 +1,19 @@
 import type { LeaveRequestStatus } from '../constants/leaveStatus'
+import { PTB_LEAVE_THEME } from '../constants/leaveTypeTheme'
 import type {
   ConversionStatus,
   LeaveApprovalRequirement,
   LeaveStatus,
+  LeaveTypeRef,
 } from '../api/types'
+
+/** Map API leave type names to UI labels (e.g. PTB → "PTB Leave"). */
+export function formatLeaveTypeName(leaveType: LeaveTypeRef): string {
+  if (leaveType.code.trim().toUpperCase() === 'PTB') {
+    return PTB_LEAVE_THEME.label
+  }
+  return leaveType.name
+}
 
 /** Map API leave status → existing UI badge/filter status. */
 export function mapApiLeaveStatusToUi(
