@@ -1,4 +1,5 @@
 import {
+  apiDeleteData,
   apiGetData,
   apiGetList,
   apiPostData,
@@ -9,12 +10,25 @@ import {
 import type {
   CancelLeavePayload,
   DayType,
+  LeaveAttachmentFile,
   LeaveDetail,
   LeaveStatus,
   LeaveSummary,
   StoreLeavePayload,
   UpdateLeavePayload,
 } from './types'
+import { ATTACHMENT_MAX_FILES } from '../utils/leaveFiling'
+
+function appendAttachmentFiles(
+  form: FormData,
+  field: 'leave_attachment',
+  files: File[] | undefined,
+) {
+  if (!files || files.length === 0) return
+  for (const file of files) {
+    form.append(`${field}[]`, file)
+  }
+}
 
 function appendLeaveFields(
   form: FormData,
@@ -25,7 +39,7 @@ function appendLeaveFields(
     end_date: string
     day_type: DayType
     leave_reason: string
-    leave_attachment?: File
+    leave_attachment?: File[]
   },
 ) {
   if (fields.emp_id != null) form.append('emp_id', String(fields.emp_id))
@@ -34,9 +48,7 @@ function appendLeaveFields(
   form.append('end_date', fields.end_date)
   form.append('day_type', fields.day_type)
   form.append('leave_reason', fields.leave_reason)
-  if (fields.leave_attachment) {
-    form.append('leave_attachment', fields.leave_attachment)
-  }
+  appendAttachmentFiles(form, 'leave_attachment', fields.leave_attachment)
 }
 
 export type ListMyLeavesParams = {
@@ -57,25 +69,21 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL as JSON; SL/PTB/EL as multipart with required attachment (201). */
+/** POST /leaves — VL/ML/PL as JSON; SL/PTB/EL as multipart with required attachments (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {
   const code = (payload.code ?? 'VL').toUpperCase()
-  if (
-    code === 'SL' ||
-    code === 'PTB' ||
-    code === 'EL' ||
-    payload.leave_attachment
-  ) {
+  const files = payload.leave_attachment ?? []
+  if (code === 'SL' || code === 'PTB' || code === 'EL' || files.length > 0) {
     const form = new FormData()
-    appendLeaveFields(form, { ...payload, code })
+    appendLeaveFields(form, { ...payload, code, leave_attachment: files })
     return apiPostFormData<LeaveDetail>('/leaves', form)
   }
 
   return apiPostData<LeaveDetail>('/leaves', {
     emp_id: payload.emp_id,
-    code: 'VL',
+    code,
     start_date: payload.start_date,
     end_date: payload.end_date,
     day_type: payload.day_type,
@@ -83,23 +91,83 @@ export async function createLeave(
   })
 }
 
-/** PUT JSON, or POST multipart when replacing the SL/PTB/EL attachment. */
+/** PUT JSON — dates/reason only. Files use add/delete attachment endpoints. */
 export async function updateLeave(
   leaveId: number,
   payload: UpdateLeavePayload,
 ): Promise<LeaveDetail> {
-  if (payload.leave_attachment) {
-    const form = new FormData()
-    appendLeaveFields(form, payload)
-    return apiPostFormData<LeaveDetail>(`/leaves/${leaveId}`, form)
-  }
-
   return apiPutData<LeaveDetail>(`/leaves/${leaveId}`, {
     start_date: payload.start_date,
     end_date: payload.end_date,
     day_type: payload.day_type,
     leave_reason: payload.leave_reason,
   })
+}
+
+/** POST /leaves/{id}/attachments — add 1+ files (total after add ≤ 5). */
+export async function addLeaveAttachments(
+  leaveId: number,
+  files: File[],
+): Promise<LeaveDetail> {
+  const form = new FormData()
+  appendAttachmentFiles(form, 'leave_attachment', files)
+  return apiPostFormData<LeaveDetail>(`/leaves/${leaveId}/attachments`, form)
+}
+
+/** DELETE /leaves/{id}/attachments/{attachmentId} — cannot drop below 1 file. */
+export async function deleteLeaveAttachment(
+  leaveId: number,
+  attachmentId: number,
+): Promise<LeaveDetail> {
+  return apiDeleteData<LeaveDetail>(
+    `/leaves/${leaveId}/attachments/${attachmentId}`,
+  )
+}
+
+/**
+ * Apply queued add/remove attachment edits on a pending SL/PTB/EL.
+ * Deletes first when the server is at the cap so adds do not 422; adds first
+ * when a delete would otherwise drop below 1 file.
+ */
+export async function syncLeaveAttachments(
+  leaveId: number,
+  current: LeaveAttachmentFile[],
+  keepIds: number[],
+  addFiles: File[],
+): Promise<LeaveDetail | null> {
+  const keep = new Set(keepIds)
+  const toRemove = current.filter((file) => !keep.has(file.id)).map((file) => file.id)
+  const toAdd = [...addFiles]
+  if (toRemove.length === 0 && toAdd.length === 0) return null
+
+  let serverIds = current.map((file) => file.id)
+  let latest: LeaveDetail | null = null
+
+  while (toRemove.length > 0 || toAdd.length > 0) {
+    const count = serverIds.length
+    const nextRemove = toRemove[0]
+    const canDelete = nextRemove != null && count > 1
+    const canAdd = toAdd.length > 0 && count < ATTACHMENT_MAX_FILES
+
+    if (canDelete && (count >= ATTACHMENT_MAX_FILES || !canAdd)) {
+      latest = await deleteLeaveAttachment(leaveId, nextRemove)
+      toRemove.shift()
+      serverIds = latest.attachments.map((file) => file.id)
+      continue
+    }
+
+    if (canAdd) {
+      const slots = ATTACHMENT_MAX_FILES - count
+      const batch = toAdd.splice(0, slots)
+      latest = await addLeaveAttachments(leaveId, batch)
+      serverIds = latest.attachments.map((file) => file.id)
+      continue
+    }
+
+    throw new Error('Unable to update attachments. Keep at least one file.')
+  }
+
+  return latest
 }
 
 /** POST /leaves/{id}/cancel — cancel an open request; returns detail. */
@@ -110,7 +178,10 @@ export async function cancelLeave(
   return apiPostData<LeaveDetail>(`/leaves/${leaveId}/cancel`, payload)
 }
 
-/** Relative path for GET /leaves/{id}/attachment (cookie auth via same origin). */
-export function leaveAttachmentPath(leaveId: number): string {
-  return `/api/leaves/${leaveId}/attachment`
+/** Same-origin path for GET /leaves/{id}/attachments/{attachmentId}. */
+export function leaveAttachmentPath(
+  leaveId: number,
+  attachmentId: number,
+): string {
+  return `/api/leaves/${leaveId}/attachments/${attachmentId}`
 }

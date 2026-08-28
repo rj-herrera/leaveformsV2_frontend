@@ -16,6 +16,7 @@ type DropzoneFileFieldProps = {
   accept?: string
   required?: boolean
   error?: string | null
+  hint?: string
   name?: string
   id?: string
   className?: string
@@ -73,6 +74,7 @@ export function DropzoneFileField({
   accept,
   required = false,
   error,
+  hint,
   name,
   id,
   className = '',
@@ -304,6 +306,9 @@ export function DropzoneFileField({
         ) : null}
       </div>
 
+      {hint && !displayError ? (
+        <p className="mt-1 shrink-0 text-small text-text-gray">{hint}</p>
+      ) : null}
       {displayError ? (
         <p
           className="mt-1 shrink-0 text-small text-status-rejected"

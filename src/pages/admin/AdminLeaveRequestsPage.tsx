@@ -339,6 +339,18 @@ export function AdminLeaveRequestsPage() {
   } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'EL' })
 
   const {
+    data: pendingMlData,
+    error: pendingMlError,
+    isLoading: pendingMlLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'ML' })
+
+  const {
+    data: pendingPlData,
+    error: pendingPlError,
+    isLoading: pendingPlLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'PL' })
+
+  const {
     data: reminderStats,
     error: reminderErrorFromApi,
     isLoading: reminderLoading,
@@ -427,8 +439,24 @@ export function AdminLeaveRequestsPage() {
     const sickLeaves = (pendingSlData?.data ?? []).map(toPendingDirectFilingRow)
     const ptbLeaves = (pendingPtbData?.data ?? []).map(toPendingDirectFilingRow)
     const elLeaves = (pendingElData?.data ?? []).map(toPendingDirectFilingRow)
-    return [...conversions, ...sickLeaves, ...ptbLeaves, ...elLeaves]
-  }, [pendingData, pendingSlData, pendingPtbData, pendingElData])
+    const mlLeaves = (pendingMlData?.data ?? []).map(toPendingDirectFilingRow)
+    const plLeaves = (pendingPlData?.data ?? []).map(toPendingDirectFilingRow)
+    return [
+      ...conversions,
+      ...sickLeaves,
+      ...ptbLeaves,
+      ...elLeaves,
+      ...mlLeaves,
+      ...plLeaves,
+    ]
+  }, [
+    pendingData,
+    pendingSlData,
+    pendingPtbData,
+    pendingElData,
+    pendingMlData,
+    pendingPlData,
+  ])
 
   const allRows = useMemo(
     () =>
@@ -543,7 +571,9 @@ export function AdminLeaveRequestsPage() {
     (pendingLoading && !pendingData) ||
     (pendingSlLoading && !pendingSlData) ||
     (pendingPtbLoading && !pendingPtbData) ||
-    (pendingElLoading && !pendingElData)
+    (pendingElLoading && !pendingElData) ||
+    (pendingMlLoading && !pendingMlData) ||
+    (pendingPlLoading && !pendingPlData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
   const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
   const listError =
@@ -551,7 +581,9 @@ export function AdminLeaveRequestsPage() {
       ? (pendingError && !pendingData) ||
         (pendingSlError && !pendingSlData) ||
         (pendingPtbError && !pendingPtbData) ||
-        (pendingElError && !pendingElData)
+        (pendingElError && !pendingElData) ||
+        (pendingMlError && !pendingMlData) ||
+        (pendingPlError && !pendingPlData)
       : allError && !allData
 
   const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows

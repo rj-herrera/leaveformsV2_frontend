@@ -33,6 +33,14 @@ export type LeaveEmployee = {
   department: LeaveOrgRef | null
 }
 
+/** Slim picker row from GET /admin/employees. */
+export type AdminEmployeeRef = {
+  id: number
+  employee_number: string
+  name: string
+  group: LeaveOrgRef | null
+}
+
 /** Slim filer nest from `EmployeeNest::summary` on GET /leaves/{id}. */
 export type LeaveFiledBy = {
   id: number
@@ -74,6 +82,13 @@ export type LeaveSummary = {
   created_at: string | null
 }
 
+/** One stored file on a leave or conversion (`id`, `name`, download `url`). */
+export type LeaveAttachmentFile = {
+  id: number
+  name: string
+  url: string
+}
+
 /** Nested conversion on GET /leaves/{id} (null when none). */
 export type LeaveDetailConversion = {
   id: number
@@ -81,7 +96,7 @@ export type LeaveDetailConversion = {
   from_leave_type: LeaveTypeRef
   to_leave_type: LeaveTypeRef
   has_med_cert: boolean
-  med_cert_url: string | null
+  med_certs: LeaveAttachmentFile[]
   /** Employee’s conversion reason (why VL → SL). Distinct from admin reject `remarks`. */
   reason: string | null
   reviewed_by_emp_id: number | null
@@ -120,7 +135,7 @@ export type LeaveDetail = {
   end_date: string
   leave_reason: string
   has_attachment: boolean
-  attachment_url: string | null
+  attachments: LeaveAttachmentFile[]
   cancellation_reason: string | null
   employee: LeaveEmployee | null
   /** Who submitted the leave (`filed_by_emp_id`); same as employee when self-filed. */
@@ -135,27 +150,25 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — file VL (JSON) or SL/PTB/EL (multipart + `leave_attachment`). Omit emp_id for self. */
+/** POST /leaves — VL/ML/PL as JSON; SL/PTB/EL as multipart + `leave_attachment[]`. Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
-  /** `VL` (default), `SL`, `PTB`, or `EL`. Other types → 422. */
-  code?: 'VL' | 'SL' | 'PTB' | 'EL'
+  /** `VL` (default), `SL`, `PTB`, `EL`, `ML`, or `PL`. Other types → 422. */
+  code?: 'VL' | 'SL' | 'PTB' | 'EL' | 'ML' | 'PL'
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SL/PTB (med cert) and EL (supporting document). Prohibited on VL. */
-  leave_attachment?: File
+  /** Required for SL/PTB (med certs) and EL (supporting documents): 1–5 files. Prohibited on VL/ML/PL. */
+  leave_attachment?: File[]
 }
 
-/** PUT|POST /leaves/{id} — edit pending VL, SL, PTB, or EL (POST + file to replace attachment). */
+/** PUT /leaves/{id} — edit pending VL, SL, PTB, EL, ML, or PL dates/reason. Files use attachment endpoints. */
 export type UpdateLeavePayload = {
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Optional SL/PTB/EL attachment replacement. Omit to keep the existing file. */
-  leave_attachment?: File
 }
 
 /** POST /leaves/{id}/cancel */

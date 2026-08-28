@@ -15,7 +15,11 @@ import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import { canRequestConversion } from '../../utils/leaveConversion'
-import { MED_CERT_ACCEPT } from '../../utils/leaveFiling'
+import {
+  ATTACHMENT_MAX_FILES,
+  attachmentFieldHint,
+  MED_CERT_ACCEPT,
+} from '../../utils/leaveFiling'
 // File size validation disabled for now; re-enable if API enforces a max again:
 // const MED_CERT_MAX_BYTES = 5120 * 1024
 
@@ -62,8 +66,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const medCert = attachments[0] ?? null
-  const attachmentMissing = medCert == null
+  const attachmentMissing = attachments.length === 0
   const reasonMissing = reason.trim().length === 0
   const canSubmit =
     !attachmentMissing &&
@@ -81,7 +84,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
   }
 
   async function handleConfirmConversion() {
-    if (!medCert || reasonMissing) return
+    if (attachmentMissing || reasonMissing) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -89,7 +92,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
     setReasonApiError(null)
 
     try {
-      await requestConversion(detail.id, medCert, reason.trim())
+      await requestConversion(detail.id, attachments, reason.trim())
 
       await Promise.all([
         mutate(swrKeys.leave(detail.id)),
@@ -154,11 +157,12 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
               onUploadingChange={setAttachmentUploading}
               accept={MED_CERT_ACCEPT}
               required
-              multiple={false}
+              maxFiles={ATTACHMENT_MAX_FILES}
+              hint={attachmentFieldHint()}
               className="min-h-0"
               error={
                 triedSubmit && attachmentMissing
-                  ? 'A medical certificate is required to submit a conversion request.'
+                  ? 'At least one medical certificate is required to submit a conversion request.'
                   : null
               }
             />
@@ -199,7 +203,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
                 : reasonMissing
                   ? 'Enter a conversion reason before confirming.'
                   : attachmentMissing
-                    ? 'Upload a medical certificate before confirming.'
+                    ? 'Upload at least one medical certificate before confirming.'
                     : undefined
             }
           >

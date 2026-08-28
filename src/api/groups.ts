@@ -4,6 +4,8 @@ import { apiGetList } from './axios-client'
 export type GroupMember = {
   id: number
   name: string
+  /** `employee_list.gender`: `0` male, `1` female, or null. */
+  gender: number | null
 }
 
 /** GET /groups/{group}/members — employees this PIC may file leave for. */

@@ -9,11 +9,11 @@ export type LeaveConversionInfo = {
   originalLeavePeriod: string
   filedBy: string
   originalReason: string
-  originalAttachment: string | null
+  originalAttachmentCount: number
   requestedLeaveType: string
   conversionRequestDate: string
   conversionReason: string
-  conversionAttachment: string | null
+  conversionAttachmentCount: number
   reviewedBy: string | null
   reviewedAtLabel?: string
   rejectionReason?: string

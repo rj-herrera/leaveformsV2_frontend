@@ -18,6 +18,7 @@ type EmployeeMultiSelectProps = {
   disabled?: boolean
   /** Tailwind height class applied to the trigger button, e.g. "h-[2.375rem]" */
   controlHeight?: string
+  emptyLabel?: string
 }
 
 function formatTriggerLabel(selectedCount: number, totalCount: number): string {
@@ -36,6 +37,7 @@ export function EmployeeMultiSelect({
   className = '',
   disabled = false,
   controlHeight = 'min-h-11',
+  emptyLabel = 'No employees in group',
 }: EmployeeMultiSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -133,7 +135,7 @@ export function EmployeeMultiSelect({
           className={`box-border flex w-full ${controlHeight} items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 text-left text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border`}
         >
           <span className={value.length === 0 ? 'text-text-gray' : undefined}>
-            {employees.length === 0 ? 'No employees in group' : triggerLabel}
+            {employees.length === 0 ? emptyLabel : triggerLabel}
           </span>
           <ChevronDown
             className="size-4 shrink-0 text-text-gray"

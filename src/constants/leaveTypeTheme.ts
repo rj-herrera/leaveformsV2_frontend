@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   AlertTriangle,
+  Baby,
   BriefcaseMedical,
   Leaf,
   Sprout,
@@ -39,6 +40,18 @@ export const EMERGENCY_LEAVE_THEME: LeaveTypeTheme = {
   iconBgClass: 'bg-leave-emergency',
 }
 
+export const MATERNITY_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Maternity Leave',
+  icon: Baby,
+  iconBgClass: 'bg-leave-maternity',
+}
+
+export const PATERNITY_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Paternity Leave',
+  icon: Baby,
+  iconBgClass: 'bg-leave-paternity',
+}
+
 export const SELECTABLE_LEAVE_DEFAULT: LeaveTypeTheme = {
   label: 'Select Leave Type',
   icon: Leaf,
@@ -69,8 +82,10 @@ export function getLeaveTypeChipClasses(leaveType: string): string {
     case 'ptb leave':
     case 'pulmonary tuberculosis leave':
       return 'border-l-leave-ptb bg-leave-ptb/15'
+    case 'ml':
     case 'maternity leave':
       return 'border-l-leave-maternity bg-leave-maternity/15'
+    case 'pl':
     case 'paternity leave':
       return 'border-l-leave-paternity bg-leave-paternity/15'
     default:
@@ -94,8 +109,10 @@ export function getLeaveTypeAvatarClasses(leaveType: string): string {
     case 'ptb leave':
     case 'pulmonary tuberculosis leave':
       return 'bg-leave-ptb/15 text-leave-ptb'
+    case 'ml':
     case 'maternity leave':
       return 'bg-leave-maternity/15 text-leave-maternity'
+    case 'pl':
     case 'paternity leave':
       return 'bg-leave-paternity/15 text-leave-paternity'
     default:

@@ -32,6 +32,8 @@ export type MeResponse = {
   full_name: string
   email: string | null
   username: string | null
+  /** `employee_list.gender`: `0` male, `1` female, or null. */
+  gender: number | null
   group_id: number | null
   group: MeGroupRef | null
   date_hired: string | null

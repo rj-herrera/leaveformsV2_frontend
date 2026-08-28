@@ -3,7 +3,9 @@ import type { ListActivitiesParams } from '../../api/activities'
 import type { ListAdminActivitiesParams } from '../../api/adminActivities'
 import type { ListAdminAnnualEntitlementsParams } from '../../api/adminAnnualEntitlements'
 import type { ListAdminBalancesParams } from '../../api/adminBalances'
+import type { ListAdminEmployeesParams } from '../../api/adminEmployees'
 import type { ListAdminLeavesParams } from '../../api/adminLeaves'
+import type { ListMonthlyAttendanceParams } from '../../api/adminMonthlyAttendance'
 import type { ListAdminContractualEntitlementsParams } from '../../api/adminContractualEntitlements'
 import type { ListAdminNewlyRegularizedParams } from '../../api/adminNewlyRegularized'
 import type { ListApprovalsParams } from '../../api/approvals'
@@ -153,6 +155,18 @@ export const swrKeys = {
       params.to,
       params.code ?? null,
       params.group_id ?? null,
+    ] as const,
+
+  adminEmployees: (params?: ListAdminEmployeesParams) =>
+    ['admin-employees', params?.group_id ?? null] as const,
+
+  adminMonthlyAttendance: (params: ListMonthlyAttendanceParams) =>
+    [
+      'admin-monthly-attendance',
+      params.month,
+      params.cut_off,
+      params.group_id ?? null,
+      params.emp_ids.join(','),
     ] as const,
 }
 

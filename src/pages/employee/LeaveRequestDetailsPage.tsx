@@ -8,7 +8,7 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
-import { cancelLeave, leaveAttachmentPath } from '../../api/leaves'
+import { cancelLeave } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
@@ -30,6 +30,10 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
 import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
+import {
+  previewFilesFromStored,
+  type AttachmentFile,
+} from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
 import {
@@ -40,9 +44,6 @@ import {
   mapApiLeaveStatusToUi,
   resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
-
-const ATTACHMENT_LABEL = 'Attachment'
-const MED_CERT_LABEL = 'Medical certificate'
 
 function messageFromApiError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -75,8 +76,7 @@ export function LeaveRequestDetailsPage() {
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [conversionModalOpen, setConversionModalOpen] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFileName, setPreviewFileName] = useState('')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
 
   const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
 
@@ -192,13 +192,11 @@ export function LeaveRequestDetailsPage() {
               ? 'Self'
               : `Employee #${detail.filed_by_emp_id}`),
           originalReason: detail.leave_reason,
-          originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
+          originalAttachmentCount: detail.attachments?.length ?? 0,
           requestedLeaveType: conversion.to_leave_type.name,
           conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.reason?.trim() || '—',
-          conversionAttachment: conversion.has_med_cert
-            ? MED_CERT_LABEL
-            : null,
+          conversionAttachmentCount: conversion.med_certs?.length ?? 0,
           reviewedBy: resolveConversionReviewerName(
             conversion,
             eligibleApprovers,
@@ -219,22 +217,19 @@ export function LeaveRequestDetailsPage() {
     (error instanceof ApiError && error.status === 404) ||
     (!isLoading && !detail && error != null)
 
-  function openPreview(fileName: string, url: string | null) {
-    setPreviewFileName(fileName)
-    setPreviewUrl(url)
+  function openPreview(files: AttachmentFile[]) {
+    if (files.length === 0) return
+    setPreviewFiles(files)
     setPreviewOpen(true)
   }
 
-  function openPreviewFromAttachmentLabel(value: string | null | undefined) {
-    if (!value || !detail) return
-    if (value === MED_CERT_LABEL) {
-      openPreview(MED_CERT_LABEL, conversion?.med_cert_url ?? null)
+  function openPreviewFromConversion(kind: 'original' | 'conversion') {
+    if (!detail) return
+    if (kind === 'conversion') {
+      openPreview(previewFilesFromStored(conversion?.med_certs))
       return
     }
-    openPreview(
-      ATTACHMENT_LABEL,
-      detail.has_attachment ? leaveAttachmentPath(detail.id) : null,
-    )
+    openPreview(previewFilesFromStored(detail.attachments))
   }
 
   async function handleCancelConfirm(reason: string) {
@@ -375,7 +370,7 @@ export function LeaveRequestDetailsPage() {
       {conversionPanels ? (
         <LeaveConversionPanels
           conversion={conversionPanels}
-          onPreview={openPreviewFromAttachmentLabel}
+          onPreview={openPreviewFromConversion}
           spacing="comfortable"
         />
       ) : (
@@ -397,15 +392,10 @@ export function LeaveRequestDetailsPage() {
               />
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow
-                value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+                fileCount={detail.attachments?.length ?? 0}
                 alwaysShow={requiresAttachment(detail.leave_type.code)}
                 onView={() =>
-                  openPreview(
-                    ATTACHMENT_LABEL,
-                    detail.has_attachment
-                      ? leaveAttachmentPath(detail.id)
-                      : null,
-                  )
+                  openPreview(previewFilesFromStored(detail.attachments))
                 }
               />
             </dl>
@@ -450,8 +440,7 @@ export function LeaveRequestDetailsPage() {
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        fileName={previewFileName}
-        previewUrl={previewUrl}
+        files={previewFiles}
       />
     </div>
   )

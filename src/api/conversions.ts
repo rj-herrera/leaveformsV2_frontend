@@ -4,14 +4,16 @@ import type {
   RejectConversionPayload,
 } from './types'
 
-/** POST /leaves/{id}/conversion — multipart `med_cert` + required `reason` (201). */
+/** POST /leaves/{id}/conversion — multipart `med_cert[]` (1–5 files) + required `reason` (201). */
 export async function requestConversion(
   leaveId: number,
-  medCert: File,
+  medCerts: File[],
   reason: string,
 ): Promise<LeaveConversionResource> {
   const form = new FormData()
-  form.append('med_cert', medCert)
+  for (const file of medCerts) {
+    form.append('med_cert[]', file)
+  }
   form.append('reason', reason)
   return apiPostFormData<LeaveConversionResource>(
     `/leaves/${leaveId}/conversion`,
@@ -49,7 +51,11 @@ export async function rejectConversion(
   )
 }
 
-/** Relative path for GET /conversions/{id}/med-cert. */
-export function conversionMedCertPath(conversionId: number): string {
-  return `/api/conversions/${conversionId}/med-cert`
+/** Same-origin path for GET /conversions/{id}/attachments/{attachmentId}. */
+export function conversionAttachmentPath(
+  conversionId: number,
+  attachmentId: number,
+): string {
+  return `/api/conversions/${conversionId}/attachments/${attachmentId}`
 }
+

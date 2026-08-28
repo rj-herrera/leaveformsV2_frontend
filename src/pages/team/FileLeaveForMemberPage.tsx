@@ -22,8 +22,10 @@ import {
   isApprovalsListKey,
   swrKeys,
 } from '../../hooks/api/swrKeys'
+import { mapApiGender } from '../../utils/gender'
 import {
   countLeaveDurationDays,
+  fixedLeaveEndDate,
   formatDurationLabel,
   todayISO,
   usesCalendarDayCounting,
@@ -32,10 +34,15 @@ import {
 import {
   allowsLwop,
   appliesVlLeadTime,
+  ATTACHMENT_MAX_FILES,
+  attachmentFieldHint,
   attachmentFieldLabel,
-  FILABLE_LEAVE_TYPE_OPTIONS,
+  enforcesRemainingCredits,
   filableLeaveLabel,
+  filableLeaveTypeOptionsForGender,
+  grantsCreditsOnSubmit,
   isFilableLeaveCode,
+  isFixedRangeLeave,
   MED_CERT_ACCEPT,
   requiresAttachment,
   requiresFullDay,
@@ -52,11 +59,6 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_am', label: 'Half day (AM)' },
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
-
-const LEAVE_TYPE_OPTIONS = [
-  { value: '', label: 'Select Leave Type' },
-  ...FILABLE_LEAVE_TYPE_OPTIONS,
-]
 
 const EMPTY_LEAVE = {
   leaveType: '',
@@ -143,9 +145,13 @@ export function FileLeaveForMemberPage() {
   const endDateEnabled = startDate !== ''
   const needsAttachment = requiresAttachment(leaveType)
   const fullDayOnly = requiresFullDay(leaveType)
-  const medCert = attachments[0] ?? null
+  const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
   const selectedTypeLabel = filableLeaveLabel(leaveType)
+  const leaveTypeOptions = useMemo(
+    () => filableLeaveTypeOptionsForGender(mapApiGender(selectedMember?.gender)),
+    [selectedMember],
+  )
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
@@ -163,6 +169,7 @@ export function FileLeaveForMemberPage() {
   const remainingDays = Number(selectedBalance?.available ?? NaN)
   const remainingLabel = useMemo(() => {
     if (!leaveType) return '0 day(s)'
+    if (grantsCreditsOnSubmit(leaveType)) return '—'
     if (balancesLoading && selectedBalance == null) return '—'
     return remainingLeaveLabel(selectedBalance?.available)
   }, [balancesLoading, leaveType, selectedBalance])
@@ -195,13 +202,13 @@ export function FileLeaveForMemberPage() {
 
   const exceedsCredits =
     leaveType !== '' &&
-    !allowsLwop(leaveType) &&
+    enforcesRemainingCredits(leaveType) &&
     durationDays > 0 &&
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
   const noCredits =
     leaveType !== '' &&
-    !allowsLwop(leaveType) &&
+    enforcesRemainingCredits(leaveType) &&
     Number.isFinite(remainingDays) &&
     remainingDays <= 0
   const mayBeLwop =
@@ -233,7 +240,7 @@ export function FileLeaveForMemberPage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = needsAttachment && medCert == null
+  const attachmentMissing = needsAttachment && attachments.length === 0
 
   const formValid =
     !groupMissing &&
@@ -314,7 +321,7 @@ export function FileLeaveForMemberPage() {
     if (selectedEmpId == null || dayType === '' || !isFilableLeaveCode(leaveType)) {
       return
     }
-    if (needsAttachment && !medCert) return
+    if (needsAttachment && attachments.length === 0) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -328,8 +335,8 @@ export function FileLeaveForMemberPage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
-        ...(needsAttachment && medCert
-          ? { leave_attachment: medCert }
+        ...(needsAttachment && attachments.length > 0
+          ? { leave_attachment: attachments }
           : {}),
       })
 
@@ -355,7 +362,9 @@ export function FileLeaveForMemberPage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    if (dayType !== 'full' || !endDate || value > endDate) {
+    if (isFixedRangeLeave(leaveType)) {
+      setEndDate(fixedLeaveEndDate(leaveType, value, nonWorkingDates))
+    } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
     clearApiErrors()
@@ -452,7 +461,8 @@ export function FileLeaveForMemberPage() {
                 label="Leave Type"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
-                options={LEAVE_TYPE_OPTIONS}
+                placeholder="Select Leave Type"
+                options={leaveTypeOptions}
                 disabled={!leaveFieldsEnabled}
                 error={
                   triedSubmit && leaveFieldsEnabled && leaveTypeMissing
@@ -501,7 +511,7 @@ export function FileLeaveForMemberPage() {
                 weekdaysOnly={workingDaysOnly}
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
-                disabled={!endDateEnabled || dayType !== 'full'}
+                disabled={!endDateEnabled || dayType !== 'full' || fixedRange}
                 min={startDate || undefined}
                 invalid={Boolean(apiErrors.dates) && !endMissing}
                 error={
@@ -625,10 +635,10 @@ export function FileLeaveForMemberPage() {
                   onUploadingChange={setAttachmentUploading}
                   accept={MED_CERT_ACCEPT}
                   required
-                  multiple={false}
+                  maxFiles={ATTACHMENT_MAX_FILES}
                   disabled={!leaveFieldsEnabled}
                   className="sm:col-span-2"
-                  hint="PDF, JPG, or PNG."
+                  hint={attachmentFieldHint()}
                   error={
                     triedSubmit && leaveFieldsEnabled && attachmentMissing
                       ? `${attachmentLabel} is required for this leave type.`

@@ -18,18 +18,22 @@ import { useMyBalances } from '../../hooks/api/useMyBalances'
 import { swrKeys, isAdminLeavesListKey, isLeaveListKey } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
+  fixedLeaveEndDate,
   formatDurationLabel,
   todayISO,
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import {
-  allowsLwop,
   appliesVlLeadTime,
+  ATTACHMENT_MAX_FILES,
+  attachmentFieldHint,
   attachmentFieldLabel,
-  FILABLE_LEAVE_TYPE_OPTIONS,
+  enforcesRemainingCredits,
   filableLeaveLabel,
+  filableLeaveTypeOptionsForGender,
   isFilableLeaveCode,
+  isFixedRangeLeave,
   MED_CERT_ACCEPT,
   requiresAttachment,
   requiresFullDay,
@@ -82,9 +86,10 @@ export function FileLeavePage() {
   const endDateEnabled = startDate !== ''
   const needsAttachment = requiresAttachment(leaveType)
   const fullDayOnly = requiresFullDay(leaveType)
-  const attachment = attachments[0] ?? null
+  const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
   const selectedTypeLabel = filableLeaveLabel(leaveType)
+  const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
@@ -140,13 +145,13 @@ export function FileLeavePage() {
   const remainingDays = Number(selectedBalance?.available ?? NaN)
   const exceedsCredits =
     leaveType !== '' &&
-    !allowsLwop(leaveType) &&
+    enforcesRemainingCredits(leaveType) &&
     leaveDuration > 0 &&
     Number.isFinite(remainingDays) &&
     leaveDuration > remainingDays
   const noCredits =
     leaveType !== '' &&
-    !allowsLwop(leaveType) &&
+    enforcesRemainingCredits(leaveType) &&
     Number.isFinite(remainingDays) &&
     remainingDays <= 0
 
@@ -155,7 +160,7 @@ export function FileLeavePage() {
   const startMissing = startDate === ''
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
-  const attachmentMissing = needsAttachment && attachment == null
+  const attachmentMissing = needsAttachment && attachments.length === 0
 
   const formValid =
     !leaveTypeMissing &&
@@ -207,7 +212,7 @@ export function FileLeavePage() {
 
   async function handleConfirmSubmit() {
     if (dayType === '' || !isFilableLeaveCode(leaveType)) return
-    if (needsAttachment && !attachment) return
+    if (needsAttachment && attachments.length === 0) return
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -220,8 +225,8 @@ export function FileLeavePage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
-        ...(needsAttachment && attachment
-          ? { leave_attachment: attachment }
+        ...(needsAttachment && attachments.length > 0
+          ? { leave_attachment: attachments }
           : {}),
       })
 
@@ -243,8 +248,9 @@ export function FileLeavePage() {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    // Keep end in range: first pick, half-day, or start moved past end.
-    if (dayType !== 'full' || !endDate || value > endDate) {
+    if (isFixedRangeLeave(leaveType)) {
+      setEndDate(fixedLeaveEndDate(leaveType, value, nonWorkingDates))
+    } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
     clearApiErrors()
@@ -291,7 +297,7 @@ export function FileLeavePage() {
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
                 placeholder="Select Leave Type"
-                options={[...FILABLE_LEAVE_TYPE_OPTIONS]}
+                options={leaveTypeOptions}
                 error={
                   triedSubmit && leaveTypeMissing
                     ? 'Please select a leave type.'
@@ -333,7 +339,7 @@ export function FileLeavePage() {
                 weekdaysOnly={workingDaysOnly}
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
-                disabled={!endDateEnabled || dayType !== 'full'}
+                disabled={!endDateEnabled || dayType !== 'full' || fixedRange}
                 min={startDate || undefined}
                 invalid={Boolean(apiErrors.dates) && !endMissing}
                 error={
@@ -449,9 +455,9 @@ export function FileLeavePage() {
                   onUploadingChange={setAttachmentUploading}
                   accept={MED_CERT_ACCEPT}
                   required
-                  multiple={false}
+                  maxFiles={ATTACHMENT_MAX_FILES}
                   className="sm:col-span-2"
-                  hint="PDF, JPG, or PNG."
+                  hint={attachmentFieldHint()}
                   error={
                     triedSubmit && attachmentMissing
                       ? `${attachmentLabel} is required for this leave type.`

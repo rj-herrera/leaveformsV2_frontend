@@ -31,7 +31,7 @@ export function LeaveConversionPanels({
   spacing = 'compact',
 }: {
   conversion: LeaveConversionInfo
-  onPreview: (value: string | null | undefined) => void
+  onPreview: (kind: 'original' | 'conversion') => void
   spacing?: keyof typeof SPACING
 }) {
   const styles = SPACING[spacing]
@@ -52,8 +52,8 @@ export function LeaveConversionPanels({
           <LeaveInfoRow label="Filed By" value={conversion.filedBy} />
           <LeaveInfoRow label="Reason" value={conversion.originalReason} />
           <LeaveAttachmentRow
-            value={conversion.originalAttachment}
-            onView={() => onPreview(conversion.originalAttachment)}
+            fileCount={conversion.originalAttachmentCount}
+            onView={() => onPreview('original')}
           />
         </dl>
       </article>
@@ -78,8 +78,9 @@ export function LeaveConversionPanels({
             value={conversion.conversionReason}
           />
           <LeaveAttachmentRow
-            value={conversion.conversionAttachment}
-            onView={() => onPreview(conversion.conversionAttachment)}
+            fileCount={conversion.conversionAttachmentCount}
+            alwaysShow
+            onView={() => onPreview('conversion')}
           />
         </dl>
 

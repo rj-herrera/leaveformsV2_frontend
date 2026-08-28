@@ -231,6 +231,15 @@ export async function apiPatchData<T>(
   return unwrapData<T>(data)
 }
 
+/** DELETE returning a JsonResource: `{ data: T }` → `T`. */
+export async function apiDeleteData<T>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const { data } = await axiosClient.delete<DataEnvelope<T>>(url, config)
+  return unwrapData<T>(data)
+}
+
 /**
  * POST multipart FormData returning a JsonResource: `{ data: T }` → `T`.
  * Omits the default JSON Content-Type so the runtime sets multipart + boundary.
