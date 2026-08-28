@@ -167,6 +167,8 @@ export function usesCalendarDayCounting(leaveType: string): boolean {
   const key = leaveType.trim().toLowerCase()
   return (
     leaveType === MATERNITY_LEAVE_TYPE ||
+    key === 'ml' ||
+    key === 'maternity leave' ||
     key === 'ptb' ||
     key === 'ptb leave' ||
     key === 'pulmonary tuberculosis leave'
@@ -292,4 +294,59 @@ export function formatDurationLabel(days: number, dayType: DayType): string {
   }
   if (days === 1) return '1 day'
   return `${days} days`
+}
+
+/** Inclusive calendar end: start + (count - 1) days. ML 105 → start + 104. */
+export function inclusiveCalendarEndDate(
+  startISO: string,
+  inclusiveDays: number,
+): string {
+  const date = parseLocalISO(startISO)
+  if (!date || inclusiveDays < 1) return ''
+  date.setDate(date.getDate() + (inclusiveDays - 1))
+  return toLocalISODate(date)
+}
+
+/** End date of the Nth working day counting `startISO` as day 1. */
+export function nthWorkingDayEndDate(
+  startISO: string,
+  workdays: number,
+  nonWorkingDates?: ReadonlySet<string>,
+): string {
+  const date = parseLocalISO(startISO)
+  if (!date || workdays < 1) return ''
+  if (!isWorkingDay(date, nonWorkingDates)) return ''
+
+  let counted = 0
+  while (counted < workdays) {
+    if (isWorkingDay(date, nonWorkingDates)) {
+      counted += 1
+      if (counted === workdays) return toLocalISODate(date)
+    }
+    date.setDate(date.getDate() + 1)
+  }
+  return ''
+}
+
+/** ML: start + 104 calendar days. PL: 7th workday. Other types: empty. */
+export function fixedLeaveEndDate(
+  leaveType: string,
+  startISO: string,
+  nonWorkingDates?: ReadonlySet<string>,
+): string {
+  const key = leaveType.trim().toUpperCase()
+  if (key === 'ML' || leaveType === MATERNITY_LEAVE_TYPE) {
+    return inclusiveCalendarEndDate(
+      startISO,
+      MATERNITY_ENTITLEMENT_CALENDAR_DAYS,
+    )
+  }
+  if (key === 'PL' || leaveType === PATERNITY_LEAVE_TYPE) {
+    return nthWorkingDayEndDate(
+      startISO,
+      PATERNITY_ENTITLEMENT_WORKING_DAYS,
+      nonWorkingDates,
+    )
+  }
+  return ''
 }

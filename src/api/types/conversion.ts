@@ -1,5 +1,5 @@
 import type { ConversionStatus, LeaveStatus } from './enums'
-import type { LeaveEmployee, LeaveTypeRef } from './leave'
+import type { LeaveAttachmentFile, LeaveEmployee, LeaveTypeRef } from './leave'
 
 /** Nested leave summary on a conversion resource. */
 export type ConversionLeaveSummary = {
@@ -27,7 +27,7 @@ export type LeaveConversionResource = {
   from_leave_type?: LeaveTypeRef
   to_leave_type?: LeaveTypeRef
   has_med_cert: boolean
-  med_cert_url: string | null
+  med_certs: LeaveAttachmentFile[]
   /** Employee’s conversion reason (why VL → SL). Distinct from admin reject `remarks`. */
   reason: string | null
   reviewed_by_emp_id: number | null

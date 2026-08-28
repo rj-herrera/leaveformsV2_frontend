@@ -4,8 +4,6 @@ import { useSWRConfig } from 'swr'
 import { Check, TriangleAlert, X } from 'lucide-react'
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
-import { conversionMedCertPath } from '../../api/conversions'
-import { leaveAttachmentPath } from '../../api/leaves'
 import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
@@ -26,6 +24,10 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { isApprovalsListKey, swrKeys } from '../../hooks/api/swrKeys'
 import type { ApproverRow } from '../../types/approverRow'
 import {
+  previewFilesFromStored,
+  type AttachmentFile,
+} from '../../utils/attachments'
+import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
@@ -37,9 +39,6 @@ import {
   listTabFromLocationState,
 } from '../../utils/listTab'
 import { requiresAttachment } from '../../utils/leaveFiling'
-
-const ATTACHMENT_LABEL = 'Leave attachment'
-const MED_CERT_LABEL = 'Medical certificate'
 
 function messageFromApiError(
   error: unknown,
@@ -97,8 +96,7 @@ export function LeaveRequestReviewPage() {
   )
   const [actionError, setActionError] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFileName, setPreviewFileName] = useState('')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
 
   const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
 
@@ -202,21 +200,10 @@ export function LeaveRequestReviewPage() {
     detail?.status === 'pending_conversion' ||
     detail?.status === 'converted_to_sl'
 
-  /** Conversion med cert / leave attachment — same-origin `/api/...` paths for cookie auth. */
-  const attachmentValue = conversion
-    ? conversion.has_med_cert
-      ? MED_CERT_LABEL
-      : null
-    : detail?.has_attachment
-      ? ATTACHMENT_LABEL
-      : null
-  const attachmentUrl = conversion
-    ? conversion.has_med_cert
-      ? conversionMedCertPath(conversion.id)
-      : null
-    : detail?.has_attachment
-      ? leaveAttachmentPath(detail.id)
-      : null
+  /** Conversion med certs / leave attachments — same-origin `/api/...` paths for cookie auth. */
+  const previewAttachmentFiles = conversion
+    ? previewFilesFromStored(conversion.med_certs)
+    : previewFilesFromStored(detail?.attachments)
 
   const notFound =
     !validId ||
@@ -224,9 +211,9 @@ export function LeaveRequestReviewPage() {
       (error.status === 404 || error.status === 403)) ||
     (!isLoading && !detail && error != null)
 
-  function openPreview(fileName: string, url: string | null) {
-    setPreviewFileName(fileName)
-    setPreviewUrl(url)
+  function openPreview(files: AttachmentFile[]) {
+    if (files.length === 0) return
+    setPreviewFiles(files)
     setPreviewOpen(true)
   }
 
@@ -362,9 +349,9 @@ export function LeaveRequestReviewPage() {
             />
             <LeaveInfoRow label="Reason" value={detail.leave_reason} />
             <LeaveAttachmentRow
-              value={attachmentValue}
+              fileCount={previewAttachmentFiles.length}
               alwaysShow={showAttachmentField}
-              onView={() => openPreview(attachmentValue ?? '', attachmentUrl)}
+              onView={() => openPreview(previewAttachmentFiles)}
             />
           </dl>
         </article>
@@ -444,8 +431,7 @@ export function LeaveRequestReviewPage() {
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        fileName={previewFileName}
-        previewUrl={previewUrl}
+        files={previewFiles}
       />
     </div>
   )

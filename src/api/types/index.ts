@@ -55,10 +55,12 @@ export type {
 } from './conversion'
 
 export type {
+  AdminEmployeeRef,
   CancelLeavePayload,
   EligibleApprover,
   LeaveApprovalHistory,
   LeaveApprovalRequirement,
+  LeaveAttachmentFile,
   LeaveDetail,
   LeaveDetailConversion,
   LeaveEmployee,
@@ -71,3 +73,14 @@ export type {
   StoreLeavePayload,
   UpdateLeavePayload,
 } from './leave'
+
+export type {
+  MonthlyAttendanceCategory,
+  MonthlyAttendanceCell,
+  MonthlyAttendanceCutOff,
+  MonthlyAttendanceDateColumn,
+  MonthlyAttendanceEmployeeRow,
+  MonthlyAttendanceHalf,
+  MonthlyAttendanceReport,
+  MonthlyAttendanceTotals,
+} from './monthlyAttendance'

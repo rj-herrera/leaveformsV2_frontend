@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import { ApiError } from '../../api/axios-client'
-import { conversionMedCertPath } from '../../api/conversions'
-import { leaveAttachmentPath } from '../../api/leaves'
 import type { AdminReminderStats } from '../../api/reminders'
 import {
   isReminderPairReminded,
@@ -29,6 +27,10 @@ import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { swrKeys } from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import type { ApproverRow } from '../../types/approverRow'
+import {
+  previewFilesFromStored,
+  type AttachmentFile,
+} from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
 import { isAdminApproved, requiresAttachment } from '../../utils/leaveFiling'
 import {
@@ -43,9 +45,6 @@ import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
-
-const ATTACHMENT_LABEL = 'Leave attachment'
-const MED_CERT_LABEL = 'Medical certificate'
 
 function orgLabel(
   org: { abbreviation: string | null; name: string | null } | null | undefined,
@@ -101,8 +100,7 @@ export function AdminLeaveRequestViewPage() {
   const backToList = listPathWithTab('/admin/leave-requests', listTab)
 
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewFileName, setPreviewFileName] = useState('')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewFiles, setPreviewFiles] = useState<AttachmentFile[]>([])
   const [reminderTarget, setReminderTarget] = useState<ApproverRow | null>(
     null,
   )
@@ -208,13 +206,11 @@ export function AdminLeaveRequestViewPage() {
           ),
           filedBy: filedByLabel(detail),
           originalReason: detail.leave_reason,
-          originalAttachment: detail.has_attachment ? ATTACHMENT_LABEL : null,
+          originalAttachmentCount: detail.attachments?.length ?? 0,
           requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
           conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.reason?.trim() || '—',
-          conversionAttachment: conversion.has_med_cert
-            ? MED_CERT_LABEL
-            : null,
+          conversionAttachmentCount: conversion.med_certs?.length ?? 0,
           reviewedBy: resolveConversionReviewerName(
             conversion,
             eligibleApprovers,
@@ -241,22 +237,19 @@ export function AdminLeaveRequestViewPage() {
       (error.status === 404 || error.status === 403)) ||
     (!isLoading && !detail && error != null)
 
-  function openPreview(fileName: string, url: string | null) {
-    setPreviewFileName(fileName)
-    setPreviewUrl(url)
+  function openPreview(files: AttachmentFile[]) {
+    if (files.length === 0) return
+    setPreviewFiles(files)
     setPreviewOpen(true)
   }
 
-  function openPreviewFromAttachmentLabel(value: string | null | undefined) {
-    if (!value || !detail) return
-    if (value === MED_CERT_LABEL && conversion) {
-      openPreview(MED_CERT_LABEL, conversionMedCertPath(conversion.id))
+  function openPreviewFromConversion(kind: 'original' | 'conversion') {
+    if (!detail) return
+    if (kind === 'conversion') {
+      openPreview(previewFilesFromStored(conversion?.med_certs))
       return
     }
-    openPreview(
-      ATTACHMENT_LABEL,
-      detail.has_attachment ? leaveAttachmentPath(detail.id) : null,
-    )
+    openPreview(previewFilesFromStored(detail.attachments))
   }
 
   function canRemind(approver: ApproverRow): boolean {
@@ -374,7 +367,7 @@ export function AdminLeaveRequestViewPage() {
           </article>
           <LeaveConversionPanels
             conversion={conversionPanels}
-            onPreview={openPreviewFromAttachmentLabel}
+            onPreview={openPreviewFromConversion}
             spacing="compact"
           />
         </>
@@ -407,15 +400,10 @@ export function AdminLeaveRequestViewPage() {
               />
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow
-                value={detail.has_attachment ? ATTACHMENT_LABEL : null}
+                fileCount={detail.attachments?.length ?? 0}
                 alwaysShow={requiresAttachment(detail.leave_type.code)}
                 onView={() =>
-                  openPreview(
-                    ATTACHMENT_LABEL,
-                    detail.has_attachment
-                      ? leaveAttachmentPath(detail.id)
-                      : null,
-                  )
+                  openPreview(previewFilesFromStored(detail.attachments))
                 }
               />
             </dl>
@@ -462,8 +450,7 @@ export function AdminLeaveRequestViewPage() {
       <AttachmentPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        fileName={previewFileName}
-        previewUrl={previewUrl}
+        files={previewFiles}
       />
     </div>
   )

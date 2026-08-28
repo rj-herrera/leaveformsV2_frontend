@@ -1,9 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
-import { ArrowLeft, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, TriangleAlert, X } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
-import { updateLeave } from '../../api/leaves'
+import { syncLeaveAttachments, updateLeave } from '../../api/leaves'
 import type { DayType as ApiDayType, LeaveDetail } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
@@ -20,6 +20,7 @@ import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import {
   countLeaveDurationDays,
+  fixedLeaveEndDate,
   formatDurationLabel,
   todayISO,
   usesCalendarDayCounting,
@@ -27,7 +28,10 @@ import {
 } from '../../utils/leaveDates'
 import {
   appliesVlLeadTime,
+  ATTACHMENT_MAX_FILES,
+  attachmentFieldHint,
   attachmentFieldLabel,
+  isFixedRangeLeave,
   isPendingLeaveEditable,
   MED_CERT_ACCEPT,
   requiresAttachment,
@@ -46,7 +50,7 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Edit allowed only for pending VL/SL/PTB/EL with no approval history (API rule). */
+/** Edit allowed only for pending filable leave with no approval history (API rule). */
 function isLeaveEditable(detail: LeaveDetail): boolean {
   return isPendingLeaveEditable(detail)
 }
@@ -67,7 +71,8 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const leaveTypeCode = detail.leave_type.code
   const needsAttachment = requiresAttachment(leaveTypeCode)
   const fullDayOnly = requiresFullDay(leaveTypeCode)
-  const hasExistingAttachment = detail.has_attachment
+  const fixedRange = isFixedRangeLeave(leaveTypeCode)
+  const storedAttachments = detail.attachments ?? []
   const attachmentLabel = attachmentFieldLabel(leaveTypeCode)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
@@ -80,6 +85,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const [endDate, setEndDate] = useState(detail.end_date)
   const [reason, setReason] = useState(detail.leave_reason)
   const [attachments, setAttachments] = useState<File[]>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -125,15 +131,23 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
 
   const reasonMissing = reason.trim().length === 0
-  const replacementCert = attachments[0] ?? null
-  const attachmentMissing =
-    needsAttachment && !hasExistingAttachment && replacementCert == null
-  const isDirty =
+  const keptExisting = storedAttachments.filter(
+    (file) => !removedAttachmentIds.includes(file.id),
+  )
+  const remainingSlots = Math.max(
+    0,
+    ATTACHMENT_MAX_FILES - keptExisting.length,
+  )
+  const totalAttachmentCount = keptExisting.length + attachments.length
+  const attachmentMissing = needsAttachment && totalAttachmentCount === 0
+  const attachmentsDirty =
+    removedAttachmentIds.length > 0 || attachments.length > 0
+  const fieldsDirty =
     dayType !== detail.day_type ||
     startDate !== detail.start_date ||
     endDate !== detail.end_date ||
-    reason.trim() !== detail.leave_reason.trim() ||
-    replacementCert != null
+    reason.trim() !== detail.leave_reason.trim()
+  const isDirty = fieldsDirty || attachmentsDirty
   const formValid =
     startDate !== '' &&
     endDate !== '' &&
@@ -154,7 +168,9 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
 
   function handleStartDateChange(value: string) {
     setStartDate(value)
-    if (dayType !== 'full' || !endDate || value > endDate) {
+    if (isFixedRangeLeave(leaveTypeCode)) {
+      setEndDate(fixedLeaveEndDate(leaveTypeCode, value, nonWorkingDates))
+    } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
     clearApiErrors()
@@ -191,18 +207,28 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     clearApiErrors()
 
     try {
-      const updated = await updateLeave(detail.id, {
-        start_date: startDate,
-        end_date: endDate,
-        day_type: dayType as ApiDayType,
-        leave_reason: reason.trim(),
-        ...(needsAttachment && replacementCert
-          ? { leave_attachment: replacementCert }
-          : {}),
-      })
+      let latest: LeaveDetail = detail
+      if (fieldsDirty) {
+        latest = await updateLeave(detail.id, {
+          start_date: startDate,
+          end_date: endDate,
+          day_type: dayType as ApiDayType,
+          leave_reason: reason.trim(),
+        })
+      }
+
+      if (attachmentsDirty) {
+        const synced = await syncLeaveAttachments(
+          detail.id,
+          storedAttachments,
+          keptExisting.map((file) => file.id),
+          attachments,
+        )
+        if (synced) latest = synced
+      }
 
       await Promise.all([
-        mutate(swrKeys.leave(detail.id), updated, { revalidate: false }),
+        mutate(swrKeys.leave(detail.id), latest, { revalidate: false }),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
       ])
@@ -285,7 +311,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 min={startDate || undefined}
-                disabled={dayType !== 'full'}
+                disabled={dayType !== 'full' || fixedRange}
                 invalid={Boolean(apiErrors.dates) && dayType === 'full'}
               />
               {apiErrors.dates ? (
@@ -354,30 +380,81 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                 }
               />
               {needsAttachment ? (
-                <FileField
-                  label={attachmentLabel}
-                  files={attachments}
-                  onChange={(files) => {
-                    setAttachments(files)
-                    if (apiErrors.attachment || apiErrors.form) {
-                      clearApiErrors()
-                    }
-                  }}
-                  onUploadingChange={setAttachmentUploading}
-                  accept={MED_CERT_ACCEPT}
-                  multiple={false}
-                  className="sm:col-span-2"
-                  hint={
-                    hasExistingAttachment
-                      ? `A ${attachmentLabel.toLowerCase()} is already on file. Upload a replacement only if you need to change it.`
-                      : 'PDF, JPG, or PNG.'
-                  }
-                  error={
-                    triedSubmit && attachmentMissing
-                      ? `${attachmentLabel} is required for this leave type.`
-                      : (apiErrors.attachment ?? null)
-                  }
-                />
+                <div className="sm:col-span-2">
+                  {keptExisting.length > 0 ? (
+                    <div className="mb-3">
+                      <p className="text-small text-text-gray">On file</p>
+                      <ul
+                        className="mt-2 flex flex-wrap gap-2"
+                        aria-label="Existing attachments"
+                      >
+                        {keptExisting.map((file) => (
+                          <li key={file.id}>
+                            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-surface-muted py-1 pr-1 pl-3 text-small text-text-black">
+                              <span className="truncate" title={file.name}>
+                                {file.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (totalAttachmentCount <= 1) return
+                                  setRemovedAttachmentIds((ids) => [
+                                    ...ids,
+                                    file.id,
+                                  ])
+                                  if (apiErrors.attachment || apiErrors.form) {
+                                    clearApiErrors()
+                                  }
+                                }}
+                                disabled={totalAttachmentCount <= 1}
+                                className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-text-gray transition-colors hover:bg-surface hover:text-text-black focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label={`Remove ${file.name}`}
+                                title={
+                                  totalAttachmentCount <= 1
+                                    ? 'At least one file must remain'
+                                    : 'Remove file'
+                                }
+                              >
+                                <X className="size-3.5" aria-hidden="true" />
+                              </button>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {remainingSlots > 0 || attachments.length > 0 ? (
+                    <FileField
+                      label={attachmentLabel}
+                      files={attachments}
+                      onChange={(files) => {
+                        setAttachments(files)
+                        if (apiErrors.attachment || apiErrors.form) {
+                          clearApiErrors()
+                        }
+                      }}
+                      onUploadingChange={setAttachmentUploading}
+                      accept={MED_CERT_ACCEPT}
+                      required={keptExisting.length === 0}
+                      maxFiles={Math.max(remainingSlots, attachments.length)}
+                      hint={
+                        keptExisting.length > 0
+                          ? `Existing files stay on file unless you remove them. ${attachmentFieldHint()}`
+                          : attachmentFieldHint()
+                      }
+                      error={
+                        triedSubmit && attachmentMissing
+                          ? `${attachmentLabel} is required for this leave type.`
+                          : (apiErrors.attachment ?? null)
+                      }
+                    />
+                  ) : (
+                    <p className="mt-1 text-small text-text-gray">
+                      Existing files stay on file unless you remove them.{' '}
+                      {attachmentFieldHint()}
+                    </p>
+                  )}
+                </div>
               ) : null}
               {apiErrors.form ? (
                 <div

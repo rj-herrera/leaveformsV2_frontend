@@ -3,7 +3,6 @@
  *
  * Dev login: POST /api/dev/login with emp_id → frontend sets the cookie.
  * Roles come from /api/me `role` (approval_level, is_president, is_admin).
- * TODO: Map gender from /api/me when the backend exposes it.
  */
 import {
   createContext,
@@ -22,10 +21,11 @@ import {
   type MeResponse,
 } from '../api/auth'
 import { clearCookie, getCookie, setCookie } from '../utils/cookies'
+import { mapApiGender, type UserGender } from '../utils/gender'
 
 export type UserRole = 'employee' | 'approver' | 'admin'
 
-export type UserGender = 'male' | 'female'
+export type { UserGender }
 
 export type AuthUser = {
   id: string
@@ -34,7 +34,7 @@ export type AuthUser = {
   lastName: string
   email: string
   employeeNumber: string
-  gender: UserGender
+  gender: UserGender | null
   /** PIC groups from `/me` `role.pic_groups`. Empty if not a PIC. */
   picGroups: MeGroupRef[]
   /** Employee access is always true for authenticated users */
@@ -77,7 +77,7 @@ const FALLBACK_USER: AuthUser = {
   lastName: '',
   email: '',
   employeeNumber: '',
-  gender: 'female',
+  gender: null,
   picGroups: [],
   roles: { employee: true, approver: false, admin: false },
   group: { id: 0, name: '', abbreviation: '' },
@@ -101,8 +101,7 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
     lastName: me.surname ?? '',
     email: me.email ?? '',
     employeeNumber: String(me.id),
-    // TODO: use real gender from API when available
-    gender: 'female',
+    gender: mapApiGender(me.gender),
     picGroups: me.role.pic_groups ?? [],
     roles: rolesFromMe(me),
     group: me.group ?? { id: 0, name: null, abbreviation: null },

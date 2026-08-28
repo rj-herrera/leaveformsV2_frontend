@@ -1,17 +1,15 @@
 import { Button } from '../ui/Button'
-import { parseAttachmentFileNames } from '../../utils/attachments'
 
 export function LeaveAttachmentRow({
-  value,
+  fileCount = 0,
   onView,
   alwaysShow = false,
 }: {
-  value: string | null | undefined
+  fileCount?: number
   onView: () => void
   /** Sick Leave Conversion requires supporting attachments — always show the row. */
   alwaysShow?: boolean
 }) {
-  const fileCount = parseAttachmentFileNames(value).length
   if (fileCount === 0 && !alwaysShow) return null
 
   return (
@@ -20,7 +18,7 @@ export function LeaveAttachmentRow({
       <dd>
         {fileCount > 0 ? (
           <Button type="button" size="sm" onClick={onView}>
-            View
+            View{fileCount > 1 ? ` (${fileCount})` : ''}
           </Button>
         ) : (
           <span className="text-body text-text-gray">—</span>

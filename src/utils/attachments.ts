@@ -78,6 +78,19 @@ export function toSameOriginApiUrl(
   return trimmed
 }
 
+/** Map API `{ name, url }` rows into preview-modal entries (cookie-auth same-origin URLs). */
+export function previewFilesFromStored(
+  attachments:
+    | { name: string; url: string }[]
+    | null
+    | undefined,
+): AttachmentFile[] {
+  return (attachments ?? []).map((item) => ({
+    name: item.name,
+    previewUrl: toSameOriginApiUrl(item.url),
+  }))
+}
+
 /** Best-effort filename from a URL path (ignores query/hash). */
 export function fileNameFromUrl(url: string | null | undefined): string | null {
   if (!url) return null

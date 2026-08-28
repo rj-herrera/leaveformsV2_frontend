@@ -36,6 +36,31 @@ const KNOWN_KEYS = new Set([
   'code',
 ])
 
+function isAttachmentErrorKey(key: string): boolean {
+  return (
+    key === 'leave_attachment' ||
+    key.startsWith('leave_attachment.') ||
+    key === 'med_cert' ||
+    key.startsWith('med_cert.')
+  )
+}
+
+function firstAttachmentMessage(
+  errors: Record<string, string[]>,
+): string | null {
+  const direct =
+    firstFieldMessage(errors, 'leave_attachment') ??
+    firstFieldMessage(errors, 'med_cert')
+  if (direct) return direct
+
+  for (const [key, msgs] of Object.entries(errors)) {
+    if (!isAttachmentErrorKey(key)) continue
+    const first = msgs?.[0]
+    if (typeof first === 'string' && first.trim()) return first.trim()
+  }
+  return null
+}
+
 function firstFieldMessage(
   errors: Record<string, string[]>,
   key: string,
@@ -73,7 +98,7 @@ export function parseLeaveFormApiError(
       const endDate = firstFieldMessage(errors, 'end_date')
       const dayType = firstFieldMessage(errors, 'day_type')
       const reason = firstFieldMessage(errors, 'leave_reason')
-      const attachment = firstFieldMessage(errors, 'leave_attachment')
+      const attachment = firstAttachmentMessage(errors)
       const empId = firstFieldMessage(errors, 'emp_id')
       const code = firstFieldMessage(errors, 'code')
 
@@ -81,7 +106,7 @@ export function parseLeaveFormApiError(
       if (empId) unmapped.push(empId)
       if (code) unmapped.push(code)
       for (const [key, msgs] of Object.entries(errors)) {
-        if (KNOWN_KEYS.has(key)) continue
+        if (KNOWN_KEYS.has(key) || isAttachmentErrorKey(key)) continue
         for (const msg of msgs ?? []) {
           if (typeof msg === 'string' && msg.trim()) unmapped.push(msg.trim())
         }

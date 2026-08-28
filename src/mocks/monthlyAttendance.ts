@@ -1,5 +1,6 @@
 /**
- * TODO(REPLACE): Monthly Attendance Report — replace with API.
+ * Seeded Monthly Attendance Report matrix for local smoke scripts.
+ * The admin page uses GET /admin/reports/monthly-attendance.
  */
 import { formatMonthYearLabel } from '../utils/teamCalendarGrid'
 import {
