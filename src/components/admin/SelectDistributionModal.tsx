@@ -19,7 +19,7 @@ const OPTIONS: Array<{
   {
     value: 'newly-regularized',
     title: 'Newly Regularized Employees',
-    description: 'Prorated VL/SL plus EL/PTB for newly regularized staff.',
+    description: 'Prorated VL/SL plus PTB for newly regularized staff.',
   },
   {
     value: 'contractual',

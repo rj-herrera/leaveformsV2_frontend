@@ -30,13 +30,11 @@ import {
   formatDurationLabel,
   isLongLeaveEndInBounds,
   leaveEndPickerLimits,
-  todayISO,
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import {
   allowsLwop,
-  appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
@@ -56,7 +54,6 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
-import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -223,18 +220,6 @@ export function FileLeaveForMemberPage() {
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
 
-  const leadTimeValidation = useMemo(() => {
-    if (!appliesVlLeadTime(leaveType)) {
-      return { ok: true, isLongLeave: false, message: null }
-    }
-    return validateLeaveLeadTime({
-      dayType: dayType === '' ? 'full' : dayType,
-      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
-      startDateISO: startDate,
-      filedOnISO: todayISO(),
-    })
-  }, [dayType, leaveDuration, leaveType, startDate])
-
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
@@ -265,7 +250,6 @@ export function FileLeaveForMemberPage() {
     !reasonMissing &&
     !attachmentMissing &&
     !attachmentUploading &&
-    leadTimeValidation.ok &&
     !exceedsCredits &&
     !noCredits &&
     !longLeaveRangeInvalid
@@ -591,38 +575,6 @@ export function FileLeaveForMemberPage() {
                   </p>
                 </div>
               ) : null}
-              {leadTimeValidation.isLongLeave ? (
-                <div
-                  className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
-                    leadTimeValidation.ok
-                      ? 'border-status-pending bg-status-pending/15'
-                      : 'border-status-rejected bg-status-rejected/10'
-                  }`}
-                  role="alert"
-                >
-                  <TriangleAlert
-                    className={`mt-0.5 size-5 shrink-0 ${
-                      leadTimeValidation.ok
-                        ? 'text-status-pending'
-                        : 'text-status-rejected'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <p className="text-small font-semibold text-text-black">
-                      {leadTimeValidation.ok
-                        ? 'Advance filing required (3+ days)'
-                        : 'Filing not allowed'}
-                    </p>
-                    <p className="mt-1 text-small text-text-black">
-                      {leadTimeValidation.message}
-                      {leadTimeValidation.ok
-                        ? ' Your selected dates meet this requirement.'
-                        : ' Please choose a start date at least 1 month from today, or shorten the leave duration.'}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
               <TextAreaField
                 label="Reason"
                 value={reason}
@@ -686,7 +638,7 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || attachmentUploading}
+            disabled={attachmentUploading}
             loading={submitting}
             loadingText="Submitting…"
             title={

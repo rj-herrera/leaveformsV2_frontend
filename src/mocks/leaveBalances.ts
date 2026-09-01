@@ -94,7 +94,6 @@ export const LEAVE_BALANCE_CHIP_CLASS: Record<LeaveBalanceKey, string> = {
 const ANNUAL_VL_TO_ADD = 15
 const ANNUAL_SL_TO_ADD = 15
 const NEWLY_REG_RATE = 1.25
-const NEWLY_REG_EL = 5
 const NEWLY_REG_PTB = 180
 
 /** Mutable seed — adjustments mutate balances in place. */
@@ -511,7 +510,6 @@ export type NewlyRegularizedCandidate = {
   monthsProrated: number
   vlToAdd: number | null
   slToAdd: number | null
-  elToAdd: number | null
   ptbToAdd: number | null
 }
 
@@ -633,7 +631,6 @@ export function getNewlyRegularizedCandidates(
       monthsProrated,
       vlToAdd: eligible ? credit : null,
       slToAdd: eligible ? credit : null,
-      elToAdd: eligible ? NEWLY_REG_EL : null,
       ptbToAdd: eligible ? NEWLY_REG_PTB : null,
     }
   })
@@ -668,7 +665,6 @@ export type NewlyRegularizedReviewRow = {
   slBefore: number
   slToAdd: number
   slAfter: number
-  elToAdd: number
   ptbToAdd: number
 }
 
@@ -692,7 +688,6 @@ export function getNewlyRegularizedReviewRows(
         slBefore,
         slToAdd,
         slAfter: slBefore + slToAdd,
-        elToAdd: c.elToAdd ?? 0,
         ptbToAdd: c.ptbToAdd ?? 0,
       }
     })
@@ -708,7 +703,6 @@ export function applyNewlyRegularizedDistribution(
     if (!row) continue
     employee.balances.vl = row.vlAfter
     employee.balances.sl = row.slAfter
-    employee.balances.el = (employee.balances.el ?? 0) + row.elToAdd
     employee.balances.ptb = (employee.balances.ptb ?? 0) + row.ptbToAdd
   }
   clearNewlyRegularizedDraft()

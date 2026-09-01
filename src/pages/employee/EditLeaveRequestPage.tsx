@@ -54,7 +54,7 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Edit allowed only for pending filable leave with no approval history (API rule). */
+/** Edit allowed only for pending self-filed leave with no approval history (API rule). */
 function isLeaveEditable(detail: LeaveDetail): boolean {
   return isPendingLeaveEditable(detail)
 }
@@ -601,8 +601,8 @@ export function EditLeaveRequestPage() {
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Editing unavailable</h1>
           <p className="mt-2 text-body text-text-gray">
-            This leave can only be edited while it is pending approval and
-            before any approver has acted.
+            This leave can only be edited by the person who filed it, while it
+            is pending approval and before any approver has acted.
           </p>
         </div>
       </div>

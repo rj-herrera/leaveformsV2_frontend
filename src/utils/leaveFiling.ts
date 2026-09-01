@@ -40,7 +40,7 @@ export const LEAVE_TYPE_FILTER_OPTIONS: {
   ...FILABLE_LEAVE_TYPE_OPTIONS,
 ]
 
-/** API: pdf / jpg / jpeg / png. Same for med cert and EL supporting docs. */
+/** API: pdf / jpg / jpeg / png. Same for med cert, EL/LL supporting docs, and PL form. */
 export const MED_CERT_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
 
@@ -90,20 +90,28 @@ export function filableLeaveTypeOptionsForGender(
   })
 }
 
-/** SL, PTB, and EL require `leave_attachment` on submit. */
+/** SL, PTB, EL, LL, and PL require `leave_attachment` on submit. */
 export function requiresAttachment(code: string): boolean {
   const normalized = code.toUpperCase()
-  return normalized === 'SL' || normalized === 'PTB' || normalized === 'EL'
+  return (
+    normalized === 'SL' ||
+    normalized === 'PTB' ||
+    normalized === 'EL' ||
+    normalized === 'LL' ||
+    normalized === 'PL'
+  )
 }
 
-/** SL and PTB attachments are medical certificates; EL is a supporting document. */
+/** SL and PTB attachments are medical certificates; EL and LL are supporting documents. */
 export function requiresMedCert(code: string): boolean {
   const normalized = code.toUpperCase()
   return normalized === 'SL' || normalized === 'PTB'
 }
 
 export function attachmentFieldLabel(code: string): string {
-  return requiresMedCert(code) ? 'Medical certificate' : 'Supporting document'
+  if (requiresMedCert(code)) return 'Medical certificate'
+  if (code.toUpperCase() === 'PL') return 'Paternity Notification Form'
+  return 'Supporting document'
 }
 
 /** Admin-only types (PIC reminders do not apply). */
@@ -167,9 +175,18 @@ export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
 
-/** Pending filable leave with no approval history yet. */
+/** True when the person on leave submitted the request (not a PIC on-behalf). */
+export function isLeaveSelfFiled(detail: LeaveDetail): boolean {
+  if (detail.filed_by != null && detail.employee != null) {
+    return detail.filed_by.id === detail.employee.id
+  }
+  return detail.filed_by_emp_id === detail.emp_id
+}
+
+/** Pending self-filed filable leave with no approval history yet. */
 export function isPendingLeaveEditable(detail: LeaveDetail): boolean {
   if (detail.status !== 'pending_approval') return false
   if (!isFilableLeaveCode(detail.leave_type.code)) return false
+  if (!isLeaveSelfFiled(detail)) return false
   return !detail.approval_requirements.some((req) => req.history != null)
 }

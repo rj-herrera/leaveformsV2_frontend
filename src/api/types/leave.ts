@@ -150,7 +150,7 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — VL/LL/ML/PL as JSON; SL/PTB/EL as multipart + `leave_attachment[]`. Omit emp_id for self. */
+/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL as multipart + `leave_attachment[]`. Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
   /** `VL` (default), `SL`, `PTB`, `EL`, `LL`, `ML`, or `PL`. Other types → 422. */
@@ -159,7 +159,7 @@ export type StoreLeavePayload = {
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SL/PTB (med certs) and EL (supporting documents): 1–5 files. Prohibited on VL/LL/ML/PL. */
+  /** Required for SL/PTB (med certs), EL/LL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML. */
   leave_attachment?: File[]
 }
 
