@@ -10,15 +10,12 @@ export type AdminNewlyRegularizedRow = {
   vl_available: string
   sl_available: string
   ptb_available: string
-  el_available: string
   vl_grant: string
   sl_grant: string
   ptb_grant: string
-  el_grant: string
   vl_after: string
   sl_after: string
   ptb_after: string
-  el_after: string
   already_granted: boolean
 }
 

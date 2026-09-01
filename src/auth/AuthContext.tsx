@@ -35,6 +35,8 @@ export type AuthUser = {
   email: string
   employeeNumber: string
   gender: UserGender | null
+  /** `employee_list.date_hired` from `/me`, or null if unset. */
+  dateHired: string | null
   /** PIC groups from `/me` `role.pic_groups`. Empty if not a PIC. */
   picGroups: MeGroupRef[]
   /** Employee access is always true for authenticated users */
@@ -78,6 +80,7 @@ const FALLBACK_USER: AuthUser = {
   email: '',
   employeeNumber: '',
   gender: null,
+  dateHired: null,
   picGroups: [],
   roles: { employee: true, approver: false, admin: false },
   group: { id: 0, name: '', abbreviation: '' },
@@ -102,6 +105,7 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
     email: me.email ?? '',
     employeeNumber: String(me.id),
     gender: mapApiGender(me.gender),
+    dateHired: me.date_hired,
     picGroups: me.role.pic_groups ?? [],
     roles: rolesFromMe(me),
     group: me.group ?? { id: 0, name: null, abbreviation: null },

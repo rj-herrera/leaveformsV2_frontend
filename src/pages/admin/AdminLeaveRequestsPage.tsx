@@ -339,6 +339,12 @@ export function AdminLeaveRequestsPage() {
   } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'EL' })
 
   const {
+    data: pendingLlData,
+    error: pendingLlError,
+    isLoading: pendingLlLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'LL' })
+
+  const {
     data: pendingMlData,
     error: pendingMlError,
     isLoading: pendingMlLoading,
@@ -439,6 +445,7 @@ export function AdminLeaveRequestsPage() {
     const sickLeaves = (pendingSlData?.data ?? []).map(toPendingDirectFilingRow)
     const ptbLeaves = (pendingPtbData?.data ?? []).map(toPendingDirectFilingRow)
     const elLeaves = (pendingElData?.data ?? []).map(toPendingDirectFilingRow)
+    const llLeaves = (pendingLlData?.data ?? []).map(toPendingDirectFilingRow)
     const mlLeaves = (pendingMlData?.data ?? []).map(toPendingDirectFilingRow)
     const plLeaves = (pendingPlData?.data ?? []).map(toPendingDirectFilingRow)
     return [
@@ -446,6 +453,7 @@ export function AdminLeaveRequestsPage() {
       ...sickLeaves,
       ...ptbLeaves,
       ...elLeaves,
+      ...llLeaves,
       ...mlLeaves,
       ...plLeaves,
     ]
@@ -454,6 +462,7 @@ export function AdminLeaveRequestsPage() {
     pendingSlData,
     pendingPtbData,
     pendingElData,
+    pendingLlData,
     pendingMlData,
     pendingPlData,
   ])
@@ -572,6 +581,7 @@ export function AdminLeaveRequestsPage() {
     (pendingSlLoading && !pendingSlData) ||
     (pendingPtbLoading && !pendingPtbData) ||
     (pendingElLoading && !pendingElData) ||
+    (pendingLlLoading && !pendingLlData) ||
     (pendingMlLoading && !pendingMlData) ||
     (pendingPlLoading && !pendingPlData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
@@ -582,6 +592,7 @@ export function AdminLeaveRequestsPage() {
         (pendingSlError && !pendingSlData) ||
         (pendingPtbError && !pendingPtbData) ||
         (pendingElError && !pendingElData) ||
+        (pendingLlError && !pendingLlData) ||
         (pendingMlError && !pendingMlData) ||
         (pendingPlError && !pendingPlData)
       : allError && !allData

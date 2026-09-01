@@ -24,16 +24,17 @@ import {
 } from '../../hooks/api/swrKeys'
 import { mapApiGender } from '../../utils/gender'
 import {
+  clampLongLeaveEndDate,
   countLeaveDurationDays,
   fixedLeaveEndDate,
   formatDurationLabel,
-  todayISO,
+  isLongLeaveEndInBounds,
+  leaveEndPickerLimits,
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import {
   allowsLwop,
-  appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
@@ -43,6 +44,7 @@ import {
   grantsCreditsOnSubmit,
   isFilableLeaveCode,
   isFixedRangeLeave,
+  isLongLeave,
   MED_CERT_ACCEPT,
   requiresAttachment,
   requiresFullDay,
@@ -52,7 +54,6 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
-import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -152,6 +153,7 @@ export function FileLeaveForMemberPage() {
     () => filableLeaveTypeOptionsForGender(mapApiGender(selectedMember?.gender)),
     [selectedMember],
   )
+  const endPickerLimits = leaveEndPickerLimits(leaveType, startDate)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
@@ -169,7 +171,7 @@ export function FileLeaveForMemberPage() {
   const remainingDays = Number(selectedBalance?.available ?? NaN)
   const remainingLabel = useMemo(() => {
     if (!leaveType) return '0 day(s)'
-    if (grantsCreditsOnSubmit(leaveType)) return '—'
+    if (grantsCreditsOnSubmit(leaveType) || isLongLeave(leaveType)) return '—'
     if (balancesLoading && selectedBalance == null) return '—'
     return remainingLeaveLabel(selectedBalance?.available)
   }, [balancesLoading, leaveType, selectedBalance])
@@ -218,18 +220,6 @@ export function FileLeaveForMemberPage() {
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
 
-  const leadTimeValidation = useMemo(() => {
-    if (!appliesVlLeadTime(leaveType)) {
-      return { ok: true, isLongLeave: false, message: null }
-    }
-    return validateLeaveLeadTime({
-      dayType: dayType === '' ? 'full' : dayType,
-      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
-      startDateISO: startDate,
-      filedOnISO: todayISO(),
-    })
-  }, [dayType, leaveDuration, leaveType, startDate])
-
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
@@ -241,6 +231,12 @@ export function FileLeaveForMemberPage() {
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
   const attachmentMissing = needsAttachment && attachments.length === 0
+
+  const longLeaveRangeInvalid =
+    isLongLeave(leaveType) &&
+    startDate !== '' &&
+    endDate !== '' &&
+    !isLongLeaveEndInBounds(startDate, endDate)
 
   const formValid =
     !groupMissing &&
@@ -254,9 +250,9 @@ export function FileLeaveForMemberPage() {
     !reasonMissing &&
     !attachmentMissing &&
     !attachmentUploading &&
-    leadTimeValidation.ok &&
     !exceedsCredits &&
-    !noCredits
+    !noCredits &&
+    !longLeaveRangeInvalid
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -364,6 +360,8 @@ export function FileLeaveForMemberPage() {
     setStartDate(value)
     if (isFixedRangeLeave(leaveType)) {
       setEndDate(fixedLeaveEndDate(leaveType, value, nonWorkingDates))
+    } else if (isLongLeave(leaveType)) {
+      setEndDate(clampLongLeaveEndDate(value, endDate))
     } else if (dayType !== 'full' || !endDate || value > endDate) {
       setEndDate(value)
     }
@@ -512,7 +510,8 @@ export function FileLeaveForMemberPage() {
                 nonWorkingDates={nonWorkingDates}
                 holidayNames={holidayNames}
                 disabled={!endDateEnabled || dayType !== 'full' || fixedRange}
-                min={startDate || undefined}
+                min={endPickerLimits.min}
+                max={endPickerLimits.max}
                 invalid={Boolean(apiErrors.dates) && !endMissing}
                 error={
                   triedSubmit && endDateEnabled && endMissing
@@ -574,38 +573,6 @@ export function FileLeaveForMemberPage() {
                     Duration ({durationLabel}) exceeds remaining{' '}
                     {remainingLabel}. Excess days may be treated as LWOP.
                   </p>
-                </div>
-              ) : null}
-              {leadTimeValidation.isLongLeave ? (
-                <div
-                  className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
-                    leadTimeValidation.ok
-                      ? 'border-status-pending bg-status-pending/15'
-                      : 'border-status-rejected bg-status-rejected/10'
-                  }`}
-                  role="alert"
-                >
-                  <TriangleAlert
-                    className={`mt-0.5 size-5 shrink-0 ${
-                      leadTimeValidation.ok
-                        ? 'text-status-pending'
-                        : 'text-status-rejected'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <div>
-                    <p className="text-small font-semibold text-text-black">
-                      {leadTimeValidation.ok
-                        ? 'Advance filing required (3+ days)'
-                        : 'Filing not allowed'}
-                    </p>
-                    <p className="mt-1 text-small text-text-black">
-                      {leadTimeValidation.message}
-                      {leadTimeValidation.ok
-                        ? ' Your selected dates meet this requirement.'
-                        : ' Please choose a start date at least 1 month from today, or shorten the leave duration.'}
-                    </p>
-                  </div>
                 </div>
               ) : null}
               <TextAreaField
@@ -671,7 +638,7 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={!leadTimeValidation.ok || attachmentUploading}
+            disabled={attachmentUploading}
             loading={submitting}
             loadingText="Submitting…"
             title={

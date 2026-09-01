@@ -35,7 +35,11 @@ import {
   type AttachmentFile,
 } from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
+import {
+  isLeaveSelfFiled,
+  isPendingLeaveEditable,
+  requiresAttachment,
+} from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -160,6 +164,7 @@ export function LeaveRequestDetailsPage() {
 
   const isConversion =
     detail?.status === 'pending_conversion' && detail.conversion != null
+  const filedOnBehalf = detail ? !isLeaveSelfFiled(detail) : false
   const canEdit = detail ? isPendingLeaveEditable(detail) : false
   const canCancel = detail?.status === 'pending_approval'
   const canRequestConversion =
@@ -307,7 +312,7 @@ export function LeaveRequestDetailsPage() {
               <RefreshCw className="size-4" aria-hidden="true" />
               Request Conversion
             </button>
-          ) : canEdit ? (
+          ) : filedOnBehalf ? null : canEdit ? (
             <Link
               to={`/my-leave/requests/${detail.id}/edit`}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"

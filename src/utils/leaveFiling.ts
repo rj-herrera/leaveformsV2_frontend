@@ -1,6 +1,7 @@
 import type { LeaveDetail } from '../api/types'
 import {
   EMERGENCY_LEAVE_THEME,
+  LONG_LEAVE_THEME,
   MATERNITY_LEAVE_THEME,
   PATERNITY_LEAVE_THEME,
   PTB_LEAVE_THEME,
@@ -8,9 +9,13 @@ import {
   VACATION_LEAVE_THEME,
 } from '../constants/leaveTypeTheme'
 import type { UserGender } from './gender'
+import {
+  completeYearsOfService,
+  LONG_LEAVE_MIN_TENURE_YEARS,
+} from './leaveDates'
 
-/** Leave types `POST /leaves` accepts today (LL not wired). Other codes → 422. */
-export type FilableLeaveCode = 'VL' | 'SL' | 'PTB' | 'EL' | 'ML' | 'PL'
+/** Leave types `POST /leaves` accepts today. Other codes → 422. */
+export type FilableLeaveCode = 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
 
 export const FILABLE_LEAVE_TYPE_OPTIONS: {
   value: FilableLeaveCode
@@ -20,6 +25,7 @@ export const FILABLE_LEAVE_TYPE_OPTIONS: {
   { value: 'SL', label: SICK_LEAVE_THEME.label },
   { value: 'PTB', label: PTB_LEAVE_THEME.label },
   { value: 'EL', label: EMERGENCY_LEAVE_THEME.label },
+  { value: 'LL', label: LONG_LEAVE_THEME.label },
   { value: 'ML', label: MATERNITY_LEAVE_THEME.label },
   { value: 'PL', label: PATERNITY_LEAVE_THEME.label },
 ]
@@ -34,7 +40,7 @@ export const LEAVE_TYPE_FILTER_OPTIONS: {
   ...FILABLE_LEAVE_TYPE_OPTIONS,
 ]
 
-/** API: pdf / jpg / jpeg / png. Same for med cert and EL supporting docs. */
+/** API: pdf / jpg / jpeg / png. Same for med cert, EL/LL supporting docs, and PL form. */
 export const MED_CERT_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
 
@@ -52,6 +58,7 @@ export function isFilableLeaveCode(code: string): code is FilableLeaveCode {
     normalized === 'SL' ||
     normalized === 'PTB' ||
     normalized === 'EL' ||
+    normalized === 'LL' ||
     normalized === 'ML' ||
     normalized === 'PL'
   )
@@ -65,29 +72,46 @@ export function filableLeaveLabel(code: string): string {
   )
 }
 
-/** Hide ML unless female, PL unless male. Unknown gender → neither. */
-export function filableLeaveTypeOptionsForGender(gender: UserGender | null) {
+/** Hide ML unless female, PL unless male. Unknown gender → neither.
+ *  Pass `dateHired` to hide LL when tenure is under 5 years (self-file).
+ *  Omit it for on-behalf — members do not include hire date; the API enforces tenure.
+ */
+export function filableLeaveTypeOptionsForGender(
+  gender: UserGender | null,
+  tenure?: { dateHired: string | null },
+) {
   return FILABLE_LEAVE_TYPE_OPTIONS.filter((option) => {
     if (option.value === 'ML') return gender === 'female'
     if (option.value === 'PL') return gender === 'male'
+    if (option.value === 'LL' && tenure) {
+      return meetsLongLeaveTenure(tenure.dateHired)
+    }
     return true
   })
 }
 
-/** SL, PTB, and EL require `leave_attachment` on submit. */
+/** SL, PTB, EL, LL, and PL require `leave_attachment` on submit. */
 export function requiresAttachment(code: string): boolean {
   const normalized = code.toUpperCase()
-  return normalized === 'SL' || normalized === 'PTB' || normalized === 'EL'
+  return (
+    normalized === 'SL' ||
+    normalized === 'PTB' ||
+    normalized === 'EL' ||
+    normalized === 'LL' ||
+    normalized === 'PL'
+  )
 }
 
-/** SL and PTB attachments are medical certificates; EL is a supporting document. */
+/** SL and PTB attachments are medical certificates; EL and LL are supporting documents. */
 export function requiresMedCert(code: string): boolean {
   const normalized = code.toUpperCase()
   return normalized === 'SL' || normalized === 'PTB'
 }
 
 export function attachmentFieldLabel(code: string): string {
-  return requiresMedCert(code) ? 'Medical certificate' : 'Supporting document'
+  if (requiresMedCert(code)) return 'Medical certificate'
+  if (code.toUpperCase() === 'PL') return 'Paternity Notification Form'
+  return 'Supporting document'
 }
 
 /** Admin-only types (PIC reminders do not apply). */
@@ -97,20 +121,30 @@ export function isAdminApproved(code: string): boolean {
     normalized === 'SL' ||
     normalized === 'PTB' ||
     normalized === 'EL' ||
+    normalized === 'LL' ||
     normalized === 'ML' ||
     normalized === 'PL'
   )
 }
 
-/** PTB, EL, ML, and PL are full day only — half_am / half_pm → 422. */
+/** PTB, EL, LL, ML, and PL are full day only — half_am / half_pm → 422. */
 export function requiresFullDay(code: string): boolean {
   const normalized = code.toUpperCase()
   return (
     normalized === 'PTB' ||
     normalized === 'EL' ||
+    normalized === 'LL' ||
     normalized === 'ML' ||
     normalized === 'PL'
   )
+}
+
+export function isLongLeave(code: string): boolean {
+  return code.toUpperCase() === 'LL'
+}
+
+export function meetsLongLeaveTenure(dateHired: string | null | undefined): boolean {
+  return completeYearsOfService(dateHired) >= LONG_LEAVE_MIN_TENURE_YEARS
 }
 
 /** ML is exactly 105 calendar days; PL is exactly 7 workdays. End date is derived. */
@@ -141,9 +175,18 @@ export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
 
-/** Pending filable leave with no approval history yet. */
+/** True when the person on leave submitted the request (not a PIC on-behalf). */
+export function isLeaveSelfFiled(detail: LeaveDetail): boolean {
+  if (detail.filed_by != null && detail.employee != null) {
+    return detail.filed_by.id === detail.employee.id
+  }
+  return detail.filed_by_emp_id === detail.emp_id
+}
+
+/** Pending self-filed filable leave with no approval history yet. */
 export function isPendingLeaveEditable(detail: LeaveDetail): boolean {
   if (detail.status !== 'pending_approval') return false
   if (!isFilableLeaveCode(detail.leave_type.code)) return false
+  if (!isLeaveSelfFiled(detail)) return false
   return !detail.approval_requirements.some((req) => req.history != null)
 }

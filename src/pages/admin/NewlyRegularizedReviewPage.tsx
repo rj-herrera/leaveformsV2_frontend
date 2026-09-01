@@ -205,13 +205,12 @@ export function NewlyRegularizedReviewPage() {
             <table className="w-full min-w-[960px] table-fixed text-left">
               <colgroup>
                 <col className="w-[12%]" />
-                <col className="w-[18%]" />
+                <col className="w-[20%]" />
                 <col className="w-[10%]" />
                 <col className="w-[18%]" />
-                <col className="w-[10%]" />
-                <col className="w-[10%]" />
-                <col className="w-[11%]" />
-                <col className="w-[11%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+                <col className="w-[14%]" />
               </colgroup>
               <thead>
                 <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
@@ -236,21 +235,18 @@ export function NewlyRegularizedReviewPage() {
                   <th className="px-3 py-3 text-center text-leave-ptb font-bold uppercase tracking-wide">
                     PTB to Add
                   </th>
-                  <th className="px-3 py-3 text-center text-leave-emergency font-bold uppercase tracking-wide">
-                    EL to Add
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
-                    cols={8}
+                    cols={7}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : error && !data ? (
                   <TableEmptyRow
-                    colSpan={8}
+                    colSpan={7}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
@@ -258,7 +254,7 @@ export function NewlyRegularizedReviewPage() {
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
-                    colSpan={8}
+                    colSpan={7}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
@@ -296,9 +292,6 @@ export function NewlyRegularizedReviewPage() {
                         </td>
                         <td className="bg-leave-ptb/10 px-3 text-center text-body font-semibold text-leave-ptb">
                           {formatAvailableNumber(row.ptb_grant)}
-                        </td>
-                        <td className="bg-leave-emergency/10 px-3 text-center text-body font-semibold text-leave-emergency">
-                          {formatAvailableNumber(row.el_grant)}
                         </td>
                       </tr>
                     )

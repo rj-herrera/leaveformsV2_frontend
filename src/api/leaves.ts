@@ -69,13 +69,20 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL/ML/PL as JSON; SL/PTB/EL as multipart with required attachments (201). */
+/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL as multipart with required attachments (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {
   const code = (payload.code ?? 'VL').toUpperCase()
   const files = payload.leave_attachment ?? []
-  if (code === 'SL' || code === 'PTB' || code === 'EL' || files.length > 0) {
+  if (
+    code === 'SL' ||
+    code === 'PTB' ||
+    code === 'EL' ||
+    code === 'LL' ||
+    code === 'PL' ||
+    files.length > 0
+  ) {
     const form = new FormData()
     appendLeaveFields(form, { ...payload, code, leave_attachment: files })
     return apiPostFormData<LeaveDetail>('/leaves', form)
@@ -125,7 +132,7 @@ export async function deleteLeaveAttachment(
 }
 
 /**
- * Apply queued add/remove attachment edits on a pending SL/PTB/EL.
+ * Apply queued add/remove attachment edits on a pending SL/PTB/EL/LL/PL.
  * Deletes first when the server is at the cap so adds do not 422; adds first
  * when a delete would otherwise drop below 1 file.
  */
