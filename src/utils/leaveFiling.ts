@@ -9,10 +9,6 @@ import {
   VACATION_LEAVE_THEME,
 } from '../constants/leaveTypeTheme'
 import type { UserGender } from './gender'
-import {
-  completeYearsOfService,
-  LONG_LEAVE_MIN_TENURE_YEARS,
-} from './leaveDates'
 
 /** Leave types `POST /leaves` accepts today. Other codes → 422. */
 export type FilableLeaveCode = 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
@@ -72,20 +68,13 @@ export function filableLeaveLabel(code: string): string {
   )
 }
 
-/** Hide ML unless female, PL unless male. Unknown gender → neither.
- *  Pass `dateHired` to hide LL when tenure is under 5 years (self-file).
- *  Omit it for on-behalf — members do not include hire date; the API enforces tenure.
- */
+/** Hide ML unless female, PL unless male. Unknown gender → neither. */
 export function filableLeaveTypeOptionsForGender(
   gender: UserGender | null,
-  tenure?: { dateHired: string | null },
 ) {
   return FILABLE_LEAVE_TYPE_OPTIONS.filter((option) => {
     if (option.value === 'ML') return gender === 'female'
     if (option.value === 'PL') return gender === 'male'
-    if (option.value === 'LL' && tenure) {
-      return meetsLongLeaveTenure(tenure.dateHired)
-    }
     return true
   })
 }
@@ -141,10 +130,6 @@ export function requiresFullDay(code: string): boolean {
 
 export function isLongLeave(code: string): boolean {
   return code.toUpperCase() === 'LL'
-}
-
-export function meetsLongLeaveTenure(dateHired: string | null | undefined): boolean {
-  return completeYearsOfService(dateHired) >= LONG_LEAVE_MIN_TENURE_YEARS
 }
 
 /** ML is exactly 105 calendar days; PL is exactly 7 workdays. End date is derived. */

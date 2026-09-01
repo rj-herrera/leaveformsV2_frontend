@@ -93,9 +93,7 @@ export function FileLeavePage() {
   const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
   const selectedTypeLabel = filableLeaveLabel(leaveType)
-  const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender, {
-    dateHired: user.dateHired,
-  })
+  const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender)
   const endPickerLimits = leaveEndPickerLimits(leaveType, startDate)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')

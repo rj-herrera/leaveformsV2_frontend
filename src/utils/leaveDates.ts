@@ -40,7 +40,6 @@ export const LONG_LEAVE_TYPE = 'Long Leave'
 /** Inclusive calendar months for Long Leave (matches `leave.long_leave`). */
 export const LONG_LEAVE_MIN_MONTHS = 1
 export const LONG_LEAVE_MAX_MONTHS = 3
-export const LONG_LEAVE_MIN_TENURE_YEARS = 5
 
 function toISODate(year: number, monthIndex: number, day: number): string {
   const m = String(monthIndex + 1).padStart(2, '0')
@@ -358,25 +357,6 @@ export function fixedLeaveEndDate(
     )
   }
   return ''
-}
-
-/** Complete years from hire date to `asOfISO` (local calendar), matching Long Leave tenure. */
-export function completeYearsOfService(
-  dateHired: string | null | undefined,
-  asOfISO: string = todayISO(),
-): number {
-  const hired = parseLocalISO(dateHired ?? '')
-  const asOf = parseLocalISO(asOfISO)
-  if (!hired || !asOf || hired > asOf) return 0
-
-  let years = asOf.getFullYear() - hired.getFullYear()
-  if (
-    asOf.getMonth() < hired.getMonth() ||
-    (asOf.getMonth() === hired.getMonth() && asOf.getDate() < hired.getDate())
-  ) {
-    years -= 1
-  }
-  return Math.max(0, years)
 }
 
 /** Carbon `addMonthsNoOverflow`: keep the day when it exists in the target month. */
