@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { EmptyState } from './EmptyState'
 import type { NotificationItem } from '../../mocks/notifications'
+import { formatShortDate, parsePhtDateTime } from '../../utils/leaveDisplay'
 
 type NotificationFilter = 'all' | 'unread'
 
@@ -17,7 +18,7 @@ type NotificationPanelProps = {
 }
 
 function formatNotificationTime(iso: string): string {
-  const date = new Date(iso)
+  const date = parsePhtDateTime(iso)
   if (Number.isNaN(date.getTime())) return iso
 
   const now = Date.now()
@@ -31,11 +32,7 @@ function formatNotificationTime(iso: string): string {
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
 
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return formatShortDate(iso)
 }
 
 /**

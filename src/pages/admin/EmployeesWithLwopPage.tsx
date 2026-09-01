@@ -27,6 +27,7 @@ import {
   type LwopEmployeeSummary,
 } from '../../mocks/employeesWithLwop'
 import { compareEmployeeNumber } from '../../utils/sort'
+import { formatDateTimeFromDate } from '../../utils/leaveDisplay'
 
 type GroupFilter = 'ALL' | string
 type SortKey = 'employeeNumber' | 'totalLwopDays'
@@ -38,16 +39,6 @@ const SUMMARY_COL_COUNT = 7
 
 function formatDays(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
-
-function formatGeneratedAt(date: Date): string {
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 export function EmployeesWithLwopPage() {
@@ -266,7 +257,7 @@ export function EmployeesWithLwopPage() {
                   />
                   <InfoItem
                     label="Date Generated"
-                    value={formatGeneratedAt(report.generatedAt)}
+                    value={formatDateTimeFromDate(report.generatedAt)}
                   />
                 </dl>
               </div>

@@ -31,6 +31,7 @@ import {
   type MonetizationReport,
 } from '../../mocks/monetizationCandidates'
 import { compareEmployeeNumber } from '../../utils/sort'
+import { formatDateTimeFromDate } from '../../utils/leaveDisplay'
 
 type SortDir = 'asc' | 'desc'
 
@@ -39,16 +40,6 @@ const FILTER_CONTROL_H = 'h-[2.375rem]'
 
 function formatDays(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
-
-function formatGeneratedAt(date: Date): string {
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 export function LeaveMonetizationCandidatesPage() {
@@ -316,7 +307,7 @@ export function LeaveMonetizationCandidatesPage() {
                   />
                   <InfoItem
                     label="Date generated"
-                    value={formatGeneratedAt(report.generatedAt)}
+                    value={formatDateTimeFromDate(report.generatedAt)}
                   />
                 </dl>
               </div>

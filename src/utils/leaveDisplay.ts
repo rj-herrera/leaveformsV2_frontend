@@ -85,8 +85,18 @@ export function formatShortDate(isoDate: string | null | undefined): string {
 
 const PHT_TIME_ZONE = 'Asia/Manila'
 
+const DATE_TIME_DISPLAY_OPTIONS: Intl.DateTimeFormatOptions = {
+  timeZone: PHT_TIME_ZONE,
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+}
+
 /** API datetimes are PHT wall-clock; ignore a trailing Z / offset. */
-function parseAsPht(iso: string): Date {
+export function parsePhtDateTime(iso: string): Date {
   const trimmed = iso.trim()
   const withoutOffset = trimmed
     .replace(/Z$/i, '')
@@ -97,20 +107,37 @@ function parseAsPht(iso: string): Date {
   return new Date(`${normalized}+08:00`)
 }
 
-/** Formats an ISO datetime for display (date + time). */
+/** Formats an ISO datetime for display (date + time) in Philippine Standard Time. */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const date = parseAsPht(iso)
+  const date = parsePhtDateTime(iso)
   if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString('en-US', DATE_TIME_DISPLAY_OPTIONS)
+}
+
+/** Formats a `Date` instance for display in Philippine Standard Time. */
+export function formatDateTimeFromDate(date: Date): string {
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-US', DATE_TIME_DISPLAY_OPTIONS)
+}
+
+/** Long month + time, for reminder banners and similar copy. */
+export function formatLongDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const date = parsePhtDateTime(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  const datePart = date.toLocaleDateString('en-US', {
     timeZone: PHT_TIME_ZONE,
-    month: 'short',
+    month: 'long',
     day: 'numeric',
     year: 'numeric',
+  })
+  const timePart = date.toLocaleTimeString('en-US', {
+    timeZone: PHT_TIME_ZONE,
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
   })
+  return `${datePart}, ${timePart}`
 }
 
 export function formatLeavePeriod(startDate: string, endDate: string): string {

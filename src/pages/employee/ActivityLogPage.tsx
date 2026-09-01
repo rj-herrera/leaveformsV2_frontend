@@ -30,19 +30,6 @@ type TimestampSort = 'desc' | 'asc'
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
 
-function formatActivityTimestamp(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return formatDateTime(iso)
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
-}
-
 /** Debounce layout-derived page size so resize/mutation storms don't spam the API. */
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -255,7 +242,7 @@ export function ActivityLogPage() {
                         className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
                       >
                         <td className="px-5 whitespace-nowrap">
-                          {formatActivityTimestamp(entry.timestamp)}
+                          {formatDateTime(entry.timestamp)}
                         </td>
                         <td className="truncate px-5" title={entry.activity}>
                           {entry.activity}

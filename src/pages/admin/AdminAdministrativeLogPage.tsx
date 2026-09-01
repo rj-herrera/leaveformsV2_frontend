@@ -37,19 +37,6 @@ const FILTER_H = 'h-[2.125rem]'
 const PAGE_SIZE_DEBOUNCE_MS = 150
 const SEARCH_DEBOUNCE_MS = 300
 
-function formatActivityTimestamp(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return formatDateTime(iso)
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
-}
-
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
 
@@ -340,7 +327,7 @@ export function AdminAdministrativeLogPage() {
                         className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                       >
                         <td className="whitespace-nowrap px-5 text-body text-text-black">
-                          {formatActivityTimestamp(entry.timestamp)}
+                          {formatDateTime(entry.timestamp)}
                         </td>
                         <td
                           className="truncate px-5 text-body text-text-black"
