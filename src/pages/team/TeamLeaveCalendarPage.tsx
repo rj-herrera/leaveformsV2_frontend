@@ -12,7 +12,7 @@ import {
   getLeaveTypeChipClasses,
 } from '../../constants/leaveTypeTheme'
 import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
-import { formatLeavePeriod } from '../../utils/leaveDisplay'
+import { formatLeavePeriod, formatLeaveTypeName } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
 import {
   LEAVE_TYPE_FILTER_OPTIONS,
@@ -51,7 +51,7 @@ function employeeName(entry: TeamCalendarEntry): string {
 }
 
 function leaveTypeLabel(entry: TeamCalendarEntry): string {
-  return entry.leave_type.name
+  return formatLeaveTypeName(entry.leave_type)
 }
 
 function groupLabel(entry: TeamCalendarEntry): string {
