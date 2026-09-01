@@ -34,7 +34,7 @@ type SortDir = 'asc' | 'desc'
 
 const DEFAULT_YEAR = new Date().getFullYear()
 const FILTER_CONTROL_H = 'h-[2.375rem]'
-const SUMMARY_COL_COUNT = 4
+const SUMMARY_COL_COUNT = 7
 
 function formatDays(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -275,7 +275,7 @@ export function EmployeesWithLwopPage() {
 
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
             {report ? (
-              <table className="w-full min-w-[40rem] table-fixed text-left">
+              <table className="w-full min-w-[56rem] table-fixed text-left">
                 <thead>
                   <tr className="h-11 bg-surface-muted text-small text-text-gray">
                     <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
@@ -293,6 +293,15 @@ export function EmployeesWithLwopPage() {
                       Group
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
+                      VL Balance
+                    </th>
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
+                      SL Balance
+                    </th>
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
+                      Leave Consumed
+                    </th>
+                    <th className="border-b border-border px-3 py-3 text-center text-red-700 font-bold uppercase tracking-wide">
                       <SortableHeader
                         label="Total LWOP Days"
                         active={sortKey === 'totalLwopDays'}
@@ -364,7 +373,16 @@ function EmployeeRow({ row }: { row: LwopEmployeeSummary }) {
         {row.employeeName}
       </td>
       <td className="px-4 text-body text-text-black">{row.groupLabel}</td>
-      <td className="px-3 text-center text-body font-semibold text-text-black">
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.vlBalance)}
+      </td>
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.slBalance)}
+      </td>
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.leaveConsumed)}
+      </td>
+      <td className="px-3 text-center bg-red-50 text-body text-red-700 font-semibold">
         {formatDays(row.totalLwopDays)}
       </td>
     </tr>

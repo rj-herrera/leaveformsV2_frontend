@@ -18,7 +18,7 @@ export function LeaveAttachmentRow({
       <dd>
         {fileCount > 0 ? (
           <Button type="button" size="sm" onClick={onView}>
-            View{fileCount > 1 ? ` (${fileCount})` : ''}
+            {fileCount === 1 ? 'View Attachment' : 'View Attachments'}
           </Button>
         ) : (
           <span className="text-body text-text-gray">—</span>

@@ -37,6 +37,9 @@ export type LwopEmployeeSummary = {
   employeeNumber: string
   employeeName: string
   groupLabel: string
+  vlBalance: number
+  slBalance: number
+  leaveConsumed: number
   totalLwopDays: number
 }
 
@@ -296,6 +299,26 @@ function toEmployeeLookup(): Map<string, LeaveBalanceEmployee> {
   )
 }
 
+/** Mock paid leave days consumed in the reporting year (until API provides totals). */
+const MOCK_PAID_LEAVE_CONSUMED: Record<string, number> = {
+  'user-melissa': 15,
+  'user-contract-1': 5.5,
+  'user-employee': 12,
+  'user-sally': 4,
+  'user-paul': 10,
+  'user-newly-reg-2': 6,
+  'user-cecile': 3.5,
+  'user-employee-2': 8,
+}
+
+function resolveLeaveConsumed(
+  employeeId: string,
+  totalLwopDays: number,
+): number {
+  const paid = MOCK_PAID_LEAVE_CONSUMED[employeeId] ?? 0
+  return paid + totalLwopDays
+}
+
 /**
  * Builds the yearly Employees with LWOP report.
  * Includes every employee with at least one LWOP record intersecting the year.
@@ -344,6 +367,9 @@ export function buildEmployeesWithLwopReport(
         employeeNumber: employee.employeeNumber,
         employeeName: employee.name,
         groupLabel: employee.groupLabel,
+        vlBalance: employee.balances.vl ?? 0,
+        slBalance: employee.balances.sl ?? 0,
+        leaveConsumed: resolveLeaveConsumed(employee.id, totalLwopDays),
         totalLwopDays,
       } satisfies LwopEmployeeSummary
     })
