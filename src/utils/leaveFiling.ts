@@ -155,9 +155,14 @@ export function enforcesRemainingCredits(code: string): boolean {
   return normalized === 'PTB' || normalized === 'EL'
 }
 
-/** 1-month advance filing for 3+ days applies to VL only. */
+/** 1-month advance filing for 3+ days applies to self-filed VL only. */
 export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
+}
+
+/** Regular employees cannot file short-notice 3+ day VL; approvers filing for a member can. */
+export function enforcesVlLeadTime(code: string, isOnBehalf: boolean): boolean {
+  return !isOnBehalf && appliesVlLeadTime(code)
 }
 
 /** True when the person on leave submitted the request (not a PIC on-behalf). */

@@ -30,7 +30,8 @@ import {
   type DayType,
 } from '../../utils/leaveDates'
 import {
-  appliesVlLeadTime,
+  enforcesVlLeadTime,
+  isLeaveSelfFiled,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
@@ -46,7 +47,10 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
-import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
+import {
+  LEAVE_LEAD_TIME_APPROVER_HINT,
+  validateLeaveLeadTime,
+} from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -121,8 +125,9 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     return formatDurationLabel(leaveDuration, 'full')
   }, [dayType, leaveDuration])
 
+  const isOnBehalf = !isLeaveSelfFiled(detail)
   const leadTimeValidation = useMemo(() => {
-    if (!appliesVlLeadTime(leaveTypeCode)) {
+    if (!enforcesVlLeadTime(leaveTypeCode, isOnBehalf)) {
       return { ok: true, isLongLeave: false, message: null }
     }
     return validateLeaveLeadTime({
@@ -131,7 +136,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
       startDateISO: startDate,
       filedOnISO: todayISO(),
     })
-  }, [dayType, leaveDuration, leaveTypeCode, startDate])
+  }, [dayType, isOnBehalf, leaveDuration, leaveTypeCode, startDate])
 
   const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
   const endPickerLimits = leaveEndPickerLimits(leaveTypeCode, startDate)
@@ -371,7 +376,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
                       {leadTimeValidation.message}
                       {leadTimeValidation.ok
                         ? ' Your selected dates meet this requirement.'
-                        : ' Please choose a start date at least 1 month from today, or shorten the leave duration.'}
+                        : ` ${LEAVE_LEAD_TIME_APPROVER_HINT}`}
                     </p>
                   </div>
                 </div>

@@ -30,11 +30,13 @@ import {
   formatDurationLabel,
   isLongLeaveEndInBounds,
   leaveEndPickerLimits,
+  todayISO,
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
 import {
   allowsLwop,
+  appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
@@ -54,6 +56,10 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
+import {
+  ON_BEHALF_SHORT_NOTICE_MESSAGE,
+  validateLeaveLeadTime,
+} from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -219,6 +225,18 @@ export function FileLeaveForMemberPage() {
     durationDays > 0 &&
     Number.isFinite(remainingDays) &&
     durationDays > remainingDays
+
+  const leadTimeValidation = useMemo(() => {
+    if (!appliesVlLeadTime(leaveType)) {
+      return { ok: true, isLongLeave: false, message: null }
+    }
+    return validateLeaveLeadTime({
+      dayType: dayType === '' ? 'full' : dayType,
+      weekdayDuration: dayType === 'full' ? leaveDuration : 0,
+      startDateISO: startDate,
+      filedOnISO: todayISO(),
+    })
+  }, [dayType, leaveDuration, leaveType, startDate])
 
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
@@ -573,6 +591,25 @@ export function FileLeaveForMemberPage() {
                     Duration ({durationLabel}) exceeds remaining{' '}
                     {remainingLabel}. Excess days may be treated as LWOP.
                   </p>
+                </div>
+              ) : null}
+              {leadTimeValidation.isLongLeave && !leadTimeValidation.ok ? (
+                <div
+                  className="flex gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
+                  role="status"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-5 shrink-0 text-status-pending"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <p className="text-small font-semibold text-text-black">
+                      Approver filing allowed
+                    </p>
+                    <p className="mt-1 text-small text-text-black">
+                      {ON_BEHALF_SHORT_NOTICE_MESSAGE}
+                    </p>
+                  </div>
                 </div>
               ) : null}
               <TextAreaField

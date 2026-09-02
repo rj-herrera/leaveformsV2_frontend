@@ -47,7 +47,10 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
-import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
+import {
+  LEAVE_LEAD_TIME_APPROVER_HINT,
+  validateLeaveLeadTime,
+} from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -439,7 +442,7 @@ export function FileLeavePage() {
                       {leadTimeValidation.message}
                       {leadTimeValidation.ok
                         ? ' Your selected dates meet this requirement.'
-                        : ' Please choose a start date at least 1 month from today, or shorten the leave duration.'}
+                        : ` ${LEAVE_LEAD_TIME_APPROVER_HINT}`}
                     </p>
                   </div>
                 </div>

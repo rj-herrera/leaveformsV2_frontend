@@ -23,6 +23,12 @@ export type LeaveLeadTimeResult = {
 export const LEAVE_LEAD_TIME_MESSAGE =
   'Leave requests of 3 or more consecutive days must be filed at least 1 month before the leave start date.'
 
+export const LEAVE_LEAD_TIME_APPROVER_HINT =
+  'Ask your approver to file this request for you using File Leave for Member. Or choose a start date at least 1 month from today, or shorten the leave duration.'
+
+export const ON_BEHALF_SHORT_NOTICE_MESSAGE =
+  'Short-notice Vacation Leave of 3 or more days is allowed here because you are filing for a team member. A regular employee cannot file this on File Leave.'
+
 /** Calendar-month add on a local ISO date (handles month-end overflow). */
 export function addCalendarMonths(iso: string, months: number): string {
   const [y, m, d] = iso.split('-').map(Number)
