@@ -95,15 +95,16 @@ const DATE_TIME_DISPLAY_OPTIONS: Intl.DateTimeFormatOptions = {
   hour12: true,
 }
 
-/** API datetimes are PHT wall-clock; ignore a trailing Z / offset. */
+/** Parse API datetimes for PHT display. Naive strings are PHT wall-clock; Z/offsets are real instants. */
 export function parsePhtDateTime(iso: string): Date {
   const trimmed = iso.trim()
-  const withoutOffset = trimmed
-    .replace(/Z$/i, '')
-    .replace(/[+-]\d{2}:?\d{2}$/, '')
-  const normalized = withoutOffset.includes('T')
-    ? withoutOffset
-    : withoutOffset.replace(' ', 'T')
+  const hasExplicitOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)
+  if (hasExplicitOffset) {
+    return new Date(trimmed)
+  }
+  const normalized = trimmed.includes('T')
+    ? trimmed
+    : trimmed.replace(' ', 'T')
   return new Date(`${normalized}+08:00`)
 }
 
