@@ -95,23 +95,49 @@ const DATE_TIME_DISPLAY_OPTIONS: Intl.DateTimeFormatOptions = {
   hour12: true,
 }
 
-/** Parse API datetimes for PHT display. Naive strings are PHT wall-clock; Z/offsets are real instants. */
-export function parsePhtDateTime(iso: string): Date {
+function normalizeDateTimeInput(iso: string): string {
   const trimmed = iso.trim()
-  const hasExplicitOffset = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)
-  if (hasExplicitOffset) {
-    return new Date(trimmed)
-  }
-  const normalized = trimmed.includes('T')
-    ? trimmed
-    : trimmed.replace(' ', 'T')
-  return new Date(`${normalized}+08:00`)
+  return trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
 }
 
-/** Formats an ISO datetime for display (date + time) in Philippine Standard Time. */
+/** UTC instants from Laravel (`reviewed_at`, `created_at`, reminders, etc.). */
+export function parseUtcDateTime(iso: string): Date {
+  const trimmed = iso.trim()
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)) {
+    return new Date(trimmed)
+  }
+  return new Date(`${normalizeDateTimeInput(trimmed)}+08:00`)
+}
+
+/**
+ * Activity-log timestamps are PHT wall-clock values.
+ * A trailing `Z` / offset from the API is not a real UTC conversion.
+ */
+export function parseWallClockDateTime(iso: string): Date {
+  const trimmed = iso.trim()
+  const withoutOffset = trimmed
+    .replace(/Z$/i, '')
+    .replace(/[+-]\d{2}:?\d{2}$/, '')
+  return new Date(`${normalizeDateTimeInput(withoutOffset)}+08:00`)
+}
+
+/** @deprecated Use `parseUtcDateTime` or `parseWallClockDateTime`. */
+export const parsePhtDateTime = parseUtcDateTime
+
+/** Formats a Laravel UTC datetime for display in Philippine Standard Time. */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const date = parsePhtDateTime(iso)
+  const date = parseUtcDateTime(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString('en-US', DATE_TIME_DISPLAY_OPTIONS)
+}
+
+/** Formats activity-log timestamps (PHT wall-clock) for display. */
+export function formatWallClockDateTime(
+  iso: string | null | undefined,
+): string {
+  if (!iso) return '—'
+  const date = parseWallClockDateTime(iso)
   if (Number.isNaN(date.getTime())) return iso
   return date.toLocaleString('en-US', DATE_TIME_DISPLAY_OPTIONS)
 }
@@ -125,7 +151,7 @@ export function formatDateTimeFromDate(date: Date): string {
 /** Long month + time, for reminder banners and similar copy. */
 export function formatLongDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const date = parsePhtDateTime(iso)
+  const date = parseUtcDateTime(iso)
   if (Number.isNaN(date.getTime())) return iso
   const datePart = date.toLocaleDateString('en-US', {
     timeZone: PHT_TIME_ZONE,

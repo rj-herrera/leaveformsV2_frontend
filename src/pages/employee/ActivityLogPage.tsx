@@ -20,7 +20,7 @@ import {
 } from '../../components/ui/tableStyles'
 import { useActivities } from '../../hooks/api/useActivities'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
-import { formatDateTime } from '../../utils/leaveDisplay'
+import { formatWallClockDateTime } from '../../utils/leaveDisplay'
 import {
   LEAVE_TYPE_FILTER_OPTIONS,
   type LeaveTypeFilter,
@@ -242,7 +242,7 @@ export function ActivityLogPage() {
                         className={`${TABLE_BODY_ROW_BORDER_CLASS} text-body text-text-black ${TABLE_ROW_HEIGHT_CLASS}`}
                       >
                         <td className="px-5 whitespace-nowrap">
-                          {formatDateTime(entry.timestamp)}
+                          {formatWallClockDateTime(entry.timestamp)}
                         </td>
                         <td className="truncate px-5" title={entry.activity}>
                           {entry.activity}
