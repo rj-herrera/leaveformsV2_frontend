@@ -7,7 +7,7 @@ import { swrKeys } from './swrKeys'
 
 /**
  * Page → hook → `api/adminMonthlyAttendance` for GET /admin/reports/monthly-attendance.
- * Pass `null` to skip (no employees selected, or over the emp_ids cap).
+ * Pass `null` to skip (invalid month). Omit `emp_ids` for the whole org / group.
  */
 export function useAdminMonthlyAttendance(
   params: ListMonthlyAttendanceParams | null,

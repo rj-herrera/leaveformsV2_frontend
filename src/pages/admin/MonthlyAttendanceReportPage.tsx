@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Download, Printer } from 'lucide-react'
-import { MONTHLY_ATTENDANCE_MAX_EMP_IDS } from '../../api/adminMonthlyAttendance'
 import { ApiError } from '../../api/axios-client'
 import type {
   MonthlyAttendanceCategory,
@@ -197,18 +196,20 @@ export function MonthlyAttendanceReportPage() {
     return ids
   }, [selectedEmployeeIds])
 
-  const overEmpCap = empIds.length > MONTHLY_ATTENDANCE_MAX_EMP_IDS
+  const availableEmployeeCount = employees?.length ?? 0
+  const allEmployeesSelected =
+    empIds.length === 0 ||
+    (availableEmployeeCount > 0 && empIds.length === availableEmployeeCount)
 
   const reportParams = useMemo(() => {
-    if (empIds.length === 0 || overEmpCap) return null
     if (!/^\d{4}-\d{2}$/.test(monthYear)) return null
     return {
       month: monthYear,
       cut_off: cutOff,
-      emp_ids: empIds,
+      emp_ids: allEmployeesSelected ? undefined : empIds,
       group_id: groupId,
     }
-  }, [cutOff, empIds, groupId, monthYear, overEmpCap])
+  }, [allEmployeesSelected, cutOff, empIds, groupId, monthYear])
 
   const {
     data: report,
@@ -323,7 +324,6 @@ export function MonthlyAttendanceReportPage() {
         </div>
 
         <ReportBody
-          overEmpCap={overEmpCap}
           report={showReport ? report : null}
           reportError={reportParams != null ? reportError : undefined}
           reportLoading={reportParams != null && reportLoading && !report}
@@ -334,26 +334,14 @@ export function MonthlyAttendanceReportPage() {
 }
 
 function ReportBody({
-  overEmpCap,
   report,
   reportError,
   reportLoading,
 }: {
-  overEmpCap: boolean
   report: MonthlyAttendanceReport | null
   reportError: unknown
   reportLoading: boolean
 }) {
-  if (overEmpCap) {
-    return (
-      <EmptyState
-        variant="no-results"
-        message={`Select at most ${MONTHLY_ATTENDANCE_MAX_EMP_IDS} employees to view the report.`}
-        className="min-h-0 flex-1"
-      />
-    )
-  }
-
   if (reportLoading) {
     return (
       <div
@@ -386,7 +374,7 @@ function ReportBody({
     return (
       <EmptyState
         variant="no-data"
-        message="Select at least one employee to view the report."
+        message="No attendance data to display."
         className="min-h-0 flex-1"
       />
     )
