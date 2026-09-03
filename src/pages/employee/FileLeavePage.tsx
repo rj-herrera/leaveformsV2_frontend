@@ -465,7 +465,7 @@ export function FileLeavePage() {
                     aria-hidden="true"
                   />
                   <div>
-                    <p className="text-small font-semibold text-text-black">
+                    <p className="text-body font-semibold text-text-black">
                       {leadTimeValidation.ok
                         ? 'Advance filing required (3+ days)'
                         : 'Filing not allowed'}
@@ -474,7 +474,7 @@ export function FileLeavePage() {
                       {leadTimeValidation.message}
                       {leadTimeValidation.ok
                         ? ' Your selected dates meet this requirement.'
-                        : ' Please choose a start date at least 1 month from today, or shorten the leave duration.'}
+                        : ""}
                     </p>
                   </div>
                 </div>
