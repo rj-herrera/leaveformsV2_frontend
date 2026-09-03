@@ -12,6 +12,7 @@ import {
   getLeaveTypeChipClasses,
 } from '../../constants/leaveTypeTheme'
 import { useTeamCalendar } from '../../hooks/api/useTeamCalendar'
+import { useHolidays } from '../../hooks/api/useHolidays'
 import { formatLeavePeriod, formatLeaveTypeName } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
 import {
@@ -143,6 +144,8 @@ export function TeamLeaveCalendarPage() {
   )
 
   const { data, error, isLoading, isValidating } = useTeamCalendar(listParams)
+  const holidayParams = visibleRange ?? { from: today, to: today }
+  const { data: holidayRows } = useHolidays(holidayParams)
   const {
     data: todayData,
     error: todayError,
@@ -159,6 +162,15 @@ export function TeamLeaveCalendarPage() {
     () => indexCalendarEntriesByDate(entries),
     [entries],
   )
+  const holidayNames = useMemo(() => {
+    const names = new Map<string, string>()
+    for (const row of holidayRows ?? []) {
+      if (!row.is_non_working) continue
+      const label = row.name.trim()
+      if (label) names.set(row.date, label)
+    }
+    return names
+  }, [holidayRows])
   const onLeaveToday = todayData ?? []
   const upcomingLeaves = useMemo(() => {
     if (!upcomingData) return []
@@ -369,11 +381,13 @@ export function TeamLeaveCalendarPage() {
               <MonthCalendarGrid
                 weeks={monthWeeks}
                 entriesByDate={entriesByDate}
+                holidayNames={holidayNames}
               />
             ) : (
               <WeekCalendarGrid
                 days={weekDays}
                 entriesByDate={entriesByDate}
+                holidayNames={holidayNames}
               />
             )}
           </div>
@@ -495,9 +509,11 @@ function ViewToggle({
 function MonthCalendarGrid({
   weeks,
   entriesByDate,
+  holidayNames,
 }: {
   weeks: CalendarDayCell[][]
   entriesByDate: Map<string, TeamCalendarEntry[]>
+  holidayNames: ReadonlyMap<string, string>
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
@@ -530,6 +546,7 @@ function MonthCalendarGrid({
                 entries={
                   cell.inMonth ? (entriesByDate.get(cell.iso) ?? []) : []
                 }
+                holidayName={holidayNames.get(cell.iso)}
                 isLastCol={colIndex === week.length - 1}
               />
             ))}
@@ -543,9 +560,11 @@ function MonthCalendarGrid({
 function WeekCalendarGrid({
   days,
   entriesByDate,
+  holidayNames,
 }: {
   days: CalendarDayCell[]
   entriesByDate: Map<string, TeamCalendarEntry[]>
+  holidayNames: ReadonlyMap<string, string>
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border">
@@ -566,6 +585,7 @@ function WeekCalendarGrid({
             key={cell.iso}
             cell={cell}
             entries={entriesByDate.get(cell.iso) ?? []}
+            holidayName={holidayNames.get(cell.iso)}
             isLastCol={colIndex === days.length - 1}
           />
         ))}
@@ -577,17 +597,28 @@ function WeekCalendarGrid({
 function DayCell({
   cell,
   entries,
+  holidayName,
   isLastCol,
 }: {
   cell: CalendarDayCell
   entries: TeamCalendarEntry[]
+  holidayName?: string
   isLastCol: boolean
 }) {
+  const isHoliday = Boolean(holidayName)
+
   return (
     <div
+      title={holidayName}
       className={`flex min-h-0 flex-col overflow-hidden border-border p-1.5 sm:p-2 ${
         isLastCol ? '' : 'border-r'
-      } ${cell.inMonth ? 'bg-surface' : 'bg-surface-muted/50'}`}
+      } ${
+        !cell.inMonth
+          ? 'bg-surface-muted/50'
+          : isHoliday
+            ? 'bg-secondary/15'
+            : 'bg-surface'
+      }`}
     >
       <div className="mb-1 shrink-0">
         <span
@@ -601,6 +632,11 @@ function DayCell({
         >
           {cell.dayOfMonth}
         </span>
+        {holidayName ? (
+          <p className="mt-0.5 truncate text-[0.65rem] font-semibold leading-tight text-text-gray">
+            {holidayName}
+          </p>
+        ) : null}
       </div>
 
       <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
