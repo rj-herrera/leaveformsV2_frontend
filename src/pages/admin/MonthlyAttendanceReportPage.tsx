@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Download, Printer } from 'lucide-react'
-import { MONTHLY_ATTENDANCE_MAX_EMP_IDS } from '../../api/adminMonthlyAttendance'
+import { Download } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
 import type {
   MonthlyAttendanceCategory,
@@ -19,6 +18,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { useAdminEmployees } from '../../hooks/api/useAdminEmployees'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useAdminMonthlyAttendance } from '../../hooks/api/useAdminMonthlyAttendance'
+import { downloadMonthlyAttendanceExcel } from '../../utils/exportMonthlyAttendanceExcel'
 import { monthValue } from '../../utils/teamCalendarGrid'
 
 type GroupFilter = 'ALL' | string
@@ -146,6 +146,7 @@ export function MonthlyAttendanceReportPage() {
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
   const [actionNotice, setActionNotice] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const groupId =
     groupFilter !== 'ALL' && Number.isInteger(Number(groupFilter))
@@ -197,18 +198,20 @@ export function MonthlyAttendanceReportPage() {
     return ids
   }, [selectedEmployeeIds])
 
-  const overEmpCap = empIds.length > MONTHLY_ATTENDANCE_MAX_EMP_IDS
+  const availableEmployeeCount = employees?.length ?? 0
+  const allEmployeesSelected =
+    availableEmployeeCount > 0 && empIds.length === availableEmployeeCount
 
   const reportParams = useMemo(() => {
-    if (empIds.length === 0 || overEmpCap) return null
+    if (empIds.length === 0) return null
     if (!/^\d{4}-\d{2}$/.test(monthYear)) return null
     return {
       month: monthYear,
       cut_off: cutOff,
-      emp_ids: empIds,
+      emp_ids: allEmployeesSelected ? undefined : empIds,
       group_id: groupId,
     }
-  }, [cutOff, empIds, groupId, monthYear, overEmpCap])
+  }, [allEmployeesSelected, cutOff, empIds, groupId, monthYear])
 
   const {
     data: report,
@@ -227,6 +230,19 @@ export function MonthlyAttendanceReportPage() {
     setActionNotice('')
   }
 
+  async function handleExportExcel() {
+    if (!report) return
+    setExporting(true)
+    setActionNotice('')
+    try {
+      await downloadMonthlyAttendanceExcel(report)
+    } catch {
+      setActionNotice('Unable to export Excel. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -235,24 +251,12 @@ export function MonthlyAttendanceReportPage() {
           <Button
             variant="primary"
             disabled={!showReport}
-            onClick={() =>
-              setActionNotice(
-                'Export to Excel will be available in a future update.',
-              )
-            }
+            loading={exporting}
+            loadingText="Exporting…"
+            onClick={() => void handleExportExcel()}
           >
             <Download className="size-4" aria-hidden="true" />
             Export Excel
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!showReport}
-            onClick={() =>
-              setActionNotice('Print will be available in a future update.')
-            }
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            Print
           </Button>
         </div>
       </div>
@@ -323,7 +327,6 @@ export function MonthlyAttendanceReportPage() {
         </div>
 
         <ReportBody
-          overEmpCap={overEmpCap}
           report={showReport ? report : null}
           reportError={reportParams != null ? reportError : undefined}
           reportLoading={reportParams != null && reportLoading && !report}
@@ -334,26 +337,14 @@ export function MonthlyAttendanceReportPage() {
 }
 
 function ReportBody({
-  overEmpCap,
   report,
   reportError,
   reportLoading,
 }: {
-  overEmpCap: boolean
   report: MonthlyAttendanceReport | null
   reportError: unknown
   reportLoading: boolean
 }) {
-  if (overEmpCap) {
-    return (
-      <EmptyState
-        variant="no-results"
-        message={`Select at most ${MONTHLY_ATTENDANCE_MAX_EMP_IDS} employees to view the report.`}
-        className="min-h-0 flex-1"
-      />
-    )
-  }
-
   if (reportLoading) {
     return (
       <div

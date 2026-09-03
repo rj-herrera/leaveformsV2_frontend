@@ -134,7 +134,13 @@ export function EmployeeMultiSelect({
           aria-label={label}
           className={`box-border flex w-full ${controlHeight} items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 text-left text-body leading-normal text-text-black outline-none transition-[border-color,box-shadow] hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border`}
         >
-          <span className={value.length === 0 ? 'text-text-gray' : undefined}>
+          <span
+            className={
+              value.length === 0 || employees.length === 0
+                ? 'text-text-gray'
+                : undefined
+            }
+          >
             {employees.length === 0 ? emptyLabel : triggerLabel}
           </span>
           <ChevronDown

@@ -166,7 +166,9 @@ export const swrKeys = {
       params.month,
       params.cut_off,
       params.group_id ?? null,
-      params.emp_ids.join(','),
+      params.emp_ids != null && params.emp_ids.length > 0
+        ? params.emp_ids.join(',')
+        : null,
     ] as const,
 }
 
