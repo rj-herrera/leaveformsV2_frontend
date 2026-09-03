@@ -44,10 +44,6 @@ import {
   type ListTab,
 } from '../../utils/listTab'
 import { compareEmployeeNumber } from '../../utils/sort'
-import {
-  LEAVE_TYPE_FILTER_OPTIONS,
-  type LeaveTypeFilter,
-} from '../../utils/leaveFiling'
 
 type GroupFilter = 'ALL' | string
 type SortKey = 'filedOn' | 'period' | 'employeeNumber'
@@ -65,7 +61,6 @@ type ApprovalRowView = {
   requesterName: string
   groupLabel: string
   leaveType: string
-  leaveTypeCode: string
   period: string
   duration: string
   filedOnDate: string
@@ -97,7 +92,6 @@ function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
       employee?.group?.name?.trim() ||
       '—',
     leaveType: row.leave_type.name,
-    leaveTypeCode: row.leave_type.code,
     period: formatLeavePeriod(row.start_date, row.end_date),
     duration: formatDurationDays(row.duration),
     filedOnDate: row.created_at ?? '',
@@ -127,7 +121,6 @@ function matchesRowFilters(
   item: ApprovalRowView,
   query: string,
   groupFilter: GroupFilter,
-  leaveTypeFilter: LeaveTypeFilter,
 ): boolean {
   const matchesSearch =
     query.length === 0 ||
@@ -137,10 +130,7 @@ function matchesRowFilters(
   const matchesGroup =
     groupFilter === 'ALL' || item.groupLabel === groupFilter
 
-  const matchesLeaveType =
-    leaveTypeFilter === 'ALL' || item.leaveTypeCode === leaveTypeFilter
-
-  return matchesSearch && matchesGroup && matchesLeaveType
+  return matchesSearch && matchesGroup
 }
 
 function sortRows(
@@ -186,8 +176,6 @@ export function LeaveApprovalsPage() {
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
-  const [leaveTypeFilter, setLeaveTypeFilter] =
-    useState<LeaveTypeFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<ApprovalsStatusFilter>('ALL')
   const [sortKey, setSortKey] = useState<SortKey>('filedOn')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -209,12 +197,11 @@ export function LeaveApprovalsPage() {
   const allListParams = useMemo(
     () => ({
       status: toApiStatus(statusFilter),
-      code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
       sort: apiSort,
       page: allPage,
       per_page: pageSize,
     }),
-    [statusFilter, leaveTypeFilter, apiSort, allPage, pageSize],
+    [statusFilter, apiSort, allPage, pageSize],
   )
 
   const {
@@ -242,7 +229,7 @@ export function LeaveApprovalsPage() {
       return
     }
     setAwaitingAllReset(true)
-  }, [tab, statusFilter, leaveTypeFilter, apiSort])
+  }, [tab, statusFilter, apiSort])
 
   // All tab: page-size change — keep approximate scroll position.
   useEffect(() => {
@@ -295,14 +282,13 @@ export function LeaveApprovalsPage() {
 
   const filteredPending = useMemo(() => {
     const filtered = pendingRows.filter((item) =>
-      matchesRowFilters(item, searchQuery, groupFilter, leaveTypeFilter),
+      matchesRowFilters(item, searchQuery, groupFilter),
     )
     return sortRows(filtered, sortKey, sortDir)
   }, [
     pendingRows,
     searchQuery,
     groupFilter,
-    leaveTypeFilter,
     sortKey,
     sortDir,
   ])
@@ -310,7 +296,6 @@ export function LeaveApprovalsPage() {
   const pendingFilterResetKey = [
     search,
     groupFilter,
-    leaveTypeFilter,
     sortKey,
     sortDir,
   ].join('|')
@@ -326,7 +311,7 @@ export function LeaveApprovalsPage() {
   const displayAllRows = useMemo(
     () =>
       allRows.filter((item) =>
-        matchesRowFilters(item, searchQuery, groupFilter, 'ALL'),
+        matchesRowFilters(item, searchQuery, groupFilter),
       ),
     [allRows, searchQuery, groupFilter],
   )
@@ -348,13 +333,11 @@ export function LeaveApprovalsPage() {
   const hasActiveFilters =
     search.trim().length > 0 ||
     groupFilter !== 'ALL' ||
-    leaveTypeFilter !== 'ALL' ||
     statusFilter !== 'ALL'
 
   function clearFilters() {
     setSearch('')
     setGroupFilter('ALL')
-    setLeaveTypeFilter('ALL')
     setStatusFilter('ALL')
   }
 
@@ -448,15 +431,6 @@ export function LeaveApprovalsPage() {
                   value={groupFilter}
                   onChange={setGroupFilter}
                   options={groupOptions}
-                  selectHeight="h-[2.125rem]"
-                />
-                <FilterSelect
-                  label="Filter by leave type"
-                  value={leaveTypeFilter}
-                  onChange={(value) =>
-                    setLeaveTypeFilter(value as LeaveTypeFilter)
-                  }
-                  options={LEAVE_TYPE_FILTER_OPTIONS}
                   selectHeight="h-[2.125rem]"
                 />
 
