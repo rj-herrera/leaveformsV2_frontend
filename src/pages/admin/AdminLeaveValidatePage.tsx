@@ -468,7 +468,6 @@ export function AdminLeaveValidatePage() {
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
         currentUserId={String(user.id)}
-        youBadgeVariant="muted"
       />
 
       {canAct ? (

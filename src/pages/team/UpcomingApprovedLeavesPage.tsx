@@ -30,6 +30,7 @@ import { usePagination } from '../../hooks/usePagination'
 import {
   formatDurationDays,
   formatLeavePeriod,
+  formatLeaveTypeName,
 } from '../../utils/leaveDisplay'
 import { todayISO } from '../../utils/leaveDates'
 import {
@@ -57,7 +58,7 @@ function employeeNumber(entry: TeamCalendarEntry): string {
 }
 
 function leaveTypeLabel(entry: TeamCalendarEntry): string {
-  return entry.leave_type.name
+  return formatLeaveTypeName(entry.leave_type)
 }
 
 function groupLabel(entry: TeamCalendarEntry): string {

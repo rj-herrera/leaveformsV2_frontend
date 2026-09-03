@@ -518,7 +518,6 @@ export function AdminLeaveRequestViewPage() {
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
         currentUserId={String(user.id)}
-        youBadgeVariant="muted"
         canRemind={showReminderActions ? canRemind : undefined}
         onRemind={showReminderActions ? setReminderTarget : undefined}
       />

@@ -388,7 +388,6 @@ export function LeaveRequestReviewPage() {
         approvers={approverRows}
         decisionSettled={Boolean(decisionSettled)}
         currentUserId={String(user.id)}
-        youBadgeVariant="primary"
       />
 
       {isReviewMode ? (

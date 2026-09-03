@@ -23,7 +23,7 @@ import {
 import { useAdminActivities } from '../../hooks/api/useAdminActivities'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
-import { formatDateTime } from '../../utils/leaveDisplay'
+import { formatWallClockDateTime } from '../../utils/leaveDisplay'
 import {
   LEAVE_TYPE_FILTER_OPTIONS,
   type LeaveTypeFilter,
@@ -327,7 +327,7 @@ export function AdminAdministrativeLogPage() {
                         className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
                       >
                         <td className="whitespace-nowrap px-5 text-body text-text-black">
-                          {formatDateTime(entry.timestamp)}
+                          {formatWallClockDateTime(entry.timestamp)}
                         </td>
                         <td
                           className="truncate px-5 text-body text-text-black"
