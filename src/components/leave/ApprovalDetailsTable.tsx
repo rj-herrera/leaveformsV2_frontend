@@ -16,7 +16,7 @@ export function ApprovalDetailsTable({
   approvers,
   decisionSettled,
   currentUserId,
-  youBadgeVariant = 'muted',
+  youBadgeVariant = 'primary',
   canRemind,
   onRemind,
   headerClassName = 'shrink-0 border-b border-border px-5 py-3',
