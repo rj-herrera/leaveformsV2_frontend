@@ -42,6 +42,8 @@ import {
   formatDurationDays,
   formatLeavePeriod,
   formatShortDate,
+  isConversionReviewStatus,
+  isLeaveDecisionSettled,
   mapApiLeaveStatusToUi,
   resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
@@ -129,9 +131,7 @@ export function AdminLeaveValidatePage() {
     return map
   }, [requirements])
 
-  const usesConversionReview =
-    detail?.status === 'pending_conversion' ||
-    detail?.status === 'converted_to_sl'
+  const usesConversionReview = isConversionReviewStatus(detail?.status)
 
   const approverRows: ApproverRow[] = useMemo(
     () =>
@@ -210,11 +210,7 @@ export function AdminLeaveValidatePage() {
 
   const canAct = canActConversion || canActSickLeave
 
-  const decisionSettled =
-    detail?.status === 'confirmed' ||
-    detail?.status === 'rejected' ||
-    detail?.status === 'cancelled' ||
-    detail?.status === 'converted_to_sl'
+  const decisionSettled = isLeaveDecisionSettled(detail?.status)
 
   const employee = detail?.employee ?? null
   const employeeNumber = employee?.employee_number ?? '—'
@@ -237,7 +233,7 @@ export function AdminLeaveValidatePage() {
           filedBy: filedByLabel(detail),
           originalReason: detail.leave_reason,
           originalAttachmentCount: detail.attachments?.length ?? 0,
-          requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
+          requestedLeaveType: conversion.to_leave_type?.name ?? '—',
           conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.reason?.trim() || '—',
           conversionAttachmentCount: conversion.med_certs?.length ?? 0,

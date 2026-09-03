@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
 import { ArrowLeft, TriangleAlert, X } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
@@ -17,7 +17,7 @@ import { useToast } from '../../components/ui/ToastProvider'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
-import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
+import { isApprovalsListKey, isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import {
   clampLongLeaveEndDate,
   countLeaveDurationDays,
@@ -35,6 +35,7 @@ import {
   attachmentFieldHint,
   attachmentFieldLabel,
   isFixedRangeLeave,
+  isLeaveSelfFiled,
   isLongLeave,
   isPendingLeaveEditable,
   MED_CERT_ACCEPT,
@@ -54,25 +55,52 @@ const DAY_TYPE_OPTIONS = [
   { value: 'half_pm', label: 'Half day (PM)' },
 ] as const
 
-/** Edit allowed only for pending self-filed leave with no approval history (API rule). */
-function isLeaveEditable(detail: LeaveDetail): boolean {
-  return isPendingLeaveEditable(detail)
+function leaveRequestPathFromEditLocation(
+  pathname: string,
+  leaveId: number,
+): string {
+  if (pathname.startsWith('/team/leave-approvals/')) {
+    return `/team/leave-approvals/${leaveId}`
+  }
+  if (pathname.startsWith('/team/leave-requests/')) {
+    return `/team/leave-requests/${leaveId}`
+  }
+  return `/my-leave/requests/${leaveId}`
+}
+
+function editPageListFallback(pathname: string): string {
+  return pathname.startsWith('/team/') ? '/team/leave-approvals' : '/dashboard'
+}
+
+function editPageListFallbackLabel(pathname: string): string {
+  return pathname.startsWith('/team/')
+    ? 'Back to Leave Approvals'
+    : 'Back to Dashboard'
+}
+
+/** Edit allowed only for pending leave the viewer filed or is on, with no approval history. */
+function isLeaveEditable(detail: LeaveDetail, userId: string): boolean {
+  return isPendingLeaveEditable(detail, userId)
 }
 
 type EditLeaveFormProps = {
   detail: LeaveDetail
+  detailsPath: string
 }
 
-function EditLeaveForm({ detail }: EditLeaveFormProps) {
+function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const location = useLocation()
   const { mutate } = useSWRConfig()
   const toast = useToast()
   const { nonWorkingDates, holidayNames } = useNonWorkingHolidayDates()
 
-  const detailsPath = `/my-leave/requests/${detail.id}`
   const leaveTypeLabel = detail.leave_type.name
   const leaveTypeCode = detail.leave_type.code
+  const selfFiled = isLeaveSelfFiled(detail)
+  const employeeNumber =
+    detail.employee?.employee_number ?? String(detail.emp_id)
+  const employeeName = detail.employee?.name?.trim() || '—'
   const needsAttachment = requiresAttachment(leaveTypeCode)
   const fullDayOnly = requiresFullDay(leaveTypeCode)
   const fixedRange = isFixedRangeLeave(leaveTypeCode)
@@ -122,7 +150,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   }, [dayType, leaveDuration])
 
   const leadTimeValidation = useMemo(() => {
-    if (!appliesVlLeadTime(leaveTypeCode)) {
+    if (!selfFiled || !appliesVlLeadTime(leaveTypeCode)) {
       return { ok: true, isLongLeave: false, message: null }
     }
     return validateLeaveLeadTime({
@@ -131,7 +159,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
       startDateISO: startDate,
       filedOnISO: todayISO(),
     })
-  }, [dayType, leaveDuration, leaveTypeCode, startDate])
+  }, [dayType, leaveDuration, leaveTypeCode, selfFiled, startDate])
 
   const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
   const endPickerLimits = leaveEndPickerLimits(leaveTypeCode, startDate)
@@ -199,7 +227,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
   }
 
   function handleCancel() {
-    navigate(detailsPath)
+    navigate(detailsPath, { state: location.state })
   }
 
   function handleSubmit(event: FormEvent) {
@@ -240,10 +268,17 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
         mutate(swrKeys.leave(detail.id), latest, { revalidate: false }),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
+        ...(detailsPath.startsWith('/team/')
+          ? [
+              mutate(swrKeys.pendingApprovals),
+              mutate(isApprovalsListKey, undefined, { revalidate: true }),
+              mutate(swrKeys.memberBalances(detail.emp_id)),
+            ]
+          : []),
       ])
 
       toast.success('Leave request updated successfully.')
-      navigate(detailsPath)
+      navigate(detailsPath, { state: location.state })
     } catch (error) {
       setApiErrors(
         parseLeaveFormApiError(
@@ -260,6 +295,7 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <Link
         to={detailsPath}
+        state={location.state}
         className="text-body inline-flex w-fit shrink-0 items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -277,10 +313,10 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <TextField
               label="Employee No."
-              value={user.employeeNumber}
+              value={employeeNumber}
               readOnly
             />
-            <TextField label="Name" value={user.name} readOnly />
+            <TextField label="Name" value={employeeName} readOnly />
           </div>
         </section>
 
@@ -526,8 +562,15 @@ function EditLeaveForm({ detail }: EditLeaveFormProps) {
 
 export function EditLeaveRequestPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
+  const location = useLocation()
+  const { user } = useAuth()
   const leaveId = Number(leaveRequestId)
   const validId = Number.isInteger(leaveId) && leaveId > 0
+  const detailsPath = validId
+    ? leaveRequestPathFromEditLocation(location.pathname, leaveId)
+    : editPageListFallback(location.pathname)
+  const listFallback = editPageListFallback(location.pathname)
+  const listFallbackLabel = editPageListFallbackLabel(location.pathname)
 
   const { data: detail, error, isLoading } = useLeaveDetail(
     validId ? leaveId : null,
@@ -541,8 +584,8 @@ export function EditLeaveRequestPage() {
   if (isLoading) {
     return (
       <FormPageLoadingView
-        backTo="/dashboard"
-        backLabel="Back to Dashboard"
+        backTo={detailsPath}
+        backLabel="Back to Leave Request"
         title="Edit Leave Request"
         sections={[
           {
@@ -572,27 +615,28 @@ export function EditLeaveRequestPage() {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <Link
-          to="/dashboard"
+          to={listFallback}
           className="text-body inline-flex w-fit items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Back to Dashboard
+          {listFallbackLabel}
         </Link>
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Leave request not found</h1>
           <p className="mt-2 text-body text-text-gray">
-            Open a request from your dashboard list to edit it.
+            Open a request from the list to edit it.
           </p>
         </div>
       </div>
     )
   }
 
-  if (!isLeaveEditable(detail)) {
+  if (!isLeaveEditable(detail, user.id)) {
     return (
       <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
         <Link
-          to={`/my-leave/requests/${detail.id}`}
+          to={detailsPath}
+          state={location.state}
           className="text-body inline-flex w-fit items-center gap-1.5 text-text-gray transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -601,13 +645,14 @@ export function EditLeaveRequestPage() {
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Editing unavailable</h1>
           <p className="mt-2 text-body text-text-gray">
-            This leave can only be edited by the person who filed it, while it
-            is pending approval and before any approver has acted.
+            This leave can only be edited by the person on leave or the person
+            who filed it, while it is pending approval and before any approver
+            has acted.
           </p>
         </div>
       </div>
     )
   }
 
-  return <EditLeaveForm detail={detail} />
+  return <EditLeaveForm detail={detail} detailsPath={detailsPath} />
 }

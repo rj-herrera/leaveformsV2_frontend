@@ -28,11 +28,36 @@ export function mapApiLeaveStatusToUi(
       return 'APPROVED'
     case 'converted_to_sl':
       return 'CONVERTED'
+    case 'converted_to_el':
+      return 'CONVERTED_EL'
     case 'rejected':
       return 'REJECTED'
     case 'cancelled':
       return 'CANCELLED'
   }
+}
+
+export function isConvertedLeaveStatus(
+  status: LeaveStatus | null | undefined,
+): boolean {
+  return status === 'converted_to_sl' || status === 'converted_to_el'
+}
+
+export function isConversionReviewStatus(
+  status: LeaveStatus | null | undefined,
+): boolean {
+  return status === 'pending_conversion' || isConvertedLeaveStatus(status)
+}
+
+export function isLeaveDecisionSettled(
+  status: LeaveStatus | null | undefined,
+): boolean {
+  return (
+    status === 'confirmed' ||
+    status === 'rejected' ||
+    status === 'cancelled' ||
+    isConvertedLeaveStatus(status)
+  )
 }
 
 /** Map API conversion status → conversion-request section badge. */

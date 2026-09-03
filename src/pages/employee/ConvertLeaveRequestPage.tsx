@@ -306,8 +306,8 @@ export function ConvertLeaveRequestPage() {
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Conversion not available</h1>
           <p className="mt-2 text-body text-text-gray">
-            Only your own confirmed Vacation Leave (with no conversion yet) can
-            be converted to Sick Leave.
+            Only your own confirmed Vacation Leave (with no pending or approved
+            conversion) can be converted to Sick Leave.
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
-import { Check, TriangleAlert, X } from 'lucide-react'
+import { Check, Pencil, TriangleAlert, X } from 'lucide-react'
 import { approveLeave, rejectLeave } from '../../api/approvals'
 import { ApiError } from '../../api/axios-client'
 import { useAuth } from '../../auth/AuthContext'
@@ -32,13 +32,19 @@ import {
   formatDurationDays,
   formatLeavePeriod,
   formatShortDate,
+  isConversionReviewStatus,
+  isLeaveDecisionSettled,
   mapApiLeaveStatusToUi,
 } from '../../utils/leaveDisplay'
 import {
   listPathWithTab,
   listTabFromLocationState,
 } from '../../utils/listTab'
-import { requiresAttachment } from '../../utils/leaveFiling'
+import {
+  canShowLeaveEdit,
+  isPendingLeaveEditable,
+  requiresAttachment,
+} from '../../utils/leaveFiling'
 
 function messageFromApiError(
   error: unknown,
@@ -117,8 +123,7 @@ export function LeaveRequestReviewPage() {
 
   const leaveStatus = detail?.status
   const conversion = detail?.conversion ?? null
-  const usesConversionReview =
-    leaveStatus === 'pending_conversion' || leaveStatus === 'converted_to_sl'
+  const usesConversionReview = isConversionReviewStatus(leaveStatus)
 
   const approverRows: ApproverRow[] = useMemo(
     () =>
@@ -181,12 +186,13 @@ export function LeaveRequestReviewPage() {
   }, [detail, eligibleApprovers, user.id])
 
   const isReviewMode = routeWantsReview && canAct
+  const canShowEdit = detail ? canShowLeaveEdit(detail, user.id) : false
+  const canEdit = detail ? isPendingLeaveEditable(detail, user.id) : false
+  const editDisabledTitle = isConversionReviewStatus(detail?.status)
+    ? 'Editing is not available during leave conversion'
+    : 'Editing is disabled after an approver has taken action'
 
-  const decisionSettled =
-    detail?.status === 'confirmed' ||
-    detail?.status === 'rejected' ||
-    detail?.status === 'cancelled' ||
-    detail?.status === 'converted_to_sl'
+  const decisionSettled = isLeaveDecisionSettled(detail?.status)
 
   const employee = detail?.employee ?? null
   const employeeNumber = employee?.employee_number ?? '—'
@@ -194,11 +200,10 @@ export function LeaveRequestReviewPage() {
   const departmentLabel = orgLabel(employee?.department)
   const groupLabel = orgLabel(employee?.group)
 
-  /** SL / PTB / EL and VL→SL conversion always show the Attachment row. */
+  /** VL / SL / EL conversion always show the Attachment row. */
   const showAttachmentField =
     (detail != null && requiresAttachment(detail.leave_type.code)) ||
-    detail?.status === 'pending_conversion' ||
-    detail?.status === 'converted_to_sl'
+    isConversionReviewStatus(detail?.status)
 
   /** Conversion med certs / leave attachments — same-origin `/api/...` paths for cookie auth. */
   const previewAttachmentFiles = conversion
@@ -301,9 +306,31 @@ export function LeaveRequestReviewPage() {
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <PageBackLink to={backToApprovals}>Back to Leave Approvals</PageBackLink>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
-        <StatusBadge status={uiStatus} />
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
+          <StatusBadge status={uiStatus} />
+        </div>
+
+        {canShowEdit ? (
+          canEdit ? (
+            <Link
+              to={`${location.pathname}/edit`}
+              state={location.state}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              Edit Request
+            </Link>
+          ) : (
+            <span className="inline-flex" title={editDisabledTitle}>
+              <Button type="button" disabled>
+                <Pencil className="size-4" aria-hidden="true" />
+                Edit Request
+              </Button>
+            </span>
+          )
+        ) : null}
       </div>
 
       {actionError ? (

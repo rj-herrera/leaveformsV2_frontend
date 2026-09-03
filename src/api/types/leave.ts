@@ -97,7 +97,7 @@ export type LeaveDetailConversion = {
   to_leave_type: LeaveTypeRef
   has_med_cert: boolean
   med_certs: LeaveAttachmentFile[]
-  /** Employee’s conversion reason (why VL → SL). Distinct from admin reject `remarks`. */
+  /** Employee’s conversion reason (why VL → SL or VL → EL). Distinct from admin reject `remarks`. */
   reason: string | null
   reviewed_by_emp_id: number | null
   reviewed_by?: {
@@ -171,7 +171,7 @@ export type UpdateLeavePayload = {
   leave_reason: string
 }
 
-/** POST /leaves/{id}/cancel */
+/** POST /leaves/{id}/cancel or POST /admin/leaves/{id}/cancel */
 export type CancelLeavePayload = {
   cancellation_reason: string
 }

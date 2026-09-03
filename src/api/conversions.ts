@@ -4,17 +4,25 @@ import type {
   RejectConversionPayload,
 } from './types'
 
-/** POST /leaves/{id}/conversion — multipart `med_cert[]` (1–5 files) + required `reason` (201). */
+/** `to_code` on POST /leaves/{id}/conversion. Omit / SL defaults to sick leave. */
+export type ConversionTargetCode = 'SL' | 'EL'
+
+/** POST /leaves/{id}/conversion — multipart files + required `reason` (201). */
 export async function requestConversion(
   leaveId: number,
-  medCerts: File[],
+  files: File[],
   reason: string,
+  toCode: ConversionTargetCode = 'SL',
 ): Promise<LeaveConversionResource> {
   const form = new FormData()
-  for (const file of medCerts) {
-    form.append('med_cert[]', file)
+  const fileField = toCode === 'EL' ? 'leave_attachment[]' : 'med_cert[]'
+  for (const file of files) {
+    form.append(fileField, file)
   }
   form.append('reason', reason)
+  if (toCode === 'EL') {
+    form.append('to_code', 'EL')
+  }
   return apiPostFormData<LeaveConversionResource>(
     `/leaves/${leaveId}/conversion`,
     form,
