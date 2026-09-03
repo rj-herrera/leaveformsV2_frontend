@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useSWRConfig } from 'swr'
 import { ArrowLeft, TriangleAlert } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
+import { requestConversion } from '../../api/conversions'
 import type { LeaveDetail } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Button } from '../../components/ui/Button'
@@ -9,12 +11,48 @@ import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DropzoneFileField } from '../../components/ui/form/DropzoneFileField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
+import { useToast } from '../../components/ui/ToastProvider'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
+import { useMyBalances } from '../../hooks/api/useMyBalances'
+import { isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import { canRequestConversion } from '../../utils/leaveConversion'
+import { formatDurationDays } from '../../utils/leaveDisplay'
+import {
+  ATTACHMENT_MAX_FILES,
+  attachmentFieldHint,
+  attachmentFieldLabel,
+  MED_CERT_ACCEPT,
+} from '../../utils/leaveFiling'
 
-/** Same accept list as sick-leave conversion attachments. */
-const ATTACHMENT_ACCEPT =
-  '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png'
+function messageFromApiError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (error.message) return error.message
+  }
+  return 'Unable to submit conversion request. Please try again.'
+}
+
+function reasonErrorFromApi(error: unknown): string | null {
+  if (!(error instanceof ApiError)) return null
+  const body = error.body
+  if (body && typeof body === 'object' && 'errors' in body) {
+    const errors = (body as { errors: Record<string, string[]> }).errors
+    const first = errors.reason?.[0]
+    if (typeof first === 'string' && first.trim()) return first.trim()
+  }
+  return null
+}
+
+function formatCreditAmount(value: string | number): string {
+  const n = Number(value)
+  if (Number.isNaN(n)) return String(value)
+  return n.toFixed(2)
+}
 
 type ConvertEmergencyLeaveFormProps = {
   detail: LeaveDetail
@@ -22,32 +60,83 @@ type ConvertEmergencyLeaveFormProps = {
 
 function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
   const navigate = useNavigate()
+  const { mutate } = useSWRConfig()
+  const toast = useToast()
   const detailsPath = `/my-leave/requests/${detail.id}`
+  const { data: elBalances, isLoading: elBalancesLoading } = useMyBalances({
+    code: 'EL',
+  })
 
-  const [conversionReason, setConversionReason] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
+  const [conversionReason, setConversionReason] = useState('')
+  const [reasonApiError, setReasonApiError] = useState<string | null>(null)
   const [triedSubmit, setTriedSubmit] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [submitNotice, setSubmitNotice] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
+  const elAvailable = Number(
+    elBalances?.find((row) => row.code.toUpperCase() === 'EL')?.available ??
+      NaN,
+  )
+  const leaveDuration = Number(detail.duration)
+  const exceedsElCredits =
+    Number.isFinite(elAvailable) &&
+    Number.isFinite(leaveDuration) &&
+    leaveDuration > elAvailable
+
+  const attachmentMissing = attachments.length === 0
   const reasonMissing = conversionReason.trim().length === 0
-  const canSubmit = !reasonMissing && !attachmentUploading
+  const canSubmit =
+    !attachmentMissing &&
+    !reasonMissing &&
+    !attachmentUploading &&
+    !submitting &&
+    !elBalancesLoading &&
+    !exceedsElCredits
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setTriedSubmit(true)
-    setSubmitNotice(null)
+    setSubmitError(null)
+    setReasonApiError(null)
     if (!canSubmit) return
     setConfirmOpen(true)
   }
 
-  function handleConfirmConversion() {
+  async function handleConfirmConversion() {
+    if (attachmentMissing || reasonMissing || exceedsElCredits) return
+
     setConfirmOpen(false)
-    // API wiring deferred — layout and client-side validation only for now.
-    setSubmitNotice(
-      'Emergency Leave conversion is not available yet. Submission will be enabled once the backend is ready.',
-    )
+    setSubmitting(true)
+    setSubmitError(null)
+    setReasonApiError(null)
+
+    try {
+      await requestConversion(
+        detail.id,
+        attachments,
+        conversionReason.trim(),
+        'EL',
+      )
+
+      await Promise.all([
+        mutate(swrKeys.leave(detail.id)),
+        mutate(isLeaveListKey, undefined, { revalidate: true }),
+        mutate(swrKeys.balances()),
+        mutate(swrKeys.balances('EL')),
+      ])
+
+      toast.success('Leave conversion submitted successfully.')
+      navigate('/dashboard')
+    } catch (error) {
+      const reasonError = reasonErrorFromApi(error)
+      if (reasonError) setReasonApiError(reasonError)
+      else setSubmitError(messageFromApiError(error))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -72,39 +161,68 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Conversion Request</h2>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4 sm:p-5">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-5">
             <TextAreaField
               label="Conversion Reason"
               value={conversionReason}
-              onChange={setConversionReason}
+              onChange={(value) => {
+                setConversionReason(value)
+                if (reasonApiError) setReasonApiError(null)
+              }}
               placeholder="Enter reason for converting to Emergency Leave"
               rows={3}
+              className="shrink-0"
               error={
                 triedSubmit && reasonMissing
                   ? 'Conversion reason is required.'
-                  : null
+                  : reasonApiError
               }
             />
             <DropzoneFileField
-              label="Attachment"
+              label={attachmentFieldLabel('EL')}
               files={attachments}
               onChange={setAttachments}
               onUploadingChange={setAttachmentUploading}
-              accept={ATTACHMENT_ACCEPT}
-              multiple={false}
+              accept={MED_CERT_ACCEPT}
+              required
+              maxFiles={ATTACHMENT_MAX_FILES}
+              hint={attachmentFieldHint()}
               className="min-h-0"
+              error={
+                triedSubmit && attachmentMissing
+                  ? 'At least one supporting document is required to submit a conversion request.'
+                  : null
+              }
             />
-            {submitNotice ? (
+            {exceedsElCredits ? (
               <div
-                className="flex shrink-0 gap-2 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-2.5"
+                className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
                 role="alert"
               >
                 <TriangleAlert
-                  className="mt-0.5 size-4 shrink-0 text-status-pending"
+                  className="mt-0.5 size-4 shrink-0 text-status-rejected"
                   aria-hidden="true"
                 />
-                <p className="text-small font-semibold text-text-black">
-                  {submitNotice}
+                <p className="text-small font-semibold text-status-rejected">
+                  Remaining Emergency Leave credits (
+                  {formatCreditAmount(elAvailable)}) are less than this leave
+                  duration ({formatDurationDays(detail.duration)}). Conversion
+                  requires enough EL to cover the full duration, including unpaid
+                  days.
+                </p>
+              </div>
+            ) : null}
+            {submitError ? (
+              <div
+                className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+                role="alert"
+              >
+                <TriangleAlert
+                  className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                  aria-hidden="true"
+                />
+                <p className="text-small font-semibold text-status-rejected">
+                  {submitError}
                 </p>
               </div>
             ) : null}
@@ -115,6 +233,7 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
           <Button
             type="button"
             onClick={() => navigate(detailsPath)}
+            disabled={submitting}
           >
             Cancel
           </Button>
@@ -122,12 +241,20 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
             type="submit"
             variant="primary"
             disabled={!canSubmit}
+            loading={submitting}
+            loadingText="Submitting…"
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
                 : reasonMissing
                   ? 'Enter a conversion reason before confirming.'
-                  : undefined
+                  : attachmentMissing
+                    ? 'Upload at least one supporting document before confirming.'
+                    : elBalancesLoading
+                      ? 'Checking Emergency Leave credits.'
+                      : exceedsElCredits
+                        ? 'Remaining Emergency Leave credits are less than this leave duration.'
+                        : undefined
             }
           >
             Confirm
@@ -138,7 +265,9 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
       <ConfirmReasonModal
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmConversion}
+        onConfirm={() => {
+          void handleConfirmConversion()
+        }}
         title="Confirm leave conversion"
         description="Are you sure you want to convert this confirmed leave request?"
         requireReason={false}
@@ -186,7 +315,7 @@ export function ConvertEmergencyLeaveRequestPage() {
             heading: 'Leave Conversion Request',
             fields: [
               { label: 'Conversion Reason', span: 2 },
-              { label: 'Attachment', span: 2 },
+              { label: attachmentFieldLabel('EL'), span: 2 },
             ],
           },
         ]}
@@ -227,8 +356,8 @@ export function ConvertEmergencyLeaveRequestPage() {
         <div className="rounded-lg border border-border bg-surface p-5">
           <h1 className="text-h1 text-text-black">Conversion not available</h1>
           <p className="mt-2 text-body text-text-gray">
-            Only your own confirmed Vacation Leave (with no conversion yet) can
-            be converted to Emergency Leave.
+            Only your own confirmed Vacation Leave (with no pending or approved
+            conversion) can be converted to Emergency Leave.
           </p>
         </div>
       </div>

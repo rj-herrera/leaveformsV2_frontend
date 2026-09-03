@@ -71,6 +71,7 @@ type AdminAllStatusFilter =
   | 'PENDING_CONVERSION'
   | 'APPROVED'
   | 'CONVERTED'
+  | 'CONVERTED_EL'
 
 type PendingValidationDisplay =
   | {
@@ -78,6 +79,7 @@ type PendingValidationDisplay =
       fromLeaveType: string
       toLeaveType: string
       fromLeaveTypeCode: string
+      toLeaveTypeCode: string
     }
   | {
       kind: 'new_filing'
@@ -110,6 +112,7 @@ const ADMIN_ALL_STATUS_FILTER_OPTIONS: {
   { value: 'PENDING_CONVERSION', label: 'Pending Conversion' },
   { value: 'APPROVED', label: 'Approved' },
   { value: 'CONVERTED', label: 'Converted to SL' },
+  { value: 'CONVERTED_EL', label: 'Converted to EL' },
 ]
 
 const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
@@ -153,6 +156,7 @@ function toPendingValidationRow(
         fromLeaveType: fromType.name,
         toLeaveType: toType.name,
         fromLeaveTypeCode: fromType.code,
+        toLeaveTypeCode: toType.code,
       }
     : {
         kind: 'new_filing',
@@ -237,6 +241,8 @@ function toApiAdminStatus(
       return 'confirmed'
     case 'CONVERTED':
       return 'converted_to_sl'
+    case 'CONVERTED_EL':
+      return 'converted_to_el'
     default:
       return undefined
   }
@@ -250,7 +256,10 @@ function pendingRowMatchesLeaveTypeFilter(
 
   const display = item.pendingValidation
   if (display?.kind === 'conversion') {
-    return display.fromLeaveTypeCode === leaveTypeFilter
+    return (
+      display.fromLeaveTypeCode === leaveTypeFilter ||
+      display.toLeaveTypeCode === leaveTypeFilter
+    )
   }
   if (display?.kind === 'new_filing') {
     return display.leaveTypeCode === leaveTypeFilter

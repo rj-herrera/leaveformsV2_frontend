@@ -1,5 +1,11 @@
-import { apiGetList, type Paginated } from './axios-client'
-import type { ApprovalInboxRow, LeaveOrgRef, LeaveStatus } from './types'
+import { apiGetList, apiPostData, type Paginated } from './axios-client'
+import type {
+  ApprovalInboxRow,
+  CancelLeavePayload,
+  LeaveDetail,
+  LeaveOrgRef,
+  LeaveStatus,
+} from './types'
 
 /** Statuses allowed on GET /admin/leaves `?status=`. */
 export type AdminLeavesListStatus = Extract<
@@ -8,6 +14,7 @@ export type AdminLeavesListStatus = Extract<
   | 'pending_conversion'
   | 'confirmed'
   | 'converted_to_sl'
+  | 'converted_to_el'
 >
 
 export type ListAdminLeavesParams = {
@@ -36,4 +43,12 @@ export async function listAdminGroups(): Promise<LeaveOrgRef[]> {
 export async function listAdminDepartments(): Promise<LeaveOrgRef[]> {
   const { data } = await apiGetList<LeaveOrgRef>('/admin/departments')
   return data
+}
+
+/** POST /admin/leaves/{id}/cancel — cancel confirmed leave; returns detail. */
+export async function cancelAdminLeave(
+  leaveId: number,
+  payload: CancelLeavePayload,
+): Promise<LeaveDetail> {
+  return apiPostData<LeaveDetail>(`/admin/leaves/${leaveId}/cancel`, payload)
 }

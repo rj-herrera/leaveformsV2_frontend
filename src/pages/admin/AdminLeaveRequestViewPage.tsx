@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useLocation, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useSWRConfig } from 'swr'
+import { Trash2, TriangleAlert } from 'lucide-react'
+import { cancelAdminLeave } from '../../api/adminLeaves'
 import { ApiError } from '../../api/axios-client'
 import type { AdminReminderStats } from '../../api/reminders'
 import {
@@ -15,16 +17,26 @@ import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
 import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
+import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { PageBackLink } from '../../components/ui/PageBackLink'
 import { LeaveDetailLoadingView } from '../../components/ui/Skeleton'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useToast } from '../../components/ui/ToastProvider'
 import { INFO_FIELD_GRID_CLASS } from '../../components/ui/tableStyles'
-import { TOAST_REMINDER_SENT_TO_APPROVER } from '../../constants/toastMessages'
+import {
+  TOAST_CONFIRMED_LEAVE_CANCELLED,
+  TOAST_REMINDER_SENT_TO_APPROVER,
+} from '../../constants/toastMessages'
 import { useAdminReminders } from '../../hooks/api/useAdminReminders'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
-import { swrKeys } from '../../hooks/api/swrKeys'
+import {
+  isAdminActivitiesListKey,
+  isAdminLeavesListKey,
+  isApprovalsListKey,
+  isLeaveListKey,
+  swrKeys,
+} from '../../hooks/api/swrKeys'
 import type { LeaveConversionInfo } from '../../types/leaveConversionInfo'
 import type { ApproverRow } from '../../types/approverRow'
 import {
@@ -38,6 +50,8 @@ import {
   formatDurationDays,
   formatLeavePeriod,
   formatShortDate,
+  isConversionReviewStatus,
+  isLeaveDecisionSettled,
   mapApiLeaveStatusToUi,
   resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
@@ -64,7 +78,7 @@ function filedByLabel(detail: {
   return `Employee #${detail.filed_by_emp_id}`
 }
 
-function messageFromReminderError(error: unknown): string {
+function messageFromApiError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     const body = error.body
     if (body && typeof body === 'object' && 'errors' in body) {
@@ -78,12 +92,13 @@ function messageFromReminderError(error: unknown): string {
     }
     if (error.message) return error.message
   }
-  return 'Unable to send reminder. Please try again.'
+  return fallback
 }
 
 export function AdminLeaveRequestViewPage() {
   const { leaveRequestId } = useParams<{ leaveRequestId: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { mutate } = useSWRConfig()
   const toast = useToast()
@@ -106,6 +121,9 @@ export function AdminLeaveRequestViewPage() {
   )
   const [reminderSending, setReminderSending] = useState(false)
   const [reminderError, setReminderError] = useState<string | null>(null)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const uiStatus = detail ? mapApiLeaveStatusToUi(detail.status) : null
   const conversion = detail?.conversion ?? null
@@ -124,9 +142,7 @@ export function AdminLeaveRequestViewPage() {
     return map
   }, [requirements])
 
-  const usesConversionReview =
-    detail?.status === 'pending_conversion' ||
-    detail?.status === 'converted_to_sl'
+  const usesConversionReview = isConversionReviewStatus(detail?.status)
 
   const approverRows: ApproverRow[] = useMemo(
     () =>
@@ -180,11 +196,7 @@ export function AdminLeaveRequestViewPage() {
     ],
   )
 
-  const decisionSettled =
-    detail?.status === 'confirmed' ||
-    detail?.status === 'rejected' ||
-    detail?.status === 'cancelled' ||
-    detail?.status === 'converted_to_sl'
+  const decisionSettled = isLeaveDecisionSettled(detail?.status)
 
   const employee = detail?.employee ?? null
   const employeeNumber = employee?.employee_number ?? '—'
@@ -207,7 +219,7 @@ export function AdminLeaveRequestViewPage() {
           filedBy: filedByLabel(detail),
           originalReason: detail.leave_reason,
           originalAttachmentCount: detail.attachments?.length ?? 0,
-          requestedLeaveType: conversion.to_leave_type?.name ?? 'Sick Leave',
+          requestedLeaveType: conversion.to_leave_type?.name ?? '—',
           conversionRequestDate: formatShortDate(conversion.created_at),
           conversionReason: conversion.reason?.trim() || '—',
           conversionAttachmentCount: conversion.med_certs?.length ?? 0,
@@ -230,6 +242,16 @@ export function AdminLeaveRequestViewPage() {
     user.roles.admin &&
     detail?.status === 'pending_approval' &&
     !isAdminApproved(detail.leave_type.code)
+
+  const canCancelConfirmed =
+    user.roles.admin && detail?.status === 'confirmed'
+  const showCancelAction =
+    user.roles.admin &&
+    (detail?.status === 'confirmed' || detail?.status === 'pending_conversion')
+  const cancelDisabledTitle =
+    detail?.status === 'pending_conversion'
+      ? 'Leave with a pending conversion cannot be cancelled. Reject the conversion first, then cancel the confirmed leave.'
+      : undefined
 
   const notFound =
     !validId ||
@@ -300,9 +322,47 @@ export function AdminLeaveRequestViewPage() {
           { revalidate: true },
         )
       }
-      setReminderError(messageFromReminderError(err))
+      setReminderError(
+        messageFromApiError(err, 'Unable to send reminder. Please try again.'),
+      )
     } finally {
       setReminderSending(false)
+    }
+  }
+
+  async function handleCancelConfirm(reason: string) {
+    if (!detail) return
+
+    setCancelOpen(false)
+    setCancelling(true)
+    setCancelError(null)
+
+    try {
+      const updated = await cancelAdminLeave(detail.id, {
+        cancellation_reason: reason.trim(),
+      })
+
+      await Promise.all([
+        mutate(swrKeys.leave(detail.id), updated, { revalidate: false }),
+        mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
+        mutate(isLeaveListKey, undefined, { revalidate: true }),
+        mutate(isApprovalsListKey, undefined, { revalidate: true }),
+        mutate(isAdminActivitiesListKey, undefined, { revalidate: true }),
+        mutate(swrKeys.balances()),
+        mutate(swrKeys.memberBalances(detail.emp_id)),
+      ])
+
+      toast.success(TOAST_CONFIRMED_LEAVE_CANCELLED)
+      navigate(backToList)
+    } catch (err) {
+      setCancelError(
+        messageFromApiError(
+          err,
+          'Unable to cancel leave request. Please try again.',
+        ),
+      )
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -338,10 +398,53 @@ export function AdminLeaveRequestViewPage() {
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <PageBackLink to={backToList}>Back to Leave Requests</PageBackLink>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
-        <StatusBadge status={uiStatus} />
+      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-h1 text-text-black">{detail.leave_type.name}</h1>
+          <StatusBadge status={uiStatus} />
+        </div>
+
+        {showCancelAction ? (
+          canCancelConfirmed ? (
+            <Button
+              type="button"
+              variant="dangerOutline"
+              disabled={cancelling}
+              loading={cancelling}
+              loadingText="Cancelling…"
+              onClick={() => {
+                setCancelError(null)
+                setCancelOpen(true)
+              }}
+            >
+              <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
+              Cancel Request
+            </Button>
+          ) : (
+            <span className="inline-flex" title={cancelDisabledTitle}>
+              <Button type="button" variant="dangerOutline" disabled>
+                <Trash2 className="size-4 text-status-rejected" aria-hidden="true" />
+                Cancel Request
+              </Button>
+            </span>
+          )
+        ) : null}
       </div>
+
+      {cancelError ? (
+        <div
+          className="flex shrink-0 gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5"
+          role="alert"
+        >
+          <TriangleAlert
+            className="mt-0.5 size-4 shrink-0 text-status-rejected"
+            aria-hidden="true"
+          />
+          <p className="text-small font-semibold text-status-rejected">
+            {cancelError}
+          </p>
+        </div>
+      ) : null}
 
       {reminderError ? (
         <div
@@ -417,6 +520,22 @@ export function AdminLeaveRequestViewPage() {
         currentUserId={String(user.id)}
         canRemind={showReminderActions ? canRemind : undefined}
         onRemind={showReminderActions ? setReminderTarget : undefined}
+      />
+
+      <ConfirmReasonModal
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={(reason) => {
+          void handleCancelConfirm(reason)
+        }}
+        title="Cancel leave request"
+        description="This will cancel the confirmed leave request. Please provide a cancellation reason."
+        reasonLabel="Cancellation reason"
+        reasonPlaceholder="Enter cancellation reason..."
+        confirmLabel="Cancel Request"
+        cancelLabel="Keep Request"
+        confirmVariant="danger"
+        iconVariant="cancel"
       />
 
       <ConfirmReasonModal

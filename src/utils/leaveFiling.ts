@@ -160,6 +160,10 @@ export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
 
+function empIdsMatch(left: number, right: string): boolean {
+  return String(left) === String(right)
+}
+
 /** True when the person on leave submitted the request (not a PIC on-behalf). */
 export function isLeaveSelfFiled(detail: LeaveDetail): boolean {
   if (detail.filed_by != null && detail.employee != null) {
@@ -168,10 +172,46 @@ export function isLeaveSelfFiled(detail: LeaveDetail): boolean {
   return detail.filed_by_emp_id === detail.emp_id
 }
 
-/** Pending self-filed filable leave with no approval history yet. */
-export function isPendingLeaveEditable(detail: LeaveDetail): boolean {
+/** True when the viewer is the person on leave. */
+function isLeaveViewerTheEmployee(
+  detail: LeaveDetail,
+  userId: string,
+): boolean {
+  if (detail.employee != null) {
+    return empIdsMatch(detail.employee.id, userId)
+  }
+  return empIdsMatch(detail.emp_id, userId)
+}
+
+/** True when the viewer submitted the request. */
+function isLeaveViewerTheFiler(
+  detail: LeaveDetail,
+  userId: string,
+): boolean {
+  if (detail.filed_by != null) {
+    return empIdsMatch(detail.filed_by.id, userId)
+  }
+  return empIdsMatch(detail.filed_by_emp_id, userId)
+}
+
+/** API: show Edit when the viewer is `employee.id` or `filed_by.id`. */
+export function canShowLeaveEdit(detail: LeaveDetail, userId: string): boolean {
+  return (
+    isLeaveViewerTheEmployee(detail, userId) ||
+    isLeaveViewerTheFiler(detail, userId)
+  )
+}
+
+/**
+ * Pending filable leave with no approval history.
+ * The person on leave or the original filer may edit (self-file and on-behalf).
+ */
+export function isPendingLeaveEditable(
+  detail: LeaveDetail,
+  userId: string,
+): boolean {
   if (detail.status !== 'pending_approval') return false
   if (!isFilableLeaveCode(detail.leave_type.code)) return false
-  if (!isLeaveSelfFiled(detail)) return false
+  if (!canShowLeaveEdit(detail, userId)) return false
   return !detail.approval_requirements.some((req) => req.history != null)
 }

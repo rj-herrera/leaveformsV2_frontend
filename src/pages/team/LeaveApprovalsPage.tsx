@@ -54,6 +54,7 @@ type ApprovalsStatusFilter =
   | 'REJECTED'
   | 'PENDING_CONVERSION'
   | 'CONVERTED'
+  | 'CONVERTED_EL'
 
 type ApprovalRowView = {
   id: number
@@ -77,6 +78,7 @@ const APPROVALS_STATUS_FILTER_OPTIONS: {
   { value: 'REJECTED', label: 'Rejected' },
   { value: 'PENDING_CONVERSION', label: 'Pending conversion' },
   { value: 'CONVERTED', label: 'Converted to SL' },
+  { value: 'CONVERTED_EL', label: 'Converted to EL' },
 ]
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
@@ -112,6 +114,8 @@ function toApiStatus(
       return 'pending_conversion'
     case 'CONVERTED':
       return 'converted_to_sl'
+    case 'CONVERTED_EL':
+      return 'converted_to_el'
     default:
       return undefined
   }

@@ -35,16 +35,15 @@ import {
   type AttachmentFile,
 } from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import {
-  isLeaveSelfFiled,
-  isPendingLeaveEditable,
-  requiresAttachment,
-} from '../../utils/leaveFiling'
+import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
+import { canRequestConversion as leaveIsConvertible } from '../../utils/leaveConversion'
 import {
   formatDateTime,
   formatDurationDays,
   formatLeavePeriod,
   formatShortDate,
+  isConversionReviewStatus,
+  isLeaveDecisionSettled,
   mapApiLeaveStatusToUi,
   resolveConversionReviewerName,
 } from '../../utils/leaveDisplay'
@@ -102,8 +101,7 @@ export function LeaveRequestDetailsPage() {
 
   const leaveStatus = detail?.status
   const conversion = detail?.conversion ?? null
-  const usesConversionReview =
-    leaveStatus === 'pending_conversion' || leaveStatus === 'converted_to_sl'
+  const usesConversionReview = isConversionReviewStatus(leaveStatus)
 
   /**
    * Approvers table: eligible pool for the current stage.
@@ -164,20 +162,13 @@ export function LeaveRequestDetailsPage() {
 
   const isConversion =
     detail?.status === 'pending_conversion' && detail.conversion != null
-  const filedOnBehalf = detail ? !isLeaveSelfFiled(detail) : false
-  const canEdit = detail ? isPendingLeaveEditable(detail) : false
+  const canEdit = detail ? isPendingLeaveEditable(detail, user.id) : false
   const canCancel = detail?.status === 'pending_approval'
-  const canRequestConversion =
-    detail?.status === 'confirmed' &&
-    detail.leave_type.code.toUpperCase() === 'VL' &&
-    detail.conversion == null &&
-    String(detail.emp_id) === String(user.id)
+  const canRequestConversion = detail
+    ? leaveIsConvertible(detail, user.id)
+    : false
 
-  const decisionSettled =
-    detail?.status === 'confirmed' ||
-    detail?.status === 'rejected' ||
-    detail?.status === 'cancelled' ||
-    detail?.status === 'converted_to_sl'
+  const decisionSettled = isLeaveDecisionSettled(detail?.status)
 
   const conversionPanels: LeaveConversionInfo | null =
     detail && conversion
@@ -312,7 +303,7 @@ export function LeaveRequestDetailsPage() {
               <RefreshCw className="size-4" aria-hidden="true" />
               Request Conversion
             </button>
-          ) : filedOnBehalf ? null : canEdit ? (
+          ) : canEdit ? (
             <Link
               to={`/my-leave/requests/${detail.id}/edit`}
               className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-body font-medium text-text-black transition-colors hover:bg-surface-muted"
@@ -321,18 +312,19 @@ export function LeaveRequestDetailsPage() {
               Edit Request
             </Link>
           ) : (
-            <Button
-              type="button"
-              disabled
+            <span
+              className="inline-flex"
               title={
                 isConversion
                   ? 'Editing is not available during leave conversion'
                   : 'Editing is disabled after an approver has taken action'
               }
             >
-              <Pencil className="size-4" aria-hidden="true" />
-              Edit Request
-            </Button>
+              <Button type="button" disabled>
+                <Pencil className="size-4" aria-hidden="true" />
+                Edit Request
+              </Button>
+            </span>
           )}
 
           <Button

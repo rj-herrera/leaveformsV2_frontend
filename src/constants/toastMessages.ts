@@ -1,4 +1,4 @@
-/** VL → SL conversion validation (Admin validate page). */
+/** VL → SL / VL → EL conversion validation (Admin validate page). */
 export const TOAST_LEAVE_CONVERSION_APPROVED =
   'Leave conversion request approved successfully.'
 export const TOAST_LEAVE_CONVERSION_REJECTED =
@@ -17,6 +17,10 @@ export const TOAST_REMINDER_SENT_TO_ALL =
 /** Admin single-approver reminder from leave request view. */
 export const TOAST_REMINDER_SENT_TO_APPROVER =
   'Reminder email sent successfully to the selected approver.'
+
+/** Admin cancel of a confirmed leave. */
+export const TOAST_CONFIRMED_LEAVE_CANCELLED =
+  'Leave request cancelled successfully.'
 
 /** Admin leave credit adjustment. */
 export function toastLeaveCreditsAdjusted(employeeName: string) {

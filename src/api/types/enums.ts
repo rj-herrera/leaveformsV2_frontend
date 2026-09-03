@@ -9,6 +9,7 @@ export type LeaveStatus =
   | 'rejected'
   | 'cancelled'
   | 'converted_to_sl'
+  | 'converted_to_el'
 
 export type ConversionStatus = 'pending_review' | 'approved' | 'rejected'
 

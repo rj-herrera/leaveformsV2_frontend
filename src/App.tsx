@@ -92,6 +92,10 @@ function App() {
               element={<LeaveApprovalsPage />}
             />
             <Route
+              path="team/leave-approvals/:leaveRequestId/edit"
+              element={<EditLeaveRequestPage />}
+            />
+            <Route
               path="team/leave-approvals/:leaveRequestId"
               element={<LeaveRequestReviewPage />}
             />
@@ -106,6 +110,10 @@ function App() {
             <Route
               path="team/leave-calendar/upcoming"
               element={<UpcomingApprovedLeavesPage />}
+            />
+            <Route
+              path="team/leave-requests/:leaveRequestId/edit"
+              element={<EditLeaveRequestPage />}
             />
             <Route
               path="team/leave-requests/:leaveRequestId"

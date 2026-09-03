@@ -3,6 +3,7 @@ export type LeaveRequestStatus =
   | 'PENDING_CONVERSION'
   | 'APPROVED'
   | 'CONVERTED'
+  | 'CONVERTED_EL'
   | 'REJECTED'
   | 'CANCELLED'
   /** Conversion-request section badge only (not used in leave list filters). */
@@ -21,6 +22,7 @@ export const LEAVE_STATUS_LABELS: Record<LeaveRequestStatus, string> = {
   PENDING_CONVERSION: 'PENDING CONVERSION',
   APPROVED: 'APPROVED',
   CONVERTED: 'CONVERTED TO SL',
+  CONVERTED_EL: 'CONVERTED TO EL',
   REJECTED: 'REJECTED',
   CANCELLED: 'CANCELLED',
   CONVERSION_PENDING: 'PENDING',
@@ -33,6 +35,7 @@ export const LEAVE_STATUS_STYLES: Record<LeaveRequestStatus, string> = {
   PENDING_CONVERSION: 'bg-status-pending-conversion text-white',
   APPROVED: 'bg-status-approved text-white',
   CONVERTED: 'bg-status-converted text-white',
+  CONVERTED_EL: 'bg-status-converted text-white',
   REJECTED: 'bg-status-rejected text-white',
   CANCELLED: 'bg-status-cancelled text-white',
   CONVERSION_PENDING:
@@ -51,6 +54,7 @@ export const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'PENDING_CONVERSION', label: 'Pending conversion' },
   { value: 'APPROVED', label: 'Approved' },
   { value: 'CONVERTED', label: 'Converted to SL' },
+  { value: 'CONVERTED_EL', label: 'Converted to EL' },
   { value: 'REJECTED', label: 'Rejected' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ]

@@ -9,7 +9,11 @@ import type {
 /** Statuses allowed on GET /approvals `?status=`. */
 export type ApprovalsListStatus = Extract<
   LeaveStatus,
-  'confirmed' | 'rejected' | 'pending_conversion' | 'converted_to_sl'
+  | 'confirmed'
+  | 'rejected'
+  | 'pending_conversion'
+  | 'converted_to_sl'
+  | 'converted_to_el'
 >
 
 export type ListApprovalsParams = {
