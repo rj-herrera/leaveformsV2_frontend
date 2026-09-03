@@ -10,7 +10,7 @@ import {
 } from './leaveBalances'
 import { MOCK_DATA_ENABLED } from './config'
 
-/** Eligibility type filter applied when building the report. */
+/** Client-side eligibility type filter (optional; not shown in the UI). */
 export type MonetizationEligibilityType = 'ALL' | 'VL' | 'SL' | 'BOTH'
 
 export type MonetizationEligibilityBasis = 'VL' | 'SL' | 'VL and SL'
@@ -72,16 +72,6 @@ export type MonetizationReport = {
   candidates: MonetizationCandidate[]
   grandTotals: MonetizationGrandTotals
 }
-
-export const MONETIZATION_ELIGIBILITY_OPTIONS: {
-  value: MonetizationEligibilityType
-  label: string
-}[] = [
-  { value: 'ALL', label: 'All Eligible Employees' },
-  { value: 'VL', label: 'Vacation Leave Excess' },
-  { value: 'SL', label: 'Sick Leave Excess' },
-  { value: 'BOTH', label: 'Both VL and SL Excess' },
-]
 
 /**
  * Configurable monetization policy.
@@ -336,7 +326,7 @@ export function buildMonetizationReport(params: {
 
 /**
  * Client-side filter over an already-built report (does not regenerate).
- * Applies search and/or eligibility type to the displayed candidate list only.
+ * Applies search, and optionally eligibility type, to the displayed list only.
  */
 export function filterMonetizationCandidates(
   candidates: MonetizationCandidate[],

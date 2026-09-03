@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, Printer, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { ClearFiltersButton, EmptyState } from '../../components/ui/EmptyState'
-import { FilterSelect } from '../../components/ui/FilterSelect'
 import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
 import { Pagination } from '../../components/ui/Pagination'
@@ -19,7 +18,6 @@ import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_T
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
 import {
-  MONETIZATION_ELIGIBILITY_OPTIONS,
   buildMonetizationReport,
   filterMonetizationCandidates,
   getMonetizationAvailability,
@@ -27,7 +25,6 @@ import {
   hasVlEligible,
   sumEligibleTotals,
   type MonetizationCandidate,
-  type MonetizationEligibilityType,
   type MonetizationReport,
 } from '../../mocks/monetizationCandidates'
 import { compareEmployeeNumber } from '../../utils/sort'
@@ -52,8 +49,6 @@ export function LeaveMonetizationCandidatesPage() {
   } = useContentSizedTableRefs({ fallbackRowHeight: APPROVALS_TABLE_ROW_HEIGHT })
 
   const [conversionYear, setConversionYear] = useState<number | null>(DEFAULT_YEAR)
-  const [eligibilityType, setEligibilityType] =
-    useState<MonetizationEligibilityType>('ALL')
   const [search, setSearch] = useState('')
   const [report, setReport] = useState<MonetizationReport | null>(null)
   const [actionNotice, setActionNotice] = useState('')
@@ -70,22 +65,10 @@ export function LeaveMonetizationCandidatesPage() {
 
   const canGenerate = availability?.available === true
 
-  const eligibilityOptions = useMemo(
-    () =>
-      MONETIZATION_ELIGIBILITY_OPTIONS.map((option) => ({
-        value: option.value,
-        label: option.label,
-      })),
-    [],
-  )
-
   const filteredCandidates = useMemo(() => {
     if (!report) return []
-    return filterMonetizationCandidates(report.candidates, {
-      search,
-      eligibilityType,
-    })
-  }, [report, search, eligibilityType])
+    return filterMonetizationCandidates(report.candidates, { search })
+  }, [report, search])
 
   const sortedCandidates = useMemo(() => {
     const next = [...filteredCandidates]
@@ -96,16 +79,14 @@ export function LeaveMonetizationCandidatesPage() {
     return next
   }, [filteredCandidates, sortDir])
 
-  const filterResetKey = `${search}|${eligibilityType}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
+  const filterResetKey = `${search}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
     usePagination(sortedCandidates, pageSize, filterResetKey)
 
-  const hasActiveFilters =
-    search.trim().length > 0 || eligibilityType !== 'ALL'
+  const hasActiveFilters = search.trim().length > 0
 
   function clearFilters() {
     setSearch('')
-    setEligibilityType('ALL')
   }
 
   const filteredTotals = useMemo(
@@ -153,7 +134,6 @@ export function LeaveMonetizationCandidatesPage() {
 
   function handleReset() {
     setConversionYear(DEFAULT_YEAR)
-    setEligibilityType('ALL')
     setSearch('')
     setReport(null)
     setFormError('')
@@ -207,17 +187,6 @@ export function LeaveMonetizationCandidatesPage() {
                   minYear={2020}
                   maxYear={2035}
                 />
-
-                <div className="min-w-[14rem]">
-                  <span className={fieldLabelClassName}>Eligibility Type</span>
-                  <FilterSelect
-                    label="Eligibility Type"
-                    value={eligibilityType}
-                    onChange={setEligibilityType}
-                    options={eligibilityOptions}
-                    selectHeight={FILTER_CONTROL_H}
-                  />
-                </div>
 
                 <label className="relative block min-w-[14rem] flex-1">
                   <span className={fieldLabelClassName}>Search Employee</span>

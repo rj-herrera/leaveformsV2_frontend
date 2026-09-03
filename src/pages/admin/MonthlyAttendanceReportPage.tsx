@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Download, Printer } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
 import type {
   MonthlyAttendanceCategory,
@@ -18,6 +18,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { useAdminEmployees } from '../../hooks/api/useAdminEmployees'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useAdminMonthlyAttendance } from '../../hooks/api/useAdminMonthlyAttendance'
+import { downloadMonthlyAttendanceExcel } from '../../utils/exportMonthlyAttendanceExcel'
 import { monthValue } from '../../utils/teamCalendarGrid'
 
 type GroupFilter = 'ALL' | string
@@ -145,6 +146,7 @@ export function MonthlyAttendanceReportPage() {
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([])
   const [actionNotice, setActionNotice] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const groupId =
     groupFilter !== 'ALL' && Number.isInteger(Number(groupFilter))
@@ -198,10 +200,10 @@ export function MonthlyAttendanceReportPage() {
 
   const availableEmployeeCount = employees?.length ?? 0
   const allEmployeesSelected =
-    empIds.length === 0 ||
-    (availableEmployeeCount > 0 && empIds.length === availableEmployeeCount)
+    availableEmployeeCount > 0 && empIds.length === availableEmployeeCount
 
   const reportParams = useMemo(() => {
+    if (empIds.length === 0) return null
     if (!/^\d{4}-\d{2}$/.test(monthYear)) return null
     return {
       month: monthYear,
@@ -228,6 +230,19 @@ export function MonthlyAttendanceReportPage() {
     setActionNotice('')
   }
 
+  async function handleExportExcel() {
+    if (!report) return
+    setExporting(true)
+    setActionNotice('')
+    try {
+      await downloadMonthlyAttendanceExcel(report)
+    } catch {
+      setActionNotice('Unable to export Excel. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -236,24 +251,12 @@ export function MonthlyAttendanceReportPage() {
           <Button
             variant="primary"
             disabled={!showReport}
-            onClick={() =>
-              setActionNotice(
-                'Export to Excel will be available in a future update.',
-              )
-            }
+            loading={exporting}
+            loadingText="Exporting…"
+            onClick={() => void handleExportExcel()}
           >
             <Download className="size-4" aria-hidden="true" />
             Export Excel
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!showReport}
-            onClick={() =>
-              setActionNotice('Print will be available in a future update.')
-            }
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            Print
           </Button>
         </div>
       </div>
@@ -374,7 +377,7 @@ function ReportBody({
     return (
       <EmptyState
         variant="no-data"
-        message="No attendance data to display."
+        message="Select at least one employee to view the report."
         className="min-h-0 flex-1"
       />
     )
