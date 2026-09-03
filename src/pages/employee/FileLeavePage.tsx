@@ -28,6 +28,7 @@ import {
   type DayType,
 } from '../../utils/leaveDates'
 import {
+  allowsLwop,
   appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
@@ -157,6 +158,12 @@ export function FileLeavePage() {
   const noCredits =
     leaveType !== '' &&
     enforcesRemainingCredits(leaveType) &&
+    Number.isFinite(remainingDays) &&
+    remainingDays <= 0
+  /** VL/SL with 0 available credits — filing still allowed; recorded as full LWOP. */
+  const willBeFullLwop =
+    leaveType !== '' &&
+    allowsLwop(leaveType) &&
     Number.isFinite(remainingDays) &&
     remainingDays <= 0
 
@@ -385,31 +392,59 @@ export function FileLeavePage() {
               />
               {noCredits ? (
                 <div
-                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
                   role="alert"
                 >
                   <TriangleAlert
-                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    className="mt-0.5 size-5 shrink-0 text-status-pending"
                     aria-hidden="true"
                   />
-                  <p className="text-small font-semibold text-status-rejected">
-                    You have no remaining {selectedTypeLabel} credits. This
-                    leave type cannot be filed without available credits.
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-body font-semibold text-text-black">
+                      No remaining {selectedTypeLabel} credits
+                    </p>
+                    <p className="mt-1 text-small text-text-black">
+                      You cannot file {selectedTypeLabel} without available
+                      credits.
+                    </p>
+                  </div>
                 </div>
               ) : exceedsCredits ? (
                 <div
-                  className="flex gap-2 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-2.5 sm:col-span-2"
+                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
                   role="alert"
                 >
                   <TriangleAlert
-                    className="mt-0.5 size-4 shrink-0 text-status-rejected"
+                    className="mt-0.5 size-5 shrink-0 text-status-pending"
                     aria-hidden="true"
                   />
-                  <p className="text-small font-semibold text-status-rejected">
-                    Duration exceeds remaining {selectedTypeLabel} credits.
-                    Shorten the leave, or file remaining days as Vacation Leave.
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-body font-semibold text-text-black">
+                      Insufficient {selectedTypeLabel} credits
+                    </p>
+                    <p className="mt-1 text-small text-text-black">
+                      Duration exceeds remaining credits. Shorten the leave, or
+                      file remaining days as Vacation Leave.
+                    </p>
+                  </div>
+                </div>
+              ) : willBeFullLwop ? (
+                <div
+                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
+                  role="status"
+                >
+                  <TriangleAlert
+                    className="mt-0.5 size-5 shrink-0 text-status-pending"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-body font-semibold text-text-black">
+                      No remaining {selectedTypeLabel} credits
+                    </p>
+                    <p className="mt-1 text-small text-text-black">
+                      This request will be filed as Leave Without Pay (LWOP).
+                    </p>
+                  </div>
                 </div>
               ) : null}
               {leadTimeValidation.isLongLeave ? (
