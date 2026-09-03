@@ -14,12 +14,12 @@ const OPTIONS: Array<{
   {
     value: 'annual',
     title: 'Annual Leave Credit Distribution',
-    description: 'Grant yearly VL/SL credits to eligible regular employees.',
+    description: 'Distribute annual VL/SL credits to eligible regular employees.',
   },
   {
     value: 'newly-regularized',
     title: 'Newly Regularized Employees',
-    description: 'Prorated VL/SL plus PTB for newly regularized staff.',
+    description: 'Distribute VL/SL and PTB credits to newly regularized employees.',
   },
   {
     value: 'contractual',
