@@ -5,6 +5,7 @@ import type { ListAdminAnnualEntitlementsParams } from '../../api/adminAnnualEnt
 import type { ListAdminBalancesParams } from '../../api/adminBalances'
 import type { ListAdminEmployeesParams } from '../../api/adminEmployees'
 import type { ListAdminLeavesParams } from '../../api/adminLeaves'
+import type { ListEmployeesWithLwopParams } from '../../api/adminEmployeesWithLwop'
 import type { ListMonthlyAttendanceParams } from '../../api/adminMonthlyAttendance'
 import type { ListAdminContractualEntitlementsParams } from '../../api/adminContractualEntitlements'
 import type { ListAdminNewlyRegularizedParams } from '../../api/adminNewlyRegularized'
@@ -170,6 +171,12 @@ export const swrKeys = {
         ? params.emp_ids.join(',')
         : null,
     ] as const,
+
+  adminLeaveMonetizationCandidates: (year: number) =>
+    ['admin-leave-monetization-candidates', year] as const,
+
+  adminEmployeesWithLwop: (params: ListEmployeesWithLwopParams) =>
+    ['admin-employees-with-lwop', params.year, params.group_id ?? null] as const,
 }
 
 /**
