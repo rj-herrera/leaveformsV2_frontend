@@ -121,15 +121,17 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
         'EL',
       )
 
-      await Promise.all([
+      // Navigate before leave-detail revalidation so the parent gate does not
+      // briefly show "Conversion not available" after status becomes pending.
+      toast.success('Leave conversion submitted successfully.')
+      navigate('/dashboard')
+
+      void Promise.all([
         mutate(swrKeys.leave(detail.id)),
         mutate(isLeaveListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
         mutate(swrKeys.balances('EL')),
       ])
-
-      toast.success('Leave conversion submitted successfully.')
-      navigate('/dashboard')
     } catch (error) {
       const reasonError = reasonErrorFromApi(error)
       if (reasonError) setReasonApiError(reasonError)
