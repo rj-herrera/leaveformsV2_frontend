@@ -8,7 +8,7 @@
  *
  * Prefer page → hook → `api/*` when wiring a screen. After mutations, call
  * `mutate(swrKeys.…)` (or the hook's `mutate`) to refresh cache. Keep mocks
- * only for modules with no backend yet (remaining admin reports, notifications,
+ * only for modules with no backend yet (remaining admin reports,
  * monetization). Flip pages off mocks as APIs land.
  */
 export const MOCK_DATA_ENABLED = true

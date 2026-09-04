@@ -12,6 +12,7 @@ import {
   getLeaveBalanceGroups,
   type LeaveBalanceEmployee,
 } from './leaveBalances'
+import { formatLeavePeriod, formatShortDate } from '../utils/leaveDisplay'
 
 export type LwopDayType = 'whole' | 'half-am' | 'half-pm'
 
@@ -206,24 +207,12 @@ const LWOP_RECORDS: LwopDetailRecord[] = [
   },
 ]
 
-function parseIso(iso: string): Date {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-  if (!match) return new Date(NaN)
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-}
-
 function toIsoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 export function formatLwopDateLabel(isoDate: string): string {
-  const date = parseIso(isoDate)
-  if (Number.isNaN(date.getTime())) return isoDate
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+  return formatShortDate(isoDate)
 }
 
 function toDateKey(date: Date): string {
@@ -252,14 +241,14 @@ export function getYearReportingPeriod(
     return {
       start,
       end: '',
-      label: `${formatLwopDateLabel(start)} – present (not yet started)`,
+      label: `${formatShortDate(start)} – present (not yet started)`,
     }
   }
 
   return {
     start,
     end,
-    label: `${formatLwopDateLabel(start)} – ${formatLwopDateLabel(end)}`,
+    label: formatLeavePeriod(start, end),
   }
 }
 

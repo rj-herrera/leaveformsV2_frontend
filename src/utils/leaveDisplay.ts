@@ -96,15 +96,37 @@ export function resolveConversionReviewerName(
   return `Employee #${reviewedByEmpId}`
 }
 
+/** Parse `YYYY-MM-DD` (or a longer ISO string) as a local calendar date. */
+function parseLocalDateOnly(isoDate: string): Date | null {
+  const datePart = isoDate.trim().slice(0, 10)
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart)
+  if (!match) {
+    const fallback = new Date(`${datePart}T00:00:00`)
+    return Number.isNaN(fallback.getTime()) ? null : fallback
+  }
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  )
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 export function formatShortDate(isoDate: string | null | undefined): string {
   if (!isoDate) return '—'
-  const datePart = isoDate.slice(0, 10)
-  const date = new Date(`${datePart}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return isoDate
+  const date = parseLocalDateOnly(isoDate)
+  if (!date) return isoDate
   return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+  })
+}
+
+function formatMonthDay(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
   })
 }
 
@@ -192,8 +214,41 @@ export function formatLongDateTime(iso: string | null | undefined): string {
   return `${datePart}, ${timePart}`
 }
 
+/**
+ * Display a leave period / date range.
+ * - Same day: `Sep 14, 2026`
+ * - Same month & year: `Sep 14–15, 2026`
+ * - Different months, same year: `Sep 30 – Nov 1, 2026`
+ * - Different years: `Dec 1, 2026 – Jan 15, 2027`
+ */
 export function formatLeavePeriod(startDate: string, endDate: string): string {
-  if (startDate === endDate) return formatShortDate(startDate)
+  const start = parseLocalDateOnly(startDate)
+  const end = parseLocalDateOnly(endDate)
+  if (!start || !end) {
+    if (startDate === endDate) return formatShortDate(startDate)
+    return `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
+  }
+
+  if (
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate()
+  ) {
+    return formatShortDate(startDate)
+  }
+
+  const sameYear = start.getFullYear() === end.getFullYear()
+  const sameMonth = sameYear && start.getMonth() === end.getMonth()
+
+  if (sameMonth) {
+    const month = start.toLocaleDateString('en-US', { month: 'short' })
+    return `${month} ${start.getDate()}–${end.getDate()}, ${start.getFullYear()}`
+  }
+
+  if (sameYear) {
+    return `${formatMonthDay(start)} – ${formatMonthDay(end)}, ${start.getFullYear()}`
+  }
+
   return `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
 }
 
