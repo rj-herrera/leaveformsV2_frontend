@@ -27,7 +27,3 @@ const NON_WORKING_HOLIDAYS = new Set<string>(
 export function isNonWorkingHoliday(iso: string): boolean {
   return NON_WORKING_HOLIDAYS.has(iso)
 }
-
-export function getNonWorkingHolidays(): ReadonlySet<string> {
-  return NON_WORKING_HOLIDAYS
-}

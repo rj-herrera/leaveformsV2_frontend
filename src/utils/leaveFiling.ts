@@ -98,9 +98,25 @@ export function requiresMedCert(code: string): boolean {
 }
 
 export function attachmentFieldLabel(code: string): string {
-  if (requiresMedCert(code)) return 'Medical certificate'
-  if (code.toUpperCase() === 'PL') return 'Paternity Notification Form'
+  if (requiresMedCert(code)) return 'Supporting document'
+  if (isPaternityLeave(code)) return 'Paternity Notification Form'
   return 'Supporting document'
+}
+
+export function isPaternityLeave(code: string): boolean {
+  return code.toUpperCase() === 'PL'
+}
+
+/** Filename of the blank Paternity Notification Form under `public/form/`. */
+export const PATERNITY_NOTIFICATION_FORM_FILENAME =
+  'Paternity-Notification-Form.doc'
+
+/**
+ * Public URL for the blank form. Uses Vite `BASE_URL` so the path works when
+ * the app is deployed at a subpath (not only at `/` in local dev).
+ */
+export function paternityNotificationFormHref(): string {
+  return `${import.meta.env.BASE_URL}form/${PATERNITY_NOTIFICATION_FORM_FILENAME}`
 }
 
 /** Admin-only types (PIC reminders do not apply). */

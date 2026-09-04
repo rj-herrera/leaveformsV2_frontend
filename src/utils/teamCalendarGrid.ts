@@ -1,4 +1,5 @@
 import { toLocalISODate } from './leaveDates'
+import { formatLeavePeriod } from './leaveDisplay'
 
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
 
@@ -116,16 +117,8 @@ export function formatLongDateLabel(iso: string): string {
 }
 
 export function formatWeekRangeLabel(mondayIso: string): string {
-  const start = parseLocalISO(mondayIso)
-  const end = parseLocalISO(addDaysIso(mondayIso, 4))
-  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
-  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
-  const year = end.getFullYear()
-
-  if (start.getMonth() === end.getMonth()) {
-    return `${startMonth} ${start.getDate()}–${end.getDate()}, ${year}`
-  }
-  return `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}, ${year}`
+  const fridayIso = addDaysIso(mondayIso, 4)
+  return formatLeavePeriod(mondayIso, fridayIso)
 }
 
 /** Nearby months for the month selector (±12 months from today). */

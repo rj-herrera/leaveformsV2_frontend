@@ -21,7 +21,7 @@ export type LeaveLeadTimeResult = {
 }
 
 export const LEAVE_LEAD_TIME_MESSAGE =
-  'Leave requests of 3 or more consecutive days must be filed at least 1 month before the leave start date.'
+  'Leave requests of 3 or more consecutive days must be filed at least 1 month in advance. Choose a later start date or shorten the leave duration.'
 
 /** Calendar-month add on a local ISO date (handles month-end overflow). */
 export function addCalendarMonths(iso: string, months: number): string {
