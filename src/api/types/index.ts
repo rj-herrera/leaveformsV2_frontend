@@ -84,3 +84,16 @@ export type {
   MonthlyAttendanceReport,
   MonthlyAttendanceTotals,
 } from './monthlyAttendance'
+
+export type {
+  LeaveMonetizationCandidateRow,
+  LeaveMonetizationCandidatesReport,
+  LeaveMonetizationGrandTotals,
+  MonetizationEligibilityBasis,
+} from './monetizationCandidates'
+
+export type {
+  EmployeesWithLwopGrandTotals,
+  EmployeesWithLwopReport,
+  EmployeesWithLwopRow,
+} from './employeesWithLwop'

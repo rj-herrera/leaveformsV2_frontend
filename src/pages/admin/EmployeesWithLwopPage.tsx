@@ -1,11 +1,19 @@
 import { useMemo, useState } from 'react'
-import { Download, Printer, Search } from 'lucide-react'
+import { Download, Search } from 'lucide-react'
+import { ApiError } from '../../api/axios-client'
+import type { ListEmployeesWithLwopParams } from '../../api/adminEmployeesWithLwop'
+import type {
+  EmployeesWithLwopGrandTotals,
+  EmployeesWithLwopReport,
+  EmployeesWithLwopRow,
+} from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { ClearFiltersButton, EmptyState } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
 import { fieldLabelClassName } from '../../components/ui/form/fieldStyles'
 import { YearPickerField } from '../../components/ui/form/YearPickerField'
 import { Pagination } from '../../components/ui/Pagination'
+import { Skeleton } from '../../components/ui/Skeleton'
 import { SortableHeader } from '../../components/ui/SortableHeader'
 import {
   TABLE_AVAILABLE_SLOT,
@@ -16,18 +24,19 @@ import {
   TABLE_PAGINATION_WRAP,
 } from '../../components/ui/tableLayout'
 import { TableEmptyRow } from '../../components/ui/TableEmptyRow'
-import { TABLE_BODY_ROW_BORDER_CLASS, TABLE_SEARCH_INPUT_BASE_CLASS, APPROVALS_TABLE_ROW_HEIGHT, APPROVALS_TABLE_ROW_HEIGHT_CLASS } from '../../components/ui/tableStyles'
+import {
+  TABLE_BODY_ROW_BORDER_CLASS,
+  TABLE_SEARCH_INPUT_BASE_CLASS,
+  APPROVALS_TABLE_ROW_HEIGHT,
+  APPROVALS_TABLE_ROW_HEIGHT_CLASS,
+} from '../../components/ui/tableStyles'
+import { useAdminEmployeesWithLwop } from '../../hooks/api/useAdminEmployeesWithLwop'
+import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import { usePagination } from '../../hooks/usePagination'
-import {
-  buildEmployeesWithLwopReport,
-  filterEmployeesWithLwop,
-  getLwopGroups,
-  type EmployeesWithLwopReport,
-  type LwopEmployeeSummary,
-} from '../../mocks/employeesWithLwop'
+import { downloadEmployeesWithLwopExcel } from '../../utils/exportEmployeesWithLwopExcel'
+import { formatDateTime } from '../../utils/leaveDisplay'
 import { compareEmployeeNumber } from '../../utils/sort'
-import { formatDateTimeFromDate } from '../../utils/leaveDisplay'
 
 type GroupFilter = 'ALL' | string
 type SortKey = 'employeeNumber' | 'totalLwopDays'
@@ -35,10 +44,120 @@ type SortDir = 'asc' | 'desc'
 
 const DEFAULT_YEAR = new Date().getFullYear()
 const FILTER_CONTROL_H = 'h-[2.375rem]'
-const SUMMARY_COL_COUNT = 7
+const SUMMARY_COL_COUNT = 8
 
-function formatDays(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+const EMPTY_TOTALS: EmployeesWithLwopGrandTotals = {
+  vl_balance: '0.00',
+  vl_consumed: '0.00',
+  sl_balance: '0.00',
+  sl_consumed: '0.00',
+  total_lwop_days: '0.00',
+}
+
+function messageFromApiError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body
+    if (body && typeof body === 'object' && 'errors' in body) {
+      const errors = (body as { errors: Record<string, string[]> }).errors
+      const first = Object.values(errors).flat()[0]
+      if (typeof first === 'string' && first.length > 0) return first
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message: unknown }).message
+      if (typeof message === 'string' && message.trim()) return message
+    }
+    if (error.message) return error.message
+  }
+  return fallback
+}
+
+function formatDays(value: string): string {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '0'
+  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1)
+}
+
+function formatIsoDateLabel(isoDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate)
+  if (!match) return isoDate
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function groupOptionLabel(group: {
+  abbreviation: string | null
+  name: string | null
+  id: number
+}): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
+
+function rowGroupLabel(row: EmployeesWithLwopRow): string {
+  return (
+    row.employee.group?.abbreviation?.trim() ||
+    row.employee.group?.name?.trim() ||
+    '—'
+  )
+}
+
+function reportGroupLabel(report: EmployeesWithLwopReport): string {
+  return (
+    report.group?.abbreviation?.trim() ||
+    report.group?.name?.trim() ||
+    'All Groups'
+  )
+}
+
+function filterRows(
+  rows: EmployeesWithLwopRow[],
+  search: string,
+): EmployeesWithLwopRow[] {
+  const query = search.trim().toLowerCase()
+  if (query.length === 0) return rows
+  return rows.filter((row) => {
+    const name = row.employee.name.toLowerCase()
+    const number = row.employee.employee_number.toLowerCase()
+    return name.includes(query) || number.includes(query)
+  })
+}
+
+function toAmount(value: string): number {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function fromAmount(value: number): string {
+  return value.toFixed(2)
+}
+
+function sumTotals(rows: EmployeesWithLwopRow[]): EmployeesWithLwopGrandTotals {
+  return rows.reduce<EmployeesWithLwopGrandTotals>(
+    (acc, row) => ({
+      vl_balance: fromAmount(toAmount(acc.vl_balance) + toAmount(row.vl_balance)),
+      vl_consumed: fromAmount(
+        toAmount(acc.vl_consumed) + toAmount(row.vl_consumed),
+      ),
+      sl_balance: fromAmount(toAmount(acc.sl_balance) + toAmount(row.sl_balance)),
+      sl_consumed: fromAmount(
+        toAmount(acc.sl_consumed) + toAmount(row.sl_consumed),
+      ),
+      total_lwop_days: fromAmount(
+        toAmount(acc.total_lwop_days) + toAmount(row.total_lwop_days),
+      ),
+    }),
+    { ...EMPTY_TOTALS },
+  )
+}
+
+function paramsEqual(
+  a: ListEmployeesWithLwopParams | null,
+  b: ListEmployeesWithLwopParams,
+): boolean {
+  return a?.year === b.year && (a?.group_id ?? null) === (b.group_id ?? null)
 }
 
 export function EmployeesWithLwopPage() {
@@ -52,61 +171,88 @@ export function EmployeesWithLwopPage() {
 
   const [year, setYear] = useState<number | null>(DEFAULT_YEAR)
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
+  const [requestedParams, setRequestedParams] =
+    useState<ListEmployeesWithLwopParams | null>(null)
   const [search, setSearch] = useState('')
-  const [report, setReport] = useState<EmployeesWithLwopReport | null>(null)
   const [actionNotice, setActionNotice] = useState('')
   const [formError, setFormError] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('totalLwopDays')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [exporting, setExporting] = useState(false)
+
+  const { data: adminGroups } = useAdminGroups()
+  const { data, error, isLoading, isValidating, mutate } =
+    useAdminEmployeesWithLwop(requestedParams)
+
+  const report: EmployeesWithLwopReport | undefined = data
+  const fetching =
+    requestedParams != null && (isLoading || (isValidating && !report))
+  const canGenerate = year != null && !fetching
 
   const groupOptions = useMemo(
     () => [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...getLwopGroups().map((group) => ({ value: group, label: group })),
+      ...(adminGroups ?? []).map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
     ],
-    [],
+    [adminGroups],
   )
 
-  const filteredSummaries = useMemo(() => {
+  const filteredRows = useMemo(() => {
     if (!report) return []
-    return filterEmployeesWithLwop(report.summaries, {
-      search,
-      group: groupFilter,
-    })
-  }, [report, search, groupFilter])
+    return filterRows(report.rows, search)
+  }, [report, search])
 
-  const sortedSummaries = useMemo(() => {
-    const next = [...filteredSummaries]
+  const sortedRows = useMemo(() => {
+    const next = [...filteredRows]
     next.sort((a, b) => {
       let cmp = 0
       switch (sortKey) {
         case 'employeeNumber':
-          cmp = compareEmployeeNumber(a.employeeNumber, b.employeeNumber)
+          cmp = compareEmployeeNumber(
+            a.employee.employee_number,
+            b.employee.employee_number,
+          )
           break
         case 'totalLwopDays':
-          cmp = a.totalLwopDays - b.totalLwopDays
+          cmp = toAmount(a.total_lwop_days) - toAmount(b.total_lwop_days)
           break
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
     return next
-  }, [filteredSummaries, sortKey, sortDir])
+  }, [filteredRows, sortKey, sortDir])
 
-  const filterResetKey = `${search}|${groupFilter}|${sortKey}|${sortDir}|${report?.generatedAt?.getTime() ?? 0}`
+  const filterResetKey = `${search}|${sortKey}|${sortDir}|${requestedParams?.year ?? ''}|${requestedParams?.group_id ?? ''}`
   const { currentPage, setCurrentPage, totalPages, paginatedItems, totalItems } =
-    usePagination(sortedSummaries, pageSize, filterResetKey)
+    usePagination(sortedRows, pageSize, filterResetKey)
 
-  const hasActiveFilters =
-    search.trim().length > 0 || groupFilter !== 'ALL'
+  const hasActiveFilters = search.trim().length > 0
 
   function clearFilters() {
     setSearch('')
-    setGroupFilter('ALL')
   }
+
+  const filteredTotals = useMemo(() => {
+    if (!report) return EMPTY_TOTALS
+    if (!hasActiveFilters) return report.grand_totals
+    return sumTotals(filteredRows)
+  }, [filteredRows, hasActiveFilters, report])
 
   function handleYearChange(nextYear: number | null) {
     setYear(nextYear)
-    setReport(null)
+    setRequestedParams(null)
+    setSearch('')
+    setFormError('')
+    setActionNotice('')
+  }
+
+  function handleGroupChange(value: GroupFilter) {
+    setGroupFilter(value)
+    setRequestedParams(null)
+    setSearch('')
     setFormError('')
     setActionNotice('')
   }
@@ -120,31 +266,66 @@ export function EmployeesWithLwopPage() {
     setSortDir('desc')
   }
 
+  function nextRequestParams(): ListEmployeesWithLwopParams | null {
+    if (year == null) return null
+    const groupId =
+      groupFilter !== 'ALL' && Number.isInteger(Number(groupFilter))
+        ? Number(groupFilter)
+        : undefined
+    return groupId != null ? { year, group_id: groupId } : { year }
+  }
+
   function handleGenerate() {
     setActionNotice('')
-    if (year == null) {
+    const next = nextRequestParams()
+    if (next == null) {
       setFormError('Select a year.')
-      setReport(null)
+      setRequestedParams(null)
       return
     }
 
-    const next = buildEmployeesWithLwopReport({ year })
     setFormError('')
-    setReport(next)
     setSortKey('totalLwopDays')
     setSortDir('desc')
+    if (paramsEqual(requestedParams, next)) {
+      void mutate()
+      return
+    }
+    setRequestedParams(next)
   }
 
   function handleReset() {
     setYear(DEFAULT_YEAR)
     setGroupFilter('ALL')
+    setRequestedParams(null)
     setSearch('')
     setSortKey('totalLwopDays')
     setSortDir('desc')
-    setReport(null)
     setFormError('')
     setActionNotice('')
   }
+
+  async function handleExportExcel() {
+    if (!report) return
+    setExporting(true)
+    setActionNotice('')
+    try {
+      await downloadEmployeesWithLwopExcel({
+        report,
+        rows: sortedRows,
+        totals: filteredTotals,
+      })
+    } catch {
+      setActionNotice('Unable to export Excel. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const loadError =
+    error != null
+      ? messageFromApiError(error, 'Unable to load employees with LWOP.')
+      : ''
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-4`}>
@@ -154,24 +335,12 @@ export function EmployeesWithLwopPage() {
           <Button
             variant="primary"
             disabled={!report}
-            onClick={() =>
-              setActionNotice(
-                'Export to Excel will be available in a future update.',
-              )
-            }
+            loading={exporting}
+            loadingText="Exporting…"
+            onClick={() => void handleExportExcel()}
           >
             <Download className="size-4" aria-hidden="true" />
             Export Excel
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={!report}
-            onClick={() =>
-              setActionNotice('Print will be available in a future update.')
-            }
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            Print
           </Button>
         </div>
       </div>
@@ -198,7 +367,7 @@ export function EmployeesWithLwopPage() {
                   <FilterSelect
                     label="Group"
                     value={groupFilter}
-                    onChange={setGroupFilter}
+                    onChange={handleGroupChange}
                     options={groupOptions}
                     selectHeight={FILTER_CONTROL_H}
                   />
@@ -225,7 +394,7 @@ export function EmployeesWithLwopPage() {
                 <div className="flex shrink-0 items-end gap-2">
                   <Button
                     variant="primary"
-                    disabled={year == null}
+                    disabled={!canGenerate}
                     onClick={handleGenerate}
                   >
                     Generate Report
@@ -241,6 +410,11 @@ export function EmployeesWithLwopPage() {
                   {formError}
                 </p>
               ) : null}
+              {loadError ? (
+                <p role="alert" className="mt-2 text-body text-status-rejected">
+                  {loadError}
+                </p>
+              ) : null}
               {actionNotice ? (
                 <p role="status" className="mt-2 text-body text-text-gray">
                   {actionNotice}
@@ -253,11 +427,16 @@ export function EmployeesWithLwopPage() {
                 <dl className="flex flex-wrap gap-x-6 gap-y-2 text-small text-text-gray">
                   <InfoItem
                     label="Reporting Period"
-                    value={report.reportingPeriodLabel}
+                    value={`${formatIsoDateLabel(report.period.start_date)} – ${formatIsoDateLabel(report.period.end_date)}`}
+                  />
+                  <InfoItem label="Group" value={reportGroupLabel(report)} />
+                  <InfoItem
+                    label="Employees"
+                    value={String(filteredRows.length)}
                   />
                   <InfoItem
                     label="Date Generated"
-                    value={formatDateTimeFromDate(report.generatedAt)}
+                    value={formatDateTime(report.generated_at)}
                   />
                 </dl>
               </div>
@@ -265,7 +444,14 @@ export function EmployeesWithLwopPage() {
           </div>
 
           <div ref={tableAreaRef} className={TABLE_CONTENT_AREA}>
-            {report ? (
+            {fetching ? (
+              <div className="flex flex-col gap-3 px-5 py-6">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-3/4" />
+              </div>
+            ) : report ? (
               <table className="w-full min-w-[56rem] table-fixed text-left">
                 <thead>
                   <tr className="h-11 bg-surface-muted text-small text-text-gray">
@@ -287,10 +473,13 @@ export function EmployeesWithLwopPage() {
                       VL Balance
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
+                      VL Consumed
+                    </th>
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       SL Balance
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
-                      Leave Consumed
+                      SL Consumed
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center text-red-700 font-bold uppercase tracking-wide">
                       <SortableHeader
@@ -318,15 +507,46 @@ export function EmployeesWithLwopPage() {
                     />
                   ) : (
                     paginatedItems.map((row) => (
-                      <EmployeeRow key={row.employeeId} row={row} />
+                      <EmployeeRow key={row.employee.id} row={row} />
                     ))
                   )}
                 </tbody>
+                {paginatedItems.length > 0 ? (
+                  <tfoot>
+                    <tr className="bg-surface-muted font-semibold">
+                      <td
+                        colSpan={3}
+                        className="border-t border-border bg-surface-muted px-4 py-2.5 text-body text-text-black"
+                      >
+                        Total
+                      </td>
+                      <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
+                        {formatDays(filteredTotals.vl_balance)}
+                      </td>
+                      <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
+                        {formatDays(filteredTotals.vl_consumed)}
+                      </td>
+                      <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
+                        {formatDays(filteredTotals.sl_balance)}
+                      </td>
+                      <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
+                        {formatDays(filteredTotals.sl_consumed)}
+                      </td>
+                      <td className="border-t border-border bg-red-50 px-3 py-2.5 text-center text-body text-red-700">
+                        {formatDays(filteredTotals.total_lwop_days)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                ) : null}
               </table>
             ) : (
               <EmptyState
                 variant="no-data"
-                message="Select a year, then click Generate Report to view employees with LWOP."
+                message={
+                  loadError
+                    ? loadError
+                    : 'Select a year, then click Generate Report to view employees with LWOP.'
+                }
                 className="min-h-[12rem]"
               />
             )}
@@ -354,27 +574,32 @@ export function EmployeesWithLwopPage() {
   )
 }
 
-function EmployeeRow({ row }: { row: LwopEmployeeSummary }) {
+function EmployeeRow({ row }: { row: EmployeesWithLwopRow }) {
   return (
     <tr
       className={`${APPROVALS_TABLE_ROW_HEIGHT_CLASS} ${TABLE_BODY_ROW_BORDER_CLASS}`}
     >
-      <td className="px-4 text-body text-text-black">{row.employeeNumber}</td>
+      <td className="px-4 text-body text-text-black">
+        {row.employee.employee_number}
+      </td>
       <td className="px-4 text-body font-medium text-text-black">
-        {row.employeeName}
+        {row.employee.name}
       </td>
-      <td className="px-4 text-body text-text-black">{row.groupLabel}</td>
+      <td className="px-4 text-body text-text-black">{rowGroupLabel(row)}</td>
       <td className="px-3 text-center text-body text-text-black">
-        {formatDays(row.vlBalance)}
-      </td>
-      <td className="px-3 text-center text-body text-text-black">
-        {formatDays(row.slBalance)}
+        {formatDays(row.vl_balance)}
       </td>
       <td className="px-3 text-center text-body text-text-black">
-        {formatDays(row.leaveConsumed)}
+        {formatDays(row.vl_consumed)}
+      </td>
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.sl_balance)}
+      </td>
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.sl_consumed)}
       </td>
       <td className="px-3 text-center bg-red-50 text-body text-red-700 font-semibold">
-        {formatDays(row.totalLwopDays)}
+        {formatDays(row.total_lwop_days)}
       </td>
     </tr>
   )
