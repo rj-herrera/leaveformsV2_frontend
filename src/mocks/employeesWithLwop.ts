@@ -211,10 +211,6 @@ function toIsoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-export function formatLwopDateLabel(isoDate: string): string {
-  return formatShortDate(isoDate)
-}
-
 function toDateKey(date: Date): string {
   return toIsoDate(date.getFullYear(), date.getMonth() + 1, date.getDate())
 }

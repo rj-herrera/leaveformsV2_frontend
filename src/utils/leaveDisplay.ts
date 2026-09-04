@@ -168,9 +168,6 @@ export function parseWallClockDateTime(iso: string): Date {
   return new Date(`${normalizeDateTimeInput(withoutOffset)}+08:00`)
 }
 
-/** @deprecated Use `parseUtcDateTime` or `parseWallClockDateTime`. */
-export const parsePhtDateTime = parseUtcDateTime
-
 /** Formats a Laravel UTC datetime for display in Philippine Standard Time. */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
