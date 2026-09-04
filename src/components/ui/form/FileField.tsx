@@ -25,6 +25,13 @@ type FileFieldProps = {
   multiple?: boolean
   /** Maximum number of files when multiple is enabled. Default 5. */
   maxFiles?: number
+  /**
+   * When set, the field label becomes a download link (same placement).
+   * Use Vite `BASE_URL`-aware paths so deploys under a subpath still work.
+   */
+  labelDownloadHref?: string
+  labelDownloadFileName?: string
+  labelDownloadTooltip?: string
 }
 
 type PendingUpload = {
@@ -70,6 +77,9 @@ export function FileField({
   disabled = false,
   multiple = true,
   maxFiles = DEFAULT_MAX_FILES,
+  labelDownloadHref,
+  labelDownloadFileName,
+  labelDownloadTooltip,
 }: FileFieldProps) {
   const generatedId = useId()
   const inputId = id ?? name ?? generatedId
@@ -81,6 +91,7 @@ export function FileField({
   const atMax = files.length >= maxFiles
   const chooseDisabled = disabled || isUploading || atMax
   const displayError = uploadError ?? error ?? null
+  const labelIsDownload = Boolean(labelDownloadHref)
 
   async function handleFilesSelected(selected: FileList | null) {
     setUploadError(null)
@@ -151,12 +162,30 @@ export function FileField({
     setUploadError(null)
   }
 
+  const requiredMark = required ? (
+    <span className="text-status-rejected"> *</span>
+  ) : null
+
   return (
     <div className={`min-w-0 ${className}`}>
-      <label htmlFor={inputId} className={fieldLabelClassName}>
-        {label}
-        {required ? <span className="text-status-rejected"> *</span> : null}
-      </label>
+      {labelIsDownload ? (
+        <div className={fieldLabelClassName}>
+          <a
+            href={labelDownloadHref}
+            download={labelDownloadFileName}
+            title={labelDownloadTooltip}
+            className="rounded-sm text-text-black transition-colors hover:text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+          >
+            {label}
+          </a>
+          {requiredMark}
+        </div>
+      ) : (
+        <label htmlFor={inputId} className={fieldLabelClassName}>
+          {label}
+          {requiredMark}
+        </label>
+      )}
 
       <div className={`flex flex-col gap-3 ${fieldShellClassName}`}>
         <div className="flex flex-wrap items-center gap-3">

@@ -37,8 +37,11 @@ import {
   isFixedRangeLeave,
   isLeaveSelfFiled,
   isLongLeave,
+  isPaternityLeave,
   isPendingLeaveEditable,
   MED_CERT_ACCEPT,
+  PATERNITY_NOTIFICATION_FORM_FILENAME,
+  paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
 } from '../../utils/leaveFiling'
@@ -488,6 +491,15 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                           ? `Existing files stay on file unless you remove them. ${attachmentFieldHint()}`
                           : attachmentFieldHint()
                       }
+                      {...(isPaternityLeave(leaveTypeCode)
+                        ? {
+                            labelDownloadHref: paternityNotificationFormHref(),
+                            labelDownloadFileName:
+                              PATERNITY_NOTIFICATION_FORM_FILENAME,
+                            labelDownloadTooltip:
+                              'Download the Paternity Notification Form to fill out and submit as required.',
+                          }
+                        : {})}
                       error={
                         triedSubmit && attachmentMissing
                           ? `${attachmentLabel} is required for this leave type.`

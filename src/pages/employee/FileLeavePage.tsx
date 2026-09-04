@@ -39,7 +39,10 @@ import {
   isFilableLeaveCode,
   isFixedRangeLeave,
   isLongLeave,
+  isPaternityLeave,
   MED_CERT_ACCEPT,
+  PATERNITY_NOTIFICATION_FORM_FILENAME,
+  paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
 } from '../../utils/leaveFiling'
@@ -508,6 +511,15 @@ export function FileLeavePage() {
                   maxFiles={ATTACHMENT_MAX_FILES}
                   className="sm:col-span-2"
                   hint={attachmentFieldHint()}
+                  {...(isPaternityLeave(leaveType)
+                    ? {
+                        labelDownloadHref: paternityNotificationFormHref(),
+                        labelDownloadFileName:
+                          PATERNITY_NOTIFICATION_FORM_FILENAME,
+                        labelDownloadTooltip:
+                          'Download the Paternity Notification Form to fill out and submit as required.',
+                      }
+                    : {})}
                   error={
                     triedSubmit && attachmentMissing
                       ? `${attachmentLabel} is required for this leave type.`
