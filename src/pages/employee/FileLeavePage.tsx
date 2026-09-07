@@ -12,6 +12,7 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
+import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { useMyBalances } from '../../hooks/api/useMyBalances'
@@ -152,6 +153,9 @@ export function FileLeavePage() {
     [balances, leaveType],
   )
   const remainingDays = Number(selectedBalance?.available ?? NaN)
+  // Quarterly VL usage (days used this quarter). Wire when the API exposes it;
+  // banner stays hidden while null and never blocks filing.
+  const quarterlyVlUsedDays: number | null = null
   const exceedsCredits =
     leaveType !== '' &&
     enforcesRemainingCredits(leaveType) &&
@@ -393,6 +397,13 @@ export function FileLeavePage() {
                 readOnly
                 className="sm:col-span-2"
               />
+              {leaveType === 'VL' ? (
+                <QuarterlyVlLimitBanner
+                  usedDays={quarterlyVlUsedDays}
+                  additionalDays={leaveDuration}
+                  className="sm:col-span-2"
+                />
+              ) : null}
               {noCredits ? (
                 <div
                   className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
