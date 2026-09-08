@@ -12,6 +12,7 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
+import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { useMyBalances } from '../../hooks/api/useMyBalances'
@@ -40,11 +41,16 @@ import {
   isFixedRangeLeave,
   isLongLeave,
   isPaternityLeave,
+  isSpecialLeave,
   MED_CERT_ACCEPT,
   PATERNITY_NOTIFICATION_FORM_FILENAME,
   paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
+  SPL_ASSIGNMENT_TYPE_OPTIONS,
+  SPL_QUALIFYING_EVENT_OPTIONS,
+  type SplAssignmentType,
+  type SplQualifyingEvent,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -68,6 +74,8 @@ const EMPTY_FORM = {
   startDate: '',
   endDate: '',
   reason: '',
+  assignmentType: '' as '' | SplAssignmentType,
+  qualifyingEvent: '' as '' | SplQualifyingEvent,
 }
 
 export function FileLeavePage() {
@@ -83,6 +91,12 @@ export function FileLeavePage() {
   const [startDate, setStartDate] = useState(EMPTY_FORM.startDate)
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
+  const [assignmentType, setAssignmentType] = useState<
+    '' | SplAssignmentType
+  >(EMPTY_FORM.assignmentType)
+  const [qualifyingEvent, setQualifyingEvent] = useState<
+    '' | SplQualifyingEvent
+  >(EMPTY_FORM.qualifyingEvent)
   const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
@@ -96,6 +110,7 @@ export function FileLeavePage() {
   const startDateEnabled = leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
   const needsAttachment = requiresAttachment(leaveType)
+  const needsSplDetails = isSpecialLeave(leaveType)
   const fullDayOnly = requiresFullDay(leaveType)
   const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
@@ -156,6 +171,9 @@ export function FileLeavePage() {
     [balances, leaveType],
   )
   const remainingDays = Number(selectedBalance?.available ?? NaN)
+  // Quarterly VL usage (days used this quarter). Wire when the API exposes it;
+  // banner stays hidden while null and never blocks filing.
+  const quarterlyVlUsedDays: number | null = null
   const exceedsCredits =
     leaveType !== '' &&
     enforcesRemainingCredits(leaveType) &&
@@ -180,6 +198,8 @@ export function FileLeavePage() {
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
   const attachmentMissing = needsAttachment && attachments.length === 0
+  const assignmentTypeMissing = needsSplDetails && assignmentType === ''
+  const qualifyingEventMissing = needsSplDetails && qualifyingEvent === ''
 
   const longLeaveRangeInvalid =
     isLongLeave(leaveType) &&
@@ -195,6 +215,8 @@ export function FileLeavePage() {
     !endMissing &&
     !reasonMissing &&
     !attachmentMissing &&
+    !assignmentTypeMissing &&
+    !qualifyingEventMissing &&
     !attachmentUploading &&
     leadTimeValidation.ok &&
     !exceedsCredits &&
@@ -206,8 +228,20 @@ export function FileLeavePage() {
     setDayType(requiresFullDay(value) ? 'full' : EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
+    setAssignmentType(EMPTY_FORM.assignmentType)
+    setQualifyingEvent(EMPTY_FORM.qualifyingEvent)
     setAttachments([])
     clearApiErrors()
+  }
+
+  function handleAssignmentTypeChange(value: string) {
+    setAssignmentType(value as '' | SplAssignmentType)
+    if (apiErrors.assignmentType || apiErrors.form) clearApiErrors()
+  }
+
+  function handleQualifyingEventChange(value: string) {
+    setQualifyingEvent(value as '' | SplQualifyingEvent)
+    if (apiErrors.qualifyingEvent || apiErrors.form) clearApiErrors()
   }
 
   function handleDayTypeChange(value: string) {
@@ -223,6 +257,8 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
+    setAssignmentType(EMPTY_FORM.assignmentType)
+    setQualifyingEvent(EMPTY_FORM.qualifyingEvent)
     setAttachments([])
     setTriedSubmit(false)
     clearApiErrors()
@@ -239,6 +275,9 @@ export function FileLeavePage() {
   async function handleConfirmSubmit() {
     if (dayType === '' || !isFilableLeaveCode(leaveType)) return
     if (needsAttachment && attachments.length === 0) return
+    if (needsSplDetails && (assignmentType === '' || qualifyingEvent === '')) {
+      return
+    }
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -251,6 +290,12 @@ export function FileLeavePage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
+        ...(needsSplDetails
+          ? {
+              assignment_type: assignmentType,
+              qualifying_event: qualifyingEvent,
+            }
+          : {}),
         ...(needsAttachment && attachments.length > 0
           ? { leave_attachment: attachments }
           : {}),
@@ -345,6 +390,34 @@ export function FileLeavePage() {
                     : (apiErrors.dayType ?? null)
                 }
               />
+              {needsSplDetails ? (
+                <>
+                  <SelectField
+                    label="Assignment Type"
+                    value={assignmentType}
+                    onChange={handleAssignmentTypeChange}
+                    placeholder="Select Assignment Type"
+                    options={[...SPL_ASSIGNMENT_TYPE_OPTIONS]}
+                    error={
+                      triedSubmit && assignmentTypeMissing
+                        ? 'Please select an assignment type.'
+                        : (apiErrors.assignmentType ?? null)
+                    }
+                  />
+                  <SelectField
+                    label="Qualifying Event / Relationship"
+                    value={qualifyingEvent}
+                    onChange={handleQualifyingEventChange}
+                    placeholder="Select Qualifying Event / Relationship"
+                    options={[...SPL_QUALIFYING_EVENT_OPTIONS]}
+                    error={
+                      triedSubmit && qualifyingEventMissing
+                        ? 'Please select a qualifying event / relationship.'
+                        : (apiErrors.qualifyingEvent ?? null)
+                    }
+                  />
+                </>
+              ) : null}
               <DateFieldCustom
                 label="Start Date"
                 value={startDate}
@@ -397,6 +470,13 @@ export function FileLeavePage() {
                 readOnly
                 className="sm:col-span-2"
               />
+              {leaveType === 'VL' ? (
+                <QuarterlyVlLimitBanner
+                  usedDays={quarterlyVlUsedDays}
+                  additionalDays={leaveDuration}
+                  className="sm:col-span-2"
+                />
+              ) : null}
               {noCredits ? (
                 <div
                   className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"

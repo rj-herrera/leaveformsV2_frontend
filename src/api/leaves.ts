@@ -39,6 +39,8 @@ function appendLeaveFields(
     end_date: string
     day_type: DayType
     leave_reason: string
+    assignment_type?: string
+    qualifying_event?: string
     leave_attachment?: File[]
   },
 ) {
@@ -48,6 +50,12 @@ function appendLeaveFields(
   form.append('end_date', fields.end_date)
   form.append('day_type', fields.day_type)
   form.append('leave_reason', fields.leave_reason)
+  if (fields.assignment_type) {
+    form.append('assignment_type', fields.assignment_type)
+  }
+  if (fields.qualifying_event) {
+    form.append('qualifying_event', fields.qualifying_event)
+  }
   appendAttachmentFiles(form, 'leave_attachment', fields.leave_attachment)
 }
 
@@ -69,7 +77,7 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL as multipart with required attachments (201). */
+/** POST /leaves — VL/ML/SPL as JSON; SL/PTB/EL/LL/PL as multipart with required attachments (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {
@@ -95,6 +103,12 @@ export async function createLeave(
     end_date: payload.end_date,
     day_type: payload.day_type,
     leave_reason: payload.leave_reason,
+    ...(payload.assignment_type
+      ? { assignment_type: payload.assignment_type }
+      : {}),
+    ...(payload.qualifying_event
+      ? { qualifying_event: payload.qualifying_event }
+      : {}),
   })
 }
 

@@ -6,12 +6,21 @@ import {
   PATERNITY_LEAVE_THEME,
   PTB_LEAVE_THEME,
   SICK_LEAVE_THEME,
+  SPECIAL_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../constants/leaveTypeTheme'
 import type { UserGender } from './gender'
 
 /** Leave types `POST /leaves` accepts today. Other codes → 422. */
-export type FilableLeaveCode = 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
+export type FilableLeaveCode =
+  | 'VL'
+  | 'SL'
+  | 'PTB'
+  | 'EL'
+  | 'LL'
+  | 'ML'
+  | 'PL'
+  | 'SPL'
 
 export const FILABLE_LEAVE_TYPE_OPTIONS: {
   value: FilableLeaveCode
@@ -24,6 +33,7 @@ export const FILABLE_LEAVE_TYPE_OPTIONS: {
   { value: 'LL', label: LONG_LEAVE_THEME.label },
   { value: 'ML', label: MATERNITY_LEAVE_THEME.label },
   { value: 'PL', label: PATERNITY_LEAVE_THEME.label },
+  { value: 'SPL', label: SPECIAL_LEAVE_THEME.label },
 ]
 
 export type LeaveTypeFilter = 'ALL' | FilableLeaveCode
@@ -56,7 +66,8 @@ export function isFilableLeaveCode(code: string): code is FilableLeaveCode {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
@@ -107,6 +118,10 @@ export function isPaternityLeave(code: string): boolean {
   return code.toUpperCase() === 'PL'
 }
 
+export function isSpecialLeave(code: string): boolean {
+  return code.toUpperCase() === 'SPL'
+}
+
 /** Filename of the blank Paternity Notification Form under `public/form/`. */
 export const PATERNITY_NOTIFICATION_FORM_FILENAME =
   'Paternity-Notification-Form.doc'
@@ -128,11 +143,12 @@ export function isAdminApproved(code: string): boolean {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
-/** PTB, EL, LL, ML, and PL are full day only — half_am / half_pm → 422. */
+/** PTB, EL, LL, ML, PL, and SPL are full day only — half_am / half_pm → 422. */
 export function requiresFullDay(code: string): boolean {
   const normalized = code.toUpperCase()
   return (
@@ -140,7 +156,8 @@ export function requiresFullDay(code: string): boolean {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
@@ -178,6 +195,75 @@ export function enforcesRemainingCredits(code: string): boolean {
 export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
+
+/** SPL assignment type codes for `POST /leaves`. */
+export type SplAssignmentType =
+  | 'philippines_based_short_term'
+  | 'long_term_overseas'
+
+/** Combined SPL qualifying event / relationship codes for `POST /leaves`. */
+export type SplQualifyingEvent =
+  | 'employee_marriage'
+  | 'employee_child_marriage'
+  | 'death_spouse'
+  | 'death_parent'
+  | 'death_child'
+  | 'death_sibling'
+  | 'death_employee_grandparent'
+  | 'death_employee_grandchild'
+  | 'death_spouse_parent'
+  | 'death_child_spouse'
+  | 'death_sibling_spouse'
+  | 'death_spouse_sibling'
+  | 'death_spouse_grandparent'
+
+export const SPL_ASSIGNMENT_TYPE_OPTIONS: {
+  value: SplAssignmentType
+  label: string
+}[] = [
+  {
+    value: 'philippines_based_short_term',
+    label: 'Philippines-Based / Short-Term Overseas',
+  },
+  {
+    value: 'long_term_overseas',
+    label: 'Long-Term Overseas',
+  },
+]
+
+export const SPL_QUALIFYING_EVENT_OPTIONS: {
+  value: SplQualifyingEvent
+  label: string
+}[] = [
+  { value: 'employee_marriage', label: 'Employee gets married' },
+  {
+    value: 'employee_child_marriage',
+    label: "Employee's child gets married",
+  },
+  { value: 'death_spouse', label: 'Death – spouse' },
+  {
+    value: 'death_parent',
+    label: 'Death – parent / adoptive parent',
+  },
+  { value: 'death_child', label: 'Death – child' },
+  { value: 'death_sibling', label: 'Death – brother / sister' },
+  {
+    value: 'death_employee_grandparent',
+    label: "Death – employee's grandparent",
+  },
+  {
+    value: 'death_employee_grandchild',
+    label: "Death – employee's grandchild",
+  },
+  { value: 'death_spouse_parent', label: "Death – spouse's parent" },
+  { value: 'death_child_spouse', label: "Death – child's spouse" },
+  { value: 'death_sibling_spouse', label: "Death – sibling's spouse" },
+  { value: 'death_spouse_sibling', label: "Death – spouse's sibling" },
+  {
+    value: 'death_spouse_grandparent',
+    label: "Death – spouse's grandparent",
+  },
+]
 
 function empIdsMatch(left: number, right: string): boolean {
   return String(left) === String(right)

@@ -4,6 +4,7 @@ import {
   Baby,
   BriefcaseMedical,
   CalendarRange,
+  HeartHandshake,
   Leaf,
   Sprout,
   Sun,
@@ -59,6 +60,12 @@ export const PATERNITY_LEAVE_THEME: LeaveTypeTheme = {
   iconBgClass: 'bg-leave-paternity',
 }
 
+export const SPECIAL_LEAVE_THEME: LeaveTypeTheme = {
+  label: 'Special Leave',
+  icon: HeartHandshake,
+  iconBgClass: 'bg-leave-special',
+}
+
 export const SELECTABLE_LEAVE_DEFAULT: LeaveTypeTheme = {
   label: 'Select Leave Type',
   icon: Leaf,
@@ -98,6 +105,9 @@ export function getLeaveTypeChipClasses(leaveType: string): string {
     case 'pl':
     case 'paternity leave':
       return 'border-l-leave-paternity bg-leave-paternity/15'
+    case 'spl':
+    case 'special leave':
+      return 'border-l-leave-special bg-leave-special/15'
     default:
       return 'border-l-primary bg-primary/10'
   }
@@ -128,6 +138,9 @@ export function getLeaveTypeAvatarClasses(leaveType: string): string {
     case 'pl':
     case 'paternity leave':
       return 'bg-leave-paternity/15 text-leave-paternity'
+    case 'spl':
+    case 'special leave':
+      return 'bg-leave-special/15 text-leave-special'
     default:
       return 'bg-primary/10 text-primary'
   }
