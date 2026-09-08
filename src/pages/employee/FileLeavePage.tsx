@@ -51,7 +51,10 @@ import {
   parseLeaveFormApiError,
   type LeaveFormApiErrors,
 } from '../../utils/leaveFormApiErrors'
-import { validateLeaveLeadTime } from '../../utils/leaveLeadTime'
+import {
+  LEAVE_LEAD_TIME_UNGATED,
+  validateLeaveLeadTime,
+} from '../../utils/leaveLeadTime'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -129,15 +132,16 @@ export function FileLeavePage() {
 
   const leadTimeValidation = useMemo(() => {
     if (!appliesVlLeadTime(leaveType)) {
-      return { ok: true, isLongLeave: false, message: null }
+      return LEAVE_LEAD_TIME_UNGATED
     }
     return validateLeaveLeadTime({
       dayType: dayType === '' ? 'full' : dayType,
       weekdayDuration: dayType === 'full' ? leaveDuration : 0,
       startDateISO: startDate,
       filedOnISO: todayISO(),
+      nonWorkingDates,
     })
-  }, [dayType, leaveDuration, leaveType, startDate])
+  }, [dayType, leaveDuration, leaveType, nonWorkingDates, startDate])
 
   const workingDaysOnly =
     leaveType !== '' && !usesCalendarDayCounting(leaveType)
@@ -450,7 +454,7 @@ export function FileLeavePage() {
                   </div>
                 </div>
               ) : null}
-              {leadTimeValidation.isLongLeave ? (
+              {leadTimeValidation.gated ? (
                 <div
                   className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
                     leadTimeValidation.ok
@@ -469,15 +473,21 @@ export function FileLeavePage() {
                   />
                   <div>
                     <p className="text-body font-semibold text-text-black">
-                      {leadTimeValidation.ok
-                        ? 'Advance filing required (3+ days)'
-                        : 'Filing not allowed'}
+                      {leadTimeValidation.title}
                     </p>
                     <p className="mt-1 text-small text-text-black">
                       {leadTimeValidation.message}
-                      {leadTimeValidation.ok
-                        ? ' Your selected dates meet this requirement.'
-                        : ""}
+                      {leadTimeValidation.ok ? (
+                        <>
+                          {' '}
+                          Your{' '}
+                          <span className="font-semibold">
+                            selected dates meet this requirement.
+                          </span>
+                        </>
+                      ) : (
+                        ' Choose a later start date or shorten the leave duration.'
+                      )}
                     </p>
                   </div>
                 </div>
