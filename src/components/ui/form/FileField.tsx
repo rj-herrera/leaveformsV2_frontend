@@ -188,7 +188,8 @@ export function FileField({
       )}
 
       <div className={`flex flex-col gap-3 ${fieldShellClassName}`}>
-        <div className="flex flex-wrap items-center gap-3">
+        {/* relative: contain sr-only file input so focus does not scroll overflow:hidden ancestors */}
+        <div className="relative flex flex-wrap items-center gap-3">
           <label
             htmlFor={chooseDisabled ? undefined : inputId}
             aria-disabled={chooseDisabled}

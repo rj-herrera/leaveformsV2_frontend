@@ -334,7 +334,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
               Leave type cannot be changed after filing.
             </p>
           </div>
-          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4">
+          <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid min-w-0 grid-cols-1 content-start gap-3 sm:grid-cols-2 sm:gap-4">
               <TextField label="Leave Type" value={leaveTypeLabel} readOnly />
               <SelectField
