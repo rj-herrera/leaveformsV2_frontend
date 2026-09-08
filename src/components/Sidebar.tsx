@@ -362,7 +362,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   return (
     <aside
       className={[
-        'flex h-svh shrink-0 flex-col border-r border-white/15 bg-primary transition-[width] duration-200 ease-in-out',
+        'flex h-full shrink-0 flex-col border-r border-white/15 bg-primary transition-[width] duration-200 ease-in-out',
         collapsed ? 'w-20 overflow-visible' : 'w-64',
       ].join(' ')}
     >

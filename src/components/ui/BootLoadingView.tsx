@@ -2,7 +2,7 @@
 export function BootLoadingView() {
   return (
     <div
-      className="flex min-h-svh flex-col items-center justify-center gap-0 bg-background px-4"
+      className="flex h-full flex-col items-center justify-center gap-0 overflow-y-auto bg-background px-4"
       role="status"
       aria-live="polite"
       aria-label="Loading"

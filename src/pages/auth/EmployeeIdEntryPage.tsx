@@ -54,7 +54,7 @@ export function EmployeeIdEntryPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background px-4">
+    <div className="flex h-full items-center justify-center overflow-y-auto bg-background px-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-sm md:p-8">
         <div className="mb-6">
           <p className="text-header tracking-[0.125rem] text-primary uppercase">

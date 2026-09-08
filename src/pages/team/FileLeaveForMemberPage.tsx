@@ -433,7 +433,7 @@ export function FileLeaveForMemberPage() {
     groupMissing || membersLoading || Boolean(membersError)
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden">
       <form
         onSubmit={handleSubmit}
         className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden"
@@ -442,7 +442,7 @@ export function FileLeaveForMemberPage() {
           File Leave for Member
         </h1>
 
-        <section className="shrink-0 overflow-visible rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
+        <section className="shrink-0 rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
             <SelectField
@@ -500,11 +500,11 @@ export function FileLeaveForMemberPage() {
           ) : null}
         </section>
 
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        <section className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-surface">
           <div className="shrink-0 border-b border-border px-4 py-3 sm:px-5">
             <h2 className="text-h2 text-text-black">Leave Information</h2>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-3 sm:px-4">
             <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2">
               <SelectField
                 label="Leave Type"

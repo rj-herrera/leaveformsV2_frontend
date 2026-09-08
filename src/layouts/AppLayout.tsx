@@ -42,7 +42,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex h-svh bg-background">
+    <div className="flex h-full max-h-full overflow-hidden bg-background">
       {!isDesktop && mobileSidebarOpen ? (
         <button
           type="button"
@@ -74,7 +74,9 @@ export function AppLayout() {
           onToggleSidebar={toggleSidebarCollapsed}
         />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 md:p-6">
-          <Outlet />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

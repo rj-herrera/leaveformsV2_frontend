@@ -28,7 +28,7 @@ export function ErrorPage({
   secondaryAction,
 }: ErrorPageProps) {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background px-4 py-10 sm:px-6">
+    <main className="flex h-full items-center justify-center overflow-y-auto bg-background px-4 py-10 sm:px-6">
       <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-sm sm:max-w-lg sm:p-8">
         <div className="flex flex-col items-center text-center">
           {code ? (
