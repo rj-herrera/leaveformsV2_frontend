@@ -188,7 +188,10 @@ export function enforcesRemainingCredits(code: string): boolean {
   return normalized === 'PTB' || normalized === 'EL'
 }
 
-/** 1-month advance filing for 3+ days applies to VL only. */
+/**
+ * Self-filed VL advance notice: exactly 3 workdays → 3 working days;
+ * more than 3 workdays → 30 calendar days. On-behalf skips this.
+ */
 export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
