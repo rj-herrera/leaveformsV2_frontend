@@ -159,10 +159,10 @@ export type StoreLeavePayload = {
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SPL: `marriage` or `death`. */
+  /** Required for SPL: assignment location category. */
+  assignment_type?: string
+  /** Required for SPL: combined qualifying event / relationship. */
   qualifying_event?: string
-  /** Required for SPL: relationship under the selected qualifying event. */
-  relationship?: string
   /** Required for SL/PTB (med certs), EL/LL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML/SPL. */
   leave_attachment?: File[]
 }

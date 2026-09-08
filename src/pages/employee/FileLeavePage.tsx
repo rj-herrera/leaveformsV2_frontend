@@ -47,10 +47,10 @@ import {
   paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
+  SPL_ASSIGNMENT_TYPE_OPTIONS,
   SPL_QUALIFYING_EVENT_OPTIONS,
-  splRelationshipOptionsForEvent,
+  type SplAssignmentType,
   type SplQualifyingEvent,
-  type SplRelationship,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -71,8 +71,8 @@ const EMPTY_FORM = {
   startDate: '',
   endDate: '',
   reason: '',
+  assignmentType: '' as '' | SplAssignmentType,
   qualifyingEvent: '' as '' | SplQualifyingEvent,
-  relationship: '' as '' | SplRelationship,
 }
 
 export function FileLeavePage() {
@@ -88,12 +88,12 @@ export function FileLeavePage() {
   const [startDate, setStartDate] = useState(EMPTY_FORM.startDate)
   const [endDate, setEndDate] = useState(EMPTY_FORM.endDate)
   const [reason, setReason] = useState(EMPTY_FORM.reason)
+  const [assignmentType, setAssignmentType] = useState<
+    '' | SplAssignmentType
+  >(EMPTY_FORM.assignmentType)
   const [qualifyingEvent, setQualifyingEvent] = useState<
     '' | SplQualifyingEvent
   >(EMPTY_FORM.qualifyingEvent)
-  const [relationship, setRelationship] = useState<'' | SplRelationship>(
-    EMPTY_FORM.relationship,
-  )
   const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
@@ -117,7 +117,6 @@ export function FileLeavePage() {
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
-  const splRelationshipOptions = splRelationshipOptionsForEvent(qualifyingEvent)
 
   function clearApiErrors() {
     setApiErrors(clearLeaveFormApiErrors())
@@ -195,8 +194,8 @@ export function FileLeavePage() {
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
   const attachmentMissing = needsAttachment && attachments.length === 0
+  const assignmentTypeMissing = needsSplDetails && assignmentType === ''
   const qualifyingEventMissing = needsSplDetails && qualifyingEvent === ''
-  const relationshipMissing = needsSplDetails && relationship === ''
 
   const longLeaveRangeInvalid =
     isLongLeave(leaveType) &&
@@ -212,8 +211,8 @@ export function FileLeavePage() {
     !endMissing &&
     !reasonMissing &&
     !attachmentMissing &&
+    !assignmentTypeMissing &&
     !qualifyingEventMissing &&
-    !relationshipMissing &&
     !attachmentUploading &&
     leadTimeValidation.ok &&
     !exceedsCredits &&
@@ -225,23 +224,20 @@ export function FileLeavePage() {
     setDayType(requiresFullDay(value) ? 'full' : EMPTY_FORM.dayType)
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
+    setAssignmentType(EMPTY_FORM.assignmentType)
     setQualifyingEvent(EMPTY_FORM.qualifyingEvent)
-    setRelationship(EMPTY_FORM.relationship)
     setAttachments([])
     clearApiErrors()
   }
 
-  function handleQualifyingEventChange(value: string) {
-    setQualifyingEvent(value as '' | SplQualifyingEvent)
-    setRelationship(EMPTY_FORM.relationship)
-    if (apiErrors.qualifyingEvent || apiErrors.relationship || apiErrors.form) {
-      clearApiErrors()
-    }
+  function handleAssignmentTypeChange(value: string) {
+    setAssignmentType(value as '' | SplAssignmentType)
+    if (apiErrors.assignmentType || apiErrors.form) clearApiErrors()
   }
 
-  function handleRelationshipChange(value: string) {
-    setRelationship(value as '' | SplRelationship)
-    if (apiErrors.relationship || apiErrors.form) clearApiErrors()
+  function handleQualifyingEventChange(value: string) {
+    setQualifyingEvent(value as '' | SplQualifyingEvent)
+    if (apiErrors.qualifyingEvent || apiErrors.form) clearApiErrors()
   }
 
   function handleDayTypeChange(value: string) {
@@ -257,8 +253,8 @@ export function FileLeavePage() {
     setStartDate(EMPTY_FORM.startDate)
     setEndDate(EMPTY_FORM.endDate)
     setReason(EMPTY_FORM.reason)
+    setAssignmentType(EMPTY_FORM.assignmentType)
     setQualifyingEvent(EMPTY_FORM.qualifyingEvent)
-    setRelationship(EMPTY_FORM.relationship)
     setAttachments([])
     setTriedSubmit(false)
     clearApiErrors()
@@ -275,7 +271,7 @@ export function FileLeavePage() {
   async function handleConfirmSubmit() {
     if (dayType === '' || !isFilableLeaveCode(leaveType)) return
     if (needsAttachment && attachments.length === 0) return
-    if (needsSplDetails && (qualifyingEvent === '' || relationship === '')) {
+    if (needsSplDetails && (assignmentType === '' || qualifyingEvent === '')) {
       return
     }
 
@@ -292,8 +288,8 @@ export function FileLeavePage() {
         leave_reason: reason.trim(),
         ...(needsSplDetails
           ? {
+              assignment_type: assignmentType,
               qualifying_event: qualifyingEvent,
-              relationship,
             }
           : {}),
         ...(needsAttachment && attachments.length > 0
@@ -393,28 +389,27 @@ export function FileLeavePage() {
               {needsSplDetails ? (
                 <>
                   <SelectField
-                    label="Qualifying Event"
-                    value={qualifyingEvent}
-                    onChange={handleQualifyingEventChange}
-                    placeholder="Select Qualifying Event"
-                    options={[...SPL_QUALIFYING_EVENT_OPTIONS]}
+                    label="Assignment Type"
+                    value={assignmentType}
+                    onChange={handleAssignmentTypeChange}
+                    placeholder="Select Assignment Type"
+                    options={[...SPL_ASSIGNMENT_TYPE_OPTIONS]}
                     error={
-                      triedSubmit && qualifyingEventMissing
-                        ? 'Please select a qualifying event.'
-                        : (apiErrors.qualifyingEvent ?? null)
+                      triedSubmit && assignmentTypeMissing
+                        ? 'Please select an assignment type.'
+                        : (apiErrors.assignmentType ?? null)
                     }
                   />
                   <SelectField
-                    label="Relationship"
-                    value={relationship}
-                    onChange={handleRelationshipChange}
-                    placeholder="Select Relationship"
-                    options={splRelationshipOptions}
-                    disabled={qualifyingEvent === ''}
+                    label="Qualifying Event / Relationship"
+                    value={qualifyingEvent}
+                    onChange={handleQualifyingEventChange}
+                    placeholder="Select Qualifying Event / Relationship"
+                    options={[...SPL_QUALIFYING_EVENT_OPTIONS]}
                     error={
-                      triedSubmit && relationshipMissing
-                        ? 'Please select a relationship.'
-                        : (apiErrors.relationship ?? null)
+                      triedSubmit && qualifyingEventMissing
+                        ? 'Please select a qualifying event / relationship.'
+                        : (apiErrors.qualifyingEvent ?? null)
                     }
                   />
                 </>

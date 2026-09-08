@@ -193,66 +193,74 @@ export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
 
-/** SPL qualifying event codes for `POST /leaves`. */
-export type SplQualifyingEvent = 'marriage' | 'death'
+/** SPL assignment type codes for `POST /leaves`. */
+export type SplAssignmentType =
+  | 'philippines_based_short_term'
+  | 'long_term_overseas'
 
-/** SPL relationship codes for `POST /leaves`. */
-export type SplRelationship =
-  | 'employee'
-  | 'employee_child'
-  | 'spouse'
-  | 'parent'
-  | 'child'
-  | 'sibling'
-  | 'employee_grandparent'
-  | 'employee_grandchild'
-  | 'spouse_parent'
-  | 'child_spouse'
-  | 'sibling_spouse'
-  | 'spouse_sibling'
-  | 'spouse_grandparent'
+/** Combined SPL qualifying event / relationship codes for `POST /leaves`. */
+export type SplQualifyingEvent =
+  | 'employee_marriage'
+  | 'employee_child_marriage'
+  | 'death_spouse'
+  | 'death_parent'
+  | 'death_child'
+  | 'death_sibling'
+  | 'death_employee_grandparent'
+  | 'death_employee_grandchild'
+  | 'death_spouse_parent'
+  | 'death_child_spouse'
+  | 'death_sibling_spouse'
+  | 'death_spouse_sibling'
+  | 'death_spouse_grandparent'
+
+export const SPL_ASSIGNMENT_TYPE_OPTIONS: {
+  value: SplAssignmentType
+  label: string
+}[] = [
+  {
+    value: 'philippines_based_short_term',
+    label: 'Philippines-Based / Short-Term Overseas',
+  },
+  {
+    value: 'long_term_overseas',
+    label: 'Long-Term Overseas',
+  },
+]
 
 export const SPL_QUALIFYING_EVENT_OPTIONS: {
   value: SplQualifyingEvent
   label: string
 }[] = [
-  { value: 'marriage', label: 'Marriage' },
-  { value: 'death', label: 'Death' },
+  { value: 'employee_marriage', label: 'Employee gets married' },
+  {
+    value: 'employee_child_marriage',
+    label: "Employee's child gets married",
+  },
+  { value: 'death_spouse', label: 'Death – spouse' },
+  {
+    value: 'death_parent',
+    label: 'Death – parent / adoptive parent',
+  },
+  { value: 'death_child', label: 'Death – child' },
+  { value: 'death_sibling', label: 'Death – brother / sister' },
+  {
+    value: 'death_employee_grandparent',
+    label: "Death – employee's grandparent",
+  },
+  {
+    value: 'death_employee_grandchild',
+    label: "Death – employee's grandchild",
+  },
+  { value: 'death_spouse_parent', label: "Death – spouse's parent" },
+  { value: 'death_child_spouse', label: "Death – child's spouse" },
+  { value: 'death_sibling_spouse', label: "Death – sibling's spouse" },
+  { value: 'death_spouse_sibling', label: "Death – spouse's sibling" },
+  {
+    value: 'death_spouse_grandparent',
+    label: "Death – spouse's grandparent",
+  },
 ]
-
-const SPL_MARRIAGE_RELATIONSHIP_OPTIONS: {
-  value: SplRelationship
-  label: string
-}[] = [
-  { value: 'employee', label: 'Employee' },
-  { value: 'employee_child', label: "Employee's child" },
-]
-
-const SPL_DEATH_RELATIONSHIP_OPTIONS: {
-  value: SplRelationship
-  label: string
-}[] = [
-  { value: 'spouse', label: 'Spouse' },
-  { value: 'parent', label: 'Parent / adoptive parent' },
-  { value: 'child', label: 'Child' },
-  { value: 'sibling', label: 'Brother / sister' },
-  { value: 'employee_grandparent', label: "Employee's grandparent" },
-  { value: 'employee_grandchild', label: "Employee's grandchild" },
-  { value: 'spouse_parent', label: "Spouse's parent" },
-  { value: 'child_spouse', label: "Child's spouse" },
-  { value: 'sibling_spouse', label: "Sibling's spouse" },
-  { value: 'spouse_sibling', label: "Spouse's sibling" },
-  { value: 'spouse_grandparent', label: "Spouse's grandparent" },
-]
-
-/** Relationship options for the selected SPL qualifying event. */
-export function splRelationshipOptionsForEvent(
-  event: SplQualifyingEvent | '',
-): { value: SplRelationship; label: string }[] {
-  if (event === 'marriage') return SPL_MARRIAGE_RELATIONSHIP_OPTIONS
-  if (event === 'death') return SPL_DEATH_RELATIONSHIP_OPTIONS
-  return []
-}
 
 function empIdsMatch(left: number, right: string): boolean {
   return String(left) === String(right)
