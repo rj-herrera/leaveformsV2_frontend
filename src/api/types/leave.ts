@@ -150,16 +150,20 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL as multipart + `leave_attachment[]`. Omit emp_id for self. */
+/** POST /leaves — VL/ML/SPL as JSON; SL/PTB/EL/LL/PL as multipart + `leave_attachment[]`. Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
-  /** `VL` (default), `SL`, `PTB`, `EL`, `LL`, `ML`, or `PL`. Other types → 422. */
-  code?: 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
+  /** `VL` (default), `SL`, `PTB`, `EL`, `LL`, `ML`, `PL`, or `SPL`. Other types → 422. */
+  code?: 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL' | 'SPL'
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SL/PTB (med certs), EL/LL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML. */
+  /** Required for SPL: `marriage` or `death`. */
+  qualifying_event?: string
+  /** Required for SPL: relationship under the selected qualifying event. */
+  relationship?: string
+  /** Required for SL/PTB (med certs), EL/LL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML/SPL. */
   leave_attachment?: File[]
 }
 

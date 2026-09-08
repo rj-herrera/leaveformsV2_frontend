@@ -46,11 +46,16 @@ import {
   isFixedRangeLeave,
   isLongLeave,
   isPaternityLeave,
+  isSpecialLeave,
   MED_CERT_ACCEPT,
   PATERNITY_NOTIFICATION_FORM_FILENAME,
   paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
+  SPL_QUALIFYING_EVENT_OPTIONS,
+  splRelationshipOptionsForEvent,
+  type SplQualifyingEvent,
+  type SplRelationship,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -70,6 +75,8 @@ const EMPTY_LEAVE = {
   startDate: '',
   endDate: '',
   reason: '',
+  qualifyingEvent: '' as '' | SplQualifyingEvent,
+  relationship: '' as '' | SplRelationship,
 }
 
 function groupOptionLabel(group: MeGroupRef): string {
@@ -97,6 +104,12 @@ export function FileLeaveForMemberPage() {
   const [startDate, setStartDate] = useState(EMPTY_LEAVE.startDate)
   const [endDate, setEndDate] = useState(EMPTY_LEAVE.endDate)
   const [reason, setReason] = useState(EMPTY_LEAVE.reason)
+  const [qualifyingEvent, setQualifyingEvent] = useState<
+    '' | SplQualifyingEvent
+  >(EMPTY_LEAVE.qualifyingEvent)
+  const [relationship, setRelationship] = useState<'' | SplRelationship>(
+    EMPTY_LEAVE.relationship,
+  )
   const [attachments, setAttachments] = useState<File[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
   const [triedSubmit, setTriedSubmit] = useState(false)
@@ -148,6 +161,7 @@ export function FileLeaveForMemberPage() {
     leaveFieldsEnabled && leaveType !== '' && dayType !== ''
   const endDateEnabled = startDate !== ''
   const needsAttachment = requiresAttachment(leaveType)
+  const needsSplDetails = isSpecialLeave(leaveType)
   const fullDayOnly = requiresFullDay(leaveType)
   const fixedRange = isFixedRangeLeave(leaveType)
   const attachmentLabel = attachmentFieldLabel(leaveType)
@@ -160,6 +174,7 @@ export function FileLeaveForMemberPage() {
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
+  const splRelationshipOptions = splRelationshipOptionsForEvent(qualifyingEvent)
 
   const selectedBalance = useMemo(
     () =>
@@ -241,6 +256,8 @@ export function FileLeaveForMemberPage() {
   const endMissing = endDate === ''
   const reasonMissing = reason.trim().length === 0
   const attachmentMissing = needsAttachment && attachments.length === 0
+  const qualifyingEventMissing = needsSplDetails && qualifyingEvent === ''
+  const relationshipMissing = needsSplDetails && relationship === ''
 
   const longLeaveRangeInvalid =
     isLongLeave(leaveType) &&
@@ -259,6 +276,8 @@ export function FileLeaveForMemberPage() {
     !endMissing &&
     !reasonMissing &&
     !attachmentMissing &&
+    !qualifyingEventMissing &&
+    !relationshipMissing &&
     !attachmentUploading &&
     !exceedsCredits &&
     !noCredits &&
@@ -274,6 +293,8 @@ export function FileLeaveForMemberPage() {
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
     setReason(EMPTY_LEAVE.reason)
+    setQualifyingEvent(EMPTY_LEAVE.qualifyingEvent)
+    setRelationship(EMPTY_LEAVE.relationship)
     setAttachments([])
   }
 
@@ -296,8 +317,23 @@ export function FileLeaveForMemberPage() {
     setDayType(requiresFullDay(value) ? 'full' : EMPTY_LEAVE.dayType)
     setStartDate(EMPTY_LEAVE.startDate)
     setEndDate(EMPTY_LEAVE.endDate)
+    setQualifyingEvent(EMPTY_LEAVE.qualifyingEvent)
+    setRelationship(EMPTY_LEAVE.relationship)
     setAttachments([])
     clearApiErrors()
+  }
+
+  function handleQualifyingEventChange(value: string) {
+    setQualifyingEvent(value as '' | SplQualifyingEvent)
+    setRelationship(EMPTY_LEAVE.relationship)
+    if (apiErrors.qualifyingEvent || apiErrors.relationship || apiErrors.form) {
+      clearApiErrors()
+    }
+  }
+
+  function handleRelationshipChange(value: string) {
+    setRelationship(value as '' | SplRelationship)
+    if (apiErrors.relationship || apiErrors.form) clearApiErrors()
   }
 
   function handleDayTypeChange(value: string) {
@@ -328,6 +364,9 @@ export function FileLeaveForMemberPage() {
       return
     }
     if (needsAttachment && attachments.length === 0) return
+    if (needsSplDetails && (qualifyingEvent === '' || relationship === '')) {
+      return
+    }
 
     setConfirmOpen(false)
     setSubmitting(true)
@@ -341,6 +380,12 @@ export function FileLeaveForMemberPage() {
         end_date: endDate,
         day_type: dayType as ApiDayType,
         leave_reason: reason.trim(),
+        ...(needsSplDetails
+          ? {
+              qualifying_event: qualifyingEvent,
+              relationship,
+            }
+          : {}),
         ...(needsAttachment && attachments.length > 0
           ? { leave_attachment: attachments }
           : {}),
@@ -483,6 +528,36 @@ export function FileLeaveForMemberPage() {
                 value={remainingLabel}
                 readOnly
               />
+              {needsSplDetails ? (
+                <>
+                  <SelectField
+                    label="Qualifying Event"
+                    value={qualifyingEvent}
+                    onChange={handleQualifyingEventChange}
+                    placeholder="Select Qualifying Event"
+                    options={[...SPL_QUALIFYING_EVENT_OPTIONS]}
+                    disabled={!leaveFieldsEnabled}
+                    error={
+                      triedSubmit && qualifyingEventMissing
+                        ? 'Please select a qualifying event.'
+                        : (apiErrors.qualifyingEvent ?? null)
+                    }
+                  />
+                  <SelectField
+                    label="Relationship"
+                    value={relationship}
+                    onChange={handleRelationshipChange}
+                    placeholder="Select Relationship"
+                    options={splRelationshipOptions}
+                    disabled={!leaveFieldsEnabled || qualifyingEvent === ''}
+                    error={
+                      triedSubmit && relationshipMissing
+                        ? 'Please select a relationship.'
+                        : (apiErrors.relationship ?? null)
+                    }
+                  />
+                </>
+              ) : null}
               <SelectField
                 label="Day Type"
                 value={dayType}

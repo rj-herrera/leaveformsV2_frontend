@@ -6,12 +6,21 @@ import {
   PATERNITY_LEAVE_THEME,
   PTB_LEAVE_THEME,
   SICK_LEAVE_THEME,
+  SPECIAL_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../constants/leaveTypeTheme'
 import type { UserGender } from './gender'
 
 /** Leave types `POST /leaves` accepts today. Other codes → 422. */
-export type FilableLeaveCode = 'VL' | 'SL' | 'PTB' | 'EL' | 'LL' | 'ML' | 'PL'
+export type FilableLeaveCode =
+  | 'VL'
+  | 'SL'
+  | 'PTB'
+  | 'EL'
+  | 'LL'
+  | 'ML'
+  | 'PL'
+  | 'SPL'
 
 export const FILABLE_LEAVE_TYPE_OPTIONS: {
   value: FilableLeaveCode
@@ -24,6 +33,7 @@ export const FILABLE_LEAVE_TYPE_OPTIONS: {
   { value: 'LL', label: LONG_LEAVE_THEME.label },
   { value: 'ML', label: MATERNITY_LEAVE_THEME.label },
   { value: 'PL', label: PATERNITY_LEAVE_THEME.label },
+  { value: 'SPL', label: SPECIAL_LEAVE_THEME.label },
 ]
 
 export type LeaveTypeFilter = 'ALL' | FilableLeaveCode
@@ -56,7 +66,8 @@ export function isFilableLeaveCode(code: string): code is FilableLeaveCode {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
@@ -107,6 +118,10 @@ export function isPaternityLeave(code: string): boolean {
   return code.toUpperCase() === 'PL'
 }
 
+export function isSpecialLeave(code: string): boolean {
+  return code.toUpperCase() === 'SPL'
+}
+
 /** Filename of the blank Paternity Notification Form under `public/form/`. */
 export const PATERNITY_NOTIFICATION_FORM_FILENAME =
   'Paternity-Notification-Form.doc'
@@ -128,11 +143,12 @@ export function isAdminApproved(code: string): boolean {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
-/** PTB, EL, LL, ML, and PL are full day only — half_am / half_pm → 422. */
+/** PTB, EL, LL, ML, PL, and SPL are full day only — half_am / half_pm → 422. */
 export function requiresFullDay(code: string): boolean {
   const normalized = code.toUpperCase()
   return (
@@ -140,7 +156,8 @@ export function requiresFullDay(code: string): boolean {
     normalized === 'EL' ||
     normalized === 'LL' ||
     normalized === 'ML' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
@@ -174,6 +191,67 @@ export function enforcesRemainingCredits(code: string): boolean {
 /** 1-month advance filing for 3+ days applies to VL only. */
 export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
+}
+
+/** SPL qualifying event codes for `POST /leaves`. */
+export type SplQualifyingEvent = 'marriage' | 'death'
+
+/** SPL relationship codes for `POST /leaves`. */
+export type SplRelationship =
+  | 'employee'
+  | 'employee_child'
+  | 'spouse'
+  | 'parent'
+  | 'child'
+  | 'sibling'
+  | 'employee_grandparent'
+  | 'employee_grandchild'
+  | 'spouse_parent'
+  | 'child_spouse'
+  | 'sibling_spouse'
+  | 'spouse_sibling'
+  | 'spouse_grandparent'
+
+export const SPL_QUALIFYING_EVENT_OPTIONS: {
+  value: SplQualifyingEvent
+  label: string
+}[] = [
+  { value: 'marriage', label: 'Marriage' },
+  { value: 'death', label: 'Death' },
+]
+
+const SPL_MARRIAGE_RELATIONSHIP_OPTIONS: {
+  value: SplRelationship
+  label: string
+}[] = [
+  { value: 'employee', label: 'Employee' },
+  { value: 'employee_child', label: "Employee's child" },
+]
+
+const SPL_DEATH_RELATIONSHIP_OPTIONS: {
+  value: SplRelationship
+  label: string
+}[] = [
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'parent', label: 'Parent / adoptive parent' },
+  { value: 'child', label: 'Child' },
+  { value: 'sibling', label: 'Brother / sister' },
+  { value: 'employee_grandparent', label: "Employee's grandparent" },
+  { value: 'employee_grandchild', label: "Employee's grandchild" },
+  { value: 'spouse_parent', label: "Spouse's parent" },
+  { value: 'child_spouse', label: "Child's spouse" },
+  { value: 'sibling_spouse', label: "Sibling's spouse" },
+  { value: 'spouse_sibling', label: "Spouse's sibling" },
+  { value: 'spouse_grandparent', label: "Spouse's grandparent" },
+]
+
+/** Relationship options for the selected SPL qualifying event. */
+export function splRelationshipOptionsForEvent(
+  event: SplQualifyingEvent | '',
+): { value: SplRelationship; label: string }[] {
+  if (event === 'marriage') return SPL_MARRIAGE_RELATIONSHIP_OPTIONS
+  if (event === 'death') return SPL_DEATH_RELATIONSHIP_OPTIONS
+  return []
 }
 
 function empIdsMatch(left: number, right: string): boolean {
