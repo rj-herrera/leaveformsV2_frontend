@@ -96,7 +96,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
 
       // Navigate before leave-detail revalidation so the parent gate does not
       // briefly show "Conversion not available" after status becomes pending.
-      toast.success('Leave conversion submitted successfully.')
+      toast.success('Leave conversion submitted.')
       navigate('/dashboard')
 
       void Promise.all([

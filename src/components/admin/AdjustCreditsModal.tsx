@@ -141,12 +141,6 @@ export function AdjustCreditsModal({
     direction === 'deduct' && parsedCredits != null && after < 0
   const invalidCredits = credits.trim().length > 0 && parsedCredits == null
 
-  const largeParentalAdd =
-    direction === 'add' &&
-    parsedCredits != null &&
-    ((leaveTypeKey === 'ml' && parsedCredits >= LARGE_ML_ADD_THRESHOLD) ||
-      (leaveTypeKey === 'pl' && parsedCredits >= LARGE_PL_ADD_THRESHOLD))
-
   const canContinue =
     employee != null &&
     parsedCredits != null &&
@@ -229,8 +223,7 @@ export function AdjustCreditsModal({
       }
     >
       <p className="text-small text-text-gray uppercase mb-3">
-        For corrections and exceptions only. Use Distribute Leave Credits for
-        routine grants.
+      Use this only for <b>corrections and exceptions</b>. For regular leave credit grants, use Distribute Leave Credits.
       </p>
 
       <div className="flex flex-col gap-5">
@@ -340,15 +333,6 @@ export function AdjustCreditsModal({
             {submitError ? <p>{submitError}</p> : null}
           </div>
         )}
-
-        {largeParentalAdd ? (
-          <div className="rounded-md border border-status-pending/40 bg-status-pending/10 px-3 py-2 text-small text-text-black">
-            <p>
-              This is a large {LEAVE_BALANCE_LABELS[leaveTypeKey]} grant. Please
-              confirm it is intentional.
-            </p>
-          </div>
-        ) : null}
       </div>
     </Modal>
   )

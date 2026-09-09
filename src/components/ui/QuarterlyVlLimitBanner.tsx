@@ -57,8 +57,8 @@ export function QuarterlyVlLimitBanner({
 
   const title =
     state.severity === 'at_limit'
-      ? 'Quarterly Vacation Leave limit reached'
-      : 'Approaching quarterly Vacation Leave limit'
+      ? 'Quarterly leave limit reached'
+      : 'Approaching quarterly leave limit'
 
   const period = quarterLabel?.trim() ? ` (${quarterLabel.trim()})` : ''
   const usedLabel = formatQuarterlyVlDays(state.usedDays)

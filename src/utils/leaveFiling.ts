@@ -189,6 +189,48 @@ export function enforcesRemainingCredits(code: string): boolean {
 }
 
 /**
+ * Which credit/LWOP notice to show while filing (priority order).
+ * Informational for VL/SL LWOP paths; PTB/EL overages are blocking banners.
+ */
+export type LeaveCreditsFilingNotice =
+  | 'noCredits'
+  | 'exceedsCredits'
+  | 'fullLwop'
+  | 'mayBeLwop'
+
+export function getLeaveCreditsFilingNotice(options: {
+  leaveType: string
+  remainingDays: number
+  durationDays: number
+}): LeaveCreditsFilingNotice | null {
+  const { leaveType, remainingDays, durationDays } = options
+  if (!leaveType || !Number.isFinite(remainingDays)) return null
+
+  if (enforcesRemainingCredits(leaveType) && remainingDays <= 0) {
+    return 'noCredits'
+  }
+  if (
+    enforcesRemainingCredits(leaveType) &&
+    durationDays > 0 &&
+    durationDays > remainingDays
+  ) {
+    return 'exceedsCredits'
+  }
+  if (allowsLwop(leaveType) && remainingDays <= 0) {
+    return 'fullLwop'
+  }
+  if (
+    allowsLwop(leaveType) &&
+    remainingDays > 0 &&
+    durationDays > 0 &&
+    durationDays > remainingDays
+  ) {
+    return 'mayBeLwop'
+  }
+  return null
+}
+
+/**
  * Self-filed VL advance notice: exactly 3 workdays → 3 working days;
  * more than 3 workdays → 30 calendar days. On-behalf skips this.
  */

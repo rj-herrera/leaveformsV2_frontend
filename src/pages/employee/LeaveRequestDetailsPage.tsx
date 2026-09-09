@@ -246,7 +246,7 @@ export function LeaveRequestDetailsPage() {
         mutate(swrKeys.balances()),
       ])
 
-      toast.success('Leave request cancelled successfully.')
+      toast.success('Leave request cancelled.')
       navigate('/dashboard')
     } catch (err) {
       setCancelError(messageFromApiError(err))

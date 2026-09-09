@@ -714,14 +714,14 @@ export function AdminLeaveRequestsPage() {
         <div className="flex shrink-0 flex-col gap-3 rounded-lg border border-status-pending-conversion/40 bg-status-pending-conversion/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-body font-semibold text-status-pending-conversion">
-              Pending Approver Reminders
+              Pending Approver Actions
             </p>
             <p className="mt-0.5 text-small text-text-black">
               {reminderLoading && !reminderStats
                 ? 'Loading reminder summary…'
                 : reminderErrorFromApi
                   ? 'Unable to load reminder summary.'
-                  : `${approverCount} approver(s) have ${requestCount} leave request(s) awaiting their action.`}
+                  : `${approverCount} ${approverCount === 1 ? 'approver has' : 'approvers have'} ${requestCount} leave ${requestCount === 1 ? 'request' : 'requests'} awaiting their action.`}
             </p>
             <p className="mt-1 text-small text-text-gray">
               Last Reminder Sent:{' '}

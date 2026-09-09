@@ -284,7 +284,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
           : []),
       ])
 
-      toast.success('Leave request updated successfully.')
+      toast.success('Leave request updated.')
       navigate(detailsPath, { state: location.state })
     } catch (error) {
       setApiErrors(

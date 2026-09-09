@@ -34,7 +34,7 @@ export const VL_NOTICE_EXACT_3_MESSAGE =
   'Leave requests of 3 consecutive working days must be filed at least 3 working days before the leave start date.'
 
 export const VL_NOTICE_LONG_MESSAGE =
-  'Leave requests of more than 3 consecutive working days must be filed at least 30 calendar days before the leave start date.'
+  'Leave requests longer than 3 consecutive working days must be filed at least 30 calendar days before the leave start date.'
 
 export const LEAVE_LEAD_TIME_UNGATED: LeaveLeadTimeResult = {
   ok: true,

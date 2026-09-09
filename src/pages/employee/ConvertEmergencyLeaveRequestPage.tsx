@@ -123,7 +123,7 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
 
       // Navigate before leave-detail revalidation so the parent gate does not
       // briefly show "Conversion not available" after status becomes pending.
-      toast.success('Leave conversion submitted successfully.')
+      toast.success('Leave conversion submitted.')
       navigate('/dashboard')
 
       void Promise.all([
@@ -207,10 +207,8 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
                 />
                 <p className="text-small font-semibold text-status-rejected">
                   Remaining Emergency Leave credits (
-                  {formatCreditAmount(elAvailable)}) are less than this leave
-                  duration ({formatDurationDays(detail.duration)}). Conversion
-                  requires enough EL to cover the full duration, including unpaid
-                  days.
+                  {formatCreditAmount(elAvailable)}) are not enough to cover this leave ({formatDurationDays(detail.duration)}).
+                  Conversion requires enough Emergency Leave credits to cover the full leave, including unpaid days.
                 </p>
               </div>
             ) : null}

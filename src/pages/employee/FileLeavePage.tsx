@@ -12,6 +12,7 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
+import { LeaveCreditsFilingBanner } from '../../components/leave/LeaveCreditsFilingBanner'
 import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
@@ -29,14 +30,13 @@ import {
   type DayType,
 } from '../../utils/leaveDates'
 import {
-  allowsLwop,
   appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
-  enforcesRemainingCredits,
   filableLeaveLabel,
   filableLeaveTypeOptionsForGender,
+  getLeaveCreditsFilingNotice,
   isFilableLeaveCode,
   isFixedRangeLeave,
   isLongLeave,
@@ -175,23 +175,17 @@ export function FileLeavePage() {
   // Quarterly VL usage (days used this quarter). Wire when the API exposes it;
   // banner stays hidden while null and never blocks filing.
   const quarterlyVlUsedDays: number | null = null
-  const exceedsCredits =
-    leaveType !== '' &&
-    enforcesRemainingCredits(leaveType) &&
-    leaveDuration > 0 &&
-    Number.isFinite(remainingDays) &&
-    leaveDuration > remainingDays
-  const noCredits =
-    leaveType !== '' &&
-    enforcesRemainingCredits(leaveType) &&
-    Number.isFinite(remainingDays) &&
-    remainingDays <= 0
-  /** VL/SL with 0 available credits — filing still allowed; recorded as full LWOP. */
-  const willBeFullLwop =
-    leaveType !== '' &&
-    allowsLwop(leaveType) &&
-    Number.isFinite(remainingDays) &&
-    remainingDays <= 0
+  const creditsNotice = getLeaveCreditsFilingNotice({
+    leaveType,
+    remainingDays,
+    durationDays: leaveDuration,
+  })
+  const exceedsCredits = creditsNotice === 'exceedsCredits'
+  const noCredits = creditsNotice === 'noCredits'
+  const remainingLabel = useMemo(() => {
+    if (!Number.isFinite(remainingDays)) return '0 days'
+    return formatDurationLabel(remainingDays, 'full')
+  }, [remainingDays])
 
   const leaveTypeMissing = leaveType === ''
   const dayTypeMissing = dayType === ''
@@ -312,7 +306,7 @@ export function FileLeavePage() {
         mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
       ])
 
-      toast.success('Leave request submitted successfully.')
+      toast.success('Leave request submitted.')
       navigate('/dashboard')
     } catch (error) {
       setApiErrors(parseLeaveFormApiError(error))
@@ -482,62 +476,15 @@ export function FileLeavePage() {
                   className="sm:col-span-2"
                 />
               ) : null}
-              {noCredits ? (
-                <div
-                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
-                  role="alert"
-                >
-                  <TriangleAlert
-                    className="mt-0.5 size-5 shrink-0 text-status-pending"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-body font-semibold text-text-black">
-                      No remaining {selectedTypeLabel} credits
-                    </p>
-                    <p className="mt-1 text-small text-text-black">
-                      You cannot file {selectedTypeLabel} without available
-                      credits.
-                    </p>
-                  </div>
-                </div>
-              ) : exceedsCredits ? (
-                <div
-                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
-                  role="alert"
-                >
-                  <TriangleAlert
-                    className="mt-0.5 size-5 shrink-0 text-status-pending"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-body font-semibold text-text-black">
-                      Insufficient {selectedTypeLabel} credits
-                    </p>
-                    <p className="mt-1 text-small text-text-black">
-                      Duration exceeds remaining credits. Shorten the leave, or
-                      file remaining days as Vacation Leave.
-                    </p>
-                  </div>
-                </div>
-              ) : willBeFullLwop ? (
-                <div
-                  className="flex items-start gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-3 sm:col-span-2"
-                  role="status"
-                >
-                  <TriangleAlert
-                    className="mt-0.5 size-5 shrink-0 text-status-pending"
-                    aria-hidden="true"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-body font-semibold text-text-black">
-                      No remaining {selectedTypeLabel} credits
-                    </p>
-                    <p className="mt-1 text-small text-text-black">
-                      This request will be filed as Leave Without Pay (LWOP).
-                    </p>
-                  </div>
-                </div>
+              {creditsNotice ? (
+                <LeaveCreditsFilingBanner
+                  notice={creditsNotice}
+                  leaveTypeLabel={selectedTypeLabel}
+                  audience="self"
+                  durationLabel={durationLabel}
+                  remainingLabel={remainingLabel}
+                  className="sm:col-span-2"
+                />
               ) : null}
               {leadTimeValidation.gated ? (
                 <div
