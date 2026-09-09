@@ -1,81 +1,42 @@
 import { TriangleAlert } from 'lucide-react'
+import type { LeaveQuarterUsageResource } from '../../api/types'
 import {
-  QUARTERLY_VL_LIMIT_DAYS,
-  QUARTERLY_VL_WARN_FROM_DAYS,
-} from '../../constants/quarterlyVlLimit'
-import {
+  formatQuarterLabel,
   formatQuarterlyVlDays,
-  getQuarterlyVlLimitState,
+  shouldShowQuarterUsageBanner,
 } from '../../utils/quarterlyVlLimit'
 
 export type QuarterlyVlLimitBannerProps = {
-  /**
-   * VL days already used (or reserved + used) in the current quarter.
-   * From the backend once available — omit or pass `null` to hide.
-   */
-  usedDays: number | null | undefined
-  /**
-   * Days from the leave currently being filed (so the banner can show
-   * projected usage). Optional.
-   */
-  additionalDays?: number
-  /** Defaults to {@link QUARTERLY_VL_LIMIT_DAYS} (9). */
-  limitDays?: number
-  /** Defaults to {@link QUARTERLY_VL_WARN_FROM_DAYS} (7). */
-  warnFromDays?: number
-  /**
-   * Optional label for the quarter window, e.g. "Q1 2026" or
-   * "Jan–Mar 2026". Shown in the body when provided.
-   */
-  quarterLabel?: string | null
+  /** Response from `GET /leaves/quarter-usage`. Hide when null/undefined. */
+  usage: LeaveQuarterUsageResource | null | undefined
   className?: string
 }
 
 /**
- * Informational warning when an employee is approaching or at the
- * quarterly Vacation Leave cap (9 days). Does not block filing.
- *
- * Renders nothing until `usedDays` is known and the warn threshold is met.
+ * Informational warning when projected VL hits or exceeds the quarterly
+ * cap (9 days). Driven by `GET /leaves/quarter-usage`. Never blocks filing.
  */
 export function QuarterlyVlLimitBanner({
-  usedDays,
-  additionalDays = 0,
-  limitDays = QUARTERLY_VL_LIMIT_DAYS,
-  warnFromDays = QUARTERLY_VL_WARN_FROM_DAYS,
-  quarterLabel,
+  usage,
   className,
 }: QuarterlyVlLimitBannerProps) {
-  if (usedDays == null) return null
+  if (!shouldShowQuarterUsageBanner(usage) || usage == null) return null
 
-  const state = getQuarterlyVlLimitState({
-    usedDays,
-    additionalDays,
-    limitDays,
-    warnFromDays,
-  })
-  if (!state) return null
+  const exceeded = usage.level === 'exceeded'
+  const period = formatQuarterLabel(usage.quarter)
+  const periodSuffix = period ? ` (${period})` : ''
+  const takenLabel = formatQuarterlyVlDays(usage.taken)
+  const projectedLabel = formatQuarterlyVlDays(usage.projected)
+  const capLabel = formatQuarterlyVlDays(usage.cap)
+  const thisRequestLabel = formatQuarterlyVlDays(usage.this_request)
 
-  const title =
-    state.severity === 'at_limit'
-      ? 'Quarterly Vacation Leave limit reached'
-      : 'Approaching quarterly Vacation Leave limit'
+  const title = exceeded
+    ? 'Quarterly Vacation Leave limit exceeded'
+    : 'Quarterly Vacation Leave limit reached'
 
-  const period = quarterLabel?.trim() ? ` (${quarterLabel.trim()})` : ''
-  const usedLabel = formatQuarterlyVlDays(state.usedDays)
-  const limitLabel = formatQuarterlyVlDays(state.limitDays)
-
-  let body: string
-  if (state.additionalDays > 0) {
-    const projectedLabel = formatQuarterlyVlDays(state.projectedDays)
-    body =
-      state.severity === 'at_limit'
-        ? `You have used ${usedLabel} of ${limitLabel} allowed this quarter${period}. Including this request, that would be ${projectedLabel}. This notice is informational only and does not block filing.`
-        : `You have used ${usedLabel} of ${limitLabel} allowed this quarter${period}. Including this request, you would use ${projectedLabel}. This notice is informational only and does not block filing.`
-  } else if (state.severity === 'at_limit') {
-    body = `You have used ${usedLabel} of ${limitLabel} Vacation Leave allowed this quarter${period}. This notice is informational only and does not block filing.`
-  } else {
-    body = `You have used ${usedLabel} of ${limitLabel} Vacation Leave allowed this quarter${period}. You have ${formatQuarterlyVlDays(state.remainingDays)} remaining before the quarterly cap. This notice is informational only and does not block filing.`
-  }
+  const body = exceeded
+    ? `You have ${takenLabel} of confirmed VL this quarter${periodSuffix}. Including this request (${thisRequestLabel}), that would be ${projectedLabel}, which exceeds the ${capLabel} quarterly cap. Exceeding 9 VL days in a quarter may result in a memo.`
+    : `You have ${takenLabel} of confirmed VL this quarter${periodSuffix}. Including this request (${thisRequestLabel}), that would be ${projectedLabel} — the ${capLabel} quarterly cap.`
 
   return (
     <div

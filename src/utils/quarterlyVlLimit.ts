@@ -1,61 +1,38 @@
-import {
-  QUARTERLY_VL_LIMIT_DAYS,
-  QUARTERLY_VL_WARN_FROM_DAYS,
-} from '../constants/quarterlyVlLimit'
+import type { LeaveQuarterUsageResource } from '../api/types'
 
-export type QuarterlyVlLimitSeverity = 'approaching' | 'at_limit'
+/** Max Vacation Leave days per calendar quarter (matches API `cap`). */
+export const QUARTERLY_VL_LIMIT_DAYS = 9
 
-export type QuarterlyVlLimitState = {
-  severity: QuarterlyVlLimitSeverity
-  /** Days already counted toward the quarter (API). */
-  usedDays: number
-  /** Days from the leave being filed now, if any. */
-  additionalDays: number
-  /** usedDays + additionalDays. */
-  projectedDays: number
-  limitDays: number
-  remainingDays: number
-}
-
-function toNonNegativeDays(value: number): number {
-  if (!Number.isFinite(value) || value < 0) return 0
-  return value
-}
-
-/**
- * Returns banner state when the employee is near or at the quarterly VL
- * cap; otherwise null (do not render). Informational only — never blocks filing.
- */
-export function getQuarterlyVlLimitState(options: {
-  usedDays: number
-  additionalDays?: number
-  limitDays?: number
-  warnFromDays?: number
-}): QuarterlyVlLimitState | null {
-  const usedDays = toNonNegativeDays(options.usedDays)
-  const additionalDays = toNonNegativeDays(options.additionalDays ?? 0)
-  const limitDays = options.limitDays ?? QUARTERLY_VL_LIMIT_DAYS
-  const warnFromDays = options.warnFromDays ?? QUARTERLY_VL_WARN_FROM_DAYS
-  const projectedDays = usedDays + additionalDays
-
-  if (projectedDays < warnFromDays) return null
-
-  const remainingDays = Math.max(0, limitDays - projectedDays)
-  const severity: QuarterlyVlLimitSeverity =
-    projectedDays >= limitDays ? 'at_limit' : 'approaching'
-
-  return {
-    severity,
-    usedDays,
-    additionalDays,
-    projectedDays,
-    limitDays,
-    remainingDays,
-  }
-}
-
-export function formatQuarterlyVlDays(days: number): string {
-  const rounded = Math.round(days * 100) / 100
+/** Format API decimal day strings for display (e.g. `"9.00"` → `"9 days"`). */
+export function formatQuarterlyVlDays(days: number | string): string {
+  const value = typeof days === 'string' ? Number(days) : days
+  if (!Number.isFinite(value)) return '0 days'
+  const rounded = Math.round(value * 100) / 100
   const label = Number.isInteger(rounded) ? String(rounded) : String(rounded)
   return `${label} ${rounded === 1 ? 'day' : 'days'}`
+}
+
+/** `"2026-Q3"` → `"Q3 2026"`. */
+export function formatQuarterLabel(quarter: string | null | undefined): string | null {
+  if (!quarter) return null
+  const match = /^(\d{4})-Q([1-4])$/i.exec(quarter.trim())
+  if (!match) return quarter
+  return `Q${match[2]} ${match[1]}`
+}
+
+/** True when projected usage would exceed the quarterly VL cap (memo path). */
+export function isQuarterUsageExceeded(
+  usage: LeaveQuarterUsageResource | null | undefined,
+): boolean {
+  return usage?.applicable === true && usage.level === 'exceeded'
+}
+
+/** True when the banner should render (`at_cap` or `exceeded`). */
+export function shouldShowQuarterUsageBanner(
+  usage: LeaveQuarterUsageResource | null | undefined,
+): boolean {
+  return (
+    usage?.applicable === true &&
+    (usage.level === 'at_cap' || usage.level === 'exceeded')
+  )
 }
