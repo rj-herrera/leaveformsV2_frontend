@@ -10,6 +10,10 @@ import {
   VACATION_LEAVE_THEME,
 } from '../constants/leaveTypeTheme'
 import type { UserGender } from './gender'
+import {
+  inclusiveCalendarEndDate,
+  nthWorkingDayEndDate,
+} from './leaveDates'
 
 /** Leave types `POST /leaves` accepts today. Other codes → 422. */
 export type FilableLeaveCode =
@@ -90,7 +94,7 @@ export function filableLeaveTypeOptionsForGender(
   })
 }
 
-/** SL, PTB, EL, LL, and PL require `leave_attachment` on submit. */
+/** SL, PTB, EL, LL, PL, and SPL require `leave_attachment` on submit. */
 export function requiresAttachment(code: string): boolean {
   const normalized = code.toUpperCase()
   return (
@@ -98,11 +102,12 @@ export function requiresAttachment(code: string): boolean {
     normalized === 'PTB' ||
     normalized === 'EL' ||
     normalized === 'LL' ||
-    normalized === 'PL'
+    normalized === 'PL' ||
+    normalized === 'SPL'
   )
 }
 
-/** SL and PTB attachments are medical certificates; EL and LL are supporting documents. */
+/** SL and PTB attachments are medical certificates; EL, LL, and SPL are supporting documents. */
 export function requiresMedCert(code: string): boolean {
   const normalized = code.toUpperCase()
   return normalized === 'SL' || normalized === 'PTB'
@@ -171,9 +176,19 @@ export function isFixedRangeLeave(code: string): boolean {
   return normalized === 'ML' || normalized === 'PL'
 }
 
+/** ML/PL/SPL end dates are derived — the end picker stays locked. */
+export function hasDerivedEndDate(code: string): boolean {
+  return isFixedRangeLeave(code) || isSpecialLeave(code)
+}
+
 /** ML/PL credits are granted on submit — do not treat remaining 0 as a block. */
 export function grantsCreditsOnSubmit(code: string): boolean {
   return isFixedRangeLeave(code)
+}
+
+/** SPL has no rolling credits; ML/PL grant on submit; LL is unpaid. Show “—”. */
+export function hidesRemainingCredits(code: string): boolean {
+  return grantsCreditsOnSubmit(code) || isLongLeave(code) || isSpecialLeave(code)
 }
 
 /** Only VL and SL may go LWOP. */
@@ -196,33 +211,34 @@ export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'
 }
 
-/** SPL assignment type codes for `POST /leaves`. */
-export type SplAssignmentType =
-  | 'philippines_based_short_term'
-  | 'long_term_overseas'
+/** SPL assignment type codes for `POST /leaves` (`assignment_type`). */
+export type SplAssignmentType = 'philippines_based' | 'long_term_overseas'
 
-/** Combined SPL qualifying event / relationship codes for `POST /leaves`. */
-export type SplQualifyingEvent =
+/** SPL qualifying event codes for `POST /leaves` (`special_leave_reason`). */
+export type SplSpecialLeaveReason =
   | 'employee_marriage'
-  | 'employee_child_marriage'
+  | 'child_marriage'
   | 'death_spouse'
   | 'death_parent'
   | 'death_child'
   | 'death_sibling'
-  | 'death_employee_grandparent'
-  | 'death_employee_grandchild'
+  | 'death_grandparent'
+  | 'death_grandchild'
   | 'death_spouse_parent'
   | 'death_child_spouse'
   | 'death_sibling_spouse'
   | 'death_spouse_sibling'
   | 'death_spouse_grandparent'
 
+/** Long-term overseas qualifying death: inclusive calendar days (21 + 2 travel). */
+export const SPL_LTD_DEATH_CALENDAR_DAYS = 23
+
 export const SPL_ASSIGNMENT_TYPE_OPTIONS: {
   value: SplAssignmentType
   label: string
 }[] = [
   {
-    value: 'philippines_based_short_term',
+    value: 'philippines_based',
     label: 'Philippines-Based / Short-Term Overseas',
   },
   {
@@ -231,13 +247,13 @@ export const SPL_ASSIGNMENT_TYPE_OPTIONS: {
   },
 ]
 
-export const SPL_QUALIFYING_EVENT_OPTIONS: {
-  value: SplQualifyingEvent
+export const SPL_SPECIAL_LEAVE_REASON_OPTIONS: {
+  value: SplSpecialLeaveReason
   label: string
 }[] = [
   { value: 'employee_marriage', label: 'Employee gets married' },
   {
-    value: 'employee_child_marriage',
+    value: 'child_marriage',
     label: "Employee's child gets married",
   },
   { value: 'death_spouse', label: 'Death – spouse' },
@@ -248,11 +264,11 @@ export const SPL_QUALIFYING_EVENT_OPTIONS: {
   { value: 'death_child', label: 'Death – child' },
   { value: 'death_sibling', label: 'Death – brother / sister' },
   {
-    value: 'death_employee_grandparent',
+    value: 'death_grandparent',
     label: "Death – employee's grandparent",
   },
   {
-    value: 'death_employee_grandchild',
+    value: 'death_grandchild',
     label: "Death – employee's grandchild",
   },
   { value: 'death_spouse_parent', label: "Death – spouse's parent" },
@@ -264,6 +280,110 @@ export const SPL_QUALIFYING_EVENT_OPTIONS: {
     label: "Death – spouse's grandparent",
   },
 ]
+
+const SPL_PH_WORKDAYS: Record<SplSpecialLeaveReason, number> = {
+  employee_marriage: 6,
+  child_marriage: 2,
+  death_spouse: 7,
+  death_parent: 7,
+  death_child: 7,
+  death_sibling: 5,
+  death_grandparent: 5,
+  death_grandchild: 5,
+  death_spouse_parent: 4,
+  death_child_spouse: 3,
+  death_sibling_spouse: 2,
+  death_spouse_sibling: 2,
+  death_spouse_grandparent: 2,
+}
+
+export function isSplAssignmentType(value: string): value is SplAssignmentType {
+  return SPL_ASSIGNMENT_TYPE_OPTIONS.some((option) => option.value === value)
+}
+
+export function isSplSpecialLeaveReason(
+  value: string,
+): value is SplSpecialLeaveReason {
+  return SPL_SPECIAL_LEAVE_REASON_OPTIONS.some(
+    (option) => option.value === value,
+  )
+}
+
+export function isSplUnavailableForLongTermOverseas(
+  reason: SplSpecialLeaveReason,
+): boolean {
+  return reason === 'death_child_spouse' || reason === 'death_sibling_spouse'
+}
+
+export function splReasonOptionsFor(assignment: SplAssignmentType | '') {
+  if (assignment !== 'long_term_overseas') {
+    return SPL_SPECIAL_LEAVE_REASON_OPTIONS
+  }
+  return SPL_SPECIAL_LEAVE_REASON_OPTIONS.filter(
+    (option) => !isSplUnavailableForLongTermOverseas(option.value),
+  )
+}
+
+export function splSpecialLeaveReasonLabel(
+  reason: SplSpecialLeaveReason | '',
+): string {
+  if (!reason) return ''
+  return (
+    SPL_SPECIAL_LEAVE_REASON_OPTIONS.find((option) => option.value === reason)
+      ?.label ?? reason
+  )
+}
+
+export type SplAllotment = {
+  days: number
+  usesCalendarDays: boolean
+}
+
+export function splAllotment(
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+): SplAllotment | null {
+  if (!assignment || !reason) return null
+  if (assignment === 'long_term_overseas') {
+    if (reason === 'employee_marriage') {
+      return { days: 6, usesCalendarDays: false }
+    }
+    if (reason === 'child_marriage') {
+      return { days: 2, usesCalendarDays: false }
+    }
+    if (isSplUnavailableForLongTermOverseas(reason)) return null
+    return {
+      days: SPL_LTD_DEATH_CALENDAR_DAYS,
+      usesCalendarDays: true,
+    }
+  }
+  return {
+    days: SPL_PH_WORKDAYS[reason],
+    usesCalendarDays: false,
+  }
+}
+
+export function usesSplCalendarDays(
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+): boolean {
+  return splAllotment(assignment, reason)?.usesCalendarDays === true
+}
+
+/** FE-computed SPL end date; API re-checks the matrix. */
+export function specialLeaveEndDate(
+  startISO: string,
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+  nonWorkingDates?: ReadonlySet<string>,
+): string {
+  const allotment = splAllotment(assignment, reason)
+  if (!allotment) return ''
+  if (allotment.usesCalendarDays) {
+    return inclusiveCalendarEndDate(startISO, allotment.days)
+  }
+  return nthWorkingDayEndDate(startISO, allotment.days, nonWorkingDates)
+}
 
 function empIdsMatch(left: number, right: string): boolean {
   return String(left) === String(right)

@@ -270,8 +270,9 @@ export function countLeaveDurationDays(
   startISO: string,
   endISO: string,
   nonWorkingDates?: ReadonlySet<string>,
+  options?: { calendarDays?: boolean },
 ): number {
-  if (usesCalendarDayCounting(leaveType)) {
+  if (options?.calendarDays || usesCalendarDayCounting(leaveType)) {
     return countCalendarDays(startISO, endISO)
   }
   return countWorkingDays(startISO, endISO, nonWorkingDates)

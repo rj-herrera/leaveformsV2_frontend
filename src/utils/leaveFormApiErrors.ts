@@ -8,7 +8,7 @@ export type LeaveFormApiErrors = {
   reason: string | null
   attachment: string | null
   assignmentType: string | null
-  qualifyingEvent: string | null
+  specialLeaveReason: string | null
   /**
    * Shared message for the Start/End pair (overlap, range, working-day, etc.).
    * Prefer showing this once under the date fields.
@@ -25,7 +25,7 @@ const EMPTY: LeaveFormApiErrors = {
   reason: null,
   attachment: null,
   assignmentType: null,
-  qualifyingEvent: null,
+  specialLeaveReason: null,
   dates: null,
   form: null,
 }
@@ -37,7 +37,7 @@ const KNOWN_KEYS = new Set([
   'leave_reason',
   'leave_attachment',
   'assignment_type',
-  'qualifying_event',
+  'special_leave_reason',
   'emp_id',
   'code',
 ])
@@ -106,7 +106,10 @@ export function parseLeaveFormApiError(
       const reason = firstFieldMessage(errors, 'leave_reason')
       const attachment = firstAttachmentMessage(errors)
       const assignmentType = firstFieldMessage(errors, 'assignment_type')
-      const qualifyingEvent = firstFieldMessage(errors, 'qualifying_event')
+      const specialLeaveReason = firstFieldMessage(
+        errors,
+        'special_leave_reason',
+      )
       const empId = firstFieldMessage(errors, 'emp_id')
       const code = firstFieldMessage(errors, 'code')
 
@@ -129,7 +132,7 @@ export function parseLeaveFormApiError(
         reason ||
         attachment ||
         assignmentType ||
-        qualifyingEvent ||
+        specialLeaveReason ||
         form
       ) {
         return {
@@ -139,7 +142,7 @@ export function parseLeaveFormApiError(
           reason,
           attachment,
           assignmentType,
-          qualifyingEvent,
+          specialLeaveReason,
           dates,
           form,
         }

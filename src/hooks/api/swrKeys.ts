@@ -33,6 +33,24 @@ export const swrKeys = {
 
   leave: (id: number) => ['leaves', id] as const,
 
+  /** GET /leaves/quarter-usage — VL quarterly cap preview. */
+  leaveQuarterUsage: (params: {
+    start_date: string
+    end_date: string
+    day_type: string
+    emp_id?: number | null
+    code?: string | null
+  }) =>
+    [
+      'leaves',
+      'quarter-usage',
+      params.start_date,
+      params.end_date,
+      params.day_type,
+      params.emp_id ?? null,
+      params.code ?? null,
+    ] as const,
+
   activities: (params?: ListActivitiesParams) =>
     [
       'activities',

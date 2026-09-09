@@ -134,6 +134,12 @@ export type LeaveDetail = {
   start_date: string
   end_date: string
   leave_reason: string
+  /** SPL only; null on other types. */
+  assignment_type?: string | null
+  assignment_type_label?: string | null
+  /** SPL only; null on other types. */
+  special_leave_reason?: string | null
+  special_leave_reason_label?: string | null
   has_attachment: boolean
   attachments: LeaveAttachmentFile[]
   cancellation_reason: string | null
@@ -150,7 +156,7 @@ export type LeaveDetail = {
 /** @deprecated Prefer LeaveDetail — kept as an alias for mutation responses. */
 export type LeaveResource = LeaveDetail
 
-/** POST /leaves — VL/ML/SPL as JSON; SL/PTB/EL/LL/PL as multipart + `leave_attachment[]`. Omit emp_id for self. */
+/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL/SPL as multipart + `leave_attachment[]`. Omit emp_id for self. */
 export type StoreLeavePayload = {
   emp_id?: number
   /** `VL` (default), `SL`, `PTB`, `EL`, `LL`, `ML`, `PL`, or `SPL`. Other types → 422. */
@@ -159,20 +165,22 @@ export type StoreLeavePayload = {
   end_date: string
   day_type: DayType
   leave_reason: string
-  /** Required for SPL: assignment location category. */
+  /** Required for SPL: `philippines_based` or `long_term_overseas`. */
   assignment_type?: string
-  /** Required for SPL: combined qualifying event / relationship. */
-  qualifying_event?: string
-  /** Required for SL/PTB (med certs), EL/LL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML/SPL. */
+  /** Required for SPL: matrix qualifying event / relationship. */
+  special_leave_reason?: string
+  /** Required for SL/PTB (med certs), EL/LL/SPL (supporting docs), and PL (paternity form): 1–5 files. Prohibited on VL/ML. */
   leave_attachment?: File[]
 }
 
-/** PUT /leaves/{id} — edit pending VL, SL, PTB, EL, LL, ML, or PL dates/reason. Files use attachment endpoints. */
+/** PUT /leaves/{id} — edit pending dates/reason. SPL also sends assignment + event. Files use attachment endpoints. */
 export type UpdateLeavePayload = {
   start_date: string
   end_date: string
   day_type: DayType
   leave_reason: string
+  assignment_type?: string
+  special_leave_reason?: string
 }
 
 /** POST /leaves/{id}/cancel or POST /admin/leaves/{id}/cancel */
@@ -183,4 +191,42 @@ export type CancelLeavePayload = {
 /** POST /leaves/{id}/reject */
 export type RejectLeavePayload = {
   remarks: string
+}
+
+/** GET /leaves/quarter-usage — informational VL quarterly cap preview. */
+export type LeaveQuarterUsageLevel = 'ok' | 'at_cap' | 'exceeded'
+
+export type LeaveQuarterUsagePeriod = {
+  start_date: string
+  end_date: string
+}
+
+export type LeaveQuarterUsageSlice = {
+  quarter: string
+  period: LeaveQuarterUsagePeriod
+  taken: string
+  this_request: string
+  projected: string
+  cap: string
+  level: LeaveQuarterUsageLevel
+}
+
+export type LeaveQuarterUsageResource = {
+  applicable: boolean
+  quarter: string | null
+  period: LeaveQuarterUsagePeriod | null
+  taken: string
+  this_request: string
+  projected: string
+  cap: string
+  level: LeaveQuarterUsageLevel
+  quarters: LeaveQuarterUsageSlice[]
+}
+
+export type LeaveQuarterUsageParams = {
+  start_date: string
+  end_date: string
+  day_type?: DayType
+  emp_id?: number
+  code?: string
 }

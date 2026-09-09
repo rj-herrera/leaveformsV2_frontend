@@ -12,6 +12,8 @@ import type {
   DayType,
   LeaveAttachmentFile,
   LeaveDetail,
+  LeaveQuarterUsageParams,
+  LeaveQuarterUsageResource,
   LeaveStatus,
   LeaveSummary,
   StoreLeavePayload,
@@ -40,7 +42,7 @@ function appendLeaveFields(
     day_type: DayType
     leave_reason: string
     assignment_type?: string
-    qualifying_event?: string
+    special_leave_reason?: string
     leave_attachment?: File[]
   },
 ) {
@@ -53,8 +55,8 @@ function appendLeaveFields(
   if (fields.assignment_type) {
     form.append('assignment_type', fields.assignment_type)
   }
-  if (fields.qualifying_event) {
-    form.append('qualifying_event', fields.qualifying_event)
+  if (fields.special_leave_reason) {
+    form.append('special_leave_reason', fields.special_leave_reason)
   }
   appendAttachmentFiles(form, 'leave_attachment', fields.leave_attachment)
 }
@@ -77,7 +79,25 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
 }
 
-/** POST /leaves — VL/ML/SPL as JSON; SL/PTB/EL/LL/PL as multipart with required attachments (201). */
+/**
+ * GET /leaves/quarter-usage — projected VL days in the overlapping quarter(s).
+ * Informational only; never blocks filing. Non-VL → `applicable: false`.
+ */
+export async function getLeaveQuarterUsage(
+  params: LeaveQuarterUsageParams,
+): Promise<LeaveQuarterUsageResource> {
+  return apiGetData<LeaveQuarterUsageResource>('/leaves/quarter-usage', {
+    params: {
+      start_date: params.start_date,
+      end_date: params.end_date,
+      day_type: params.day_type ?? 'full',
+      ...(params.emp_id != null ? { emp_id: params.emp_id } : {}),
+      ...(params.code ? { code: params.code } : {}),
+    },
+  })
+}
+
+/** POST /leaves — VL/ML as JSON; SL/PTB/EL/LL/PL/SPL as multipart with required attachments (201). */
 export async function createLeave(
   payload: StoreLeavePayload,
 ): Promise<LeaveDetail> {
@@ -89,6 +109,7 @@ export async function createLeave(
     code === 'EL' ||
     code === 'LL' ||
     code === 'PL' ||
+    code === 'SPL' ||
     files.length > 0
   ) {
     const form = new FormData()
@@ -103,16 +124,10 @@ export async function createLeave(
     end_date: payload.end_date,
     day_type: payload.day_type,
     leave_reason: payload.leave_reason,
-    ...(payload.assignment_type
-      ? { assignment_type: payload.assignment_type }
-      : {}),
-    ...(payload.qualifying_event
-      ? { qualifying_event: payload.qualifying_event }
-      : {}),
   })
 }
 
-/** PUT JSON — dates/reason only. Files use add/delete attachment endpoints. */
+/** PUT JSON — dates/reason (SPL also assignment + event). Files use attachment endpoints. */
 export async function updateLeave(
   leaveId: number,
   payload: UpdateLeavePayload,
@@ -122,6 +137,12 @@ export async function updateLeave(
     end_date: payload.end_date,
     day_type: payload.day_type,
     leave_reason: payload.leave_reason,
+    ...(payload.assignment_type
+      ? { assignment_type: payload.assignment_type }
+      : {}),
+    ...(payload.special_leave_reason
+      ? { special_leave_reason: payload.special_leave_reason }
+      : {}),
   })
 }
 
@@ -146,7 +167,7 @@ export async function deleteLeaveAttachment(
 }
 
 /**
- * Apply queued add/remove attachment edits on a pending SL/PTB/EL/LL/PL.
+ * Apply queued add/remove attachment edits on a pending SL/PTB/EL/LL/PL/SPL.
  * Deletes first when the server is at the cap so adds do not 422; adds first
  * when a delete would otherwise drop below 1 file.
  */

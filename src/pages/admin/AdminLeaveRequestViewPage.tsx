@@ -15,7 +15,7 @@ import { useAuth } from '../../auth/AuthContext'
 import { ApprovalDetailsTable } from '../../components/leave/ApprovalDetailsTable'
 import { LeaveAttachmentRow } from '../../components/leave/LeaveAttachmentRow'
 import { LeaveConversionPanels } from '../../components/leave/LeaveConversionPanels'
-import { LeaveInfoRow } from '../../components/leave/LeaveInfoRow'
+import { LeaveInfoRow, SpecialLeaveDetailRows } from '../../components/leave/LeaveInfoRow'
 import { AttachmentPreviewModal } from '../../components/ui/AttachmentPreviewModal'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -500,6 +500,10 @@ export function AdminLeaveRequestViewPage() {
               <LeaveInfoRow
                 label="Duration"
                 value={formatDurationDays(detail.duration)}
+              />
+              <SpecialLeaveDetailRows
+                assignmentTypeLabel={detail.assignment_type_label}
+                specialLeaveReasonLabel={detail.special_leave_reason_label}
               />
               <LeaveInfoRow label="Reason" value={detail.leave_reason} />
               <LeaveAttachmentRow

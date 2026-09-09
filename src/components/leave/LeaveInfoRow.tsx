@@ -16,3 +16,25 @@ export function LeaveInfoRow({
     </div>
   )
 }
+
+/** SPL-only rows from GET /leaves/{id}. Hidden when both labels are empty. */
+export function SpecialLeaveDetailRows({
+  assignmentTypeLabel,
+  specialLeaveReasonLabel,
+}: {
+  assignmentTypeLabel?: string | null
+  specialLeaveReasonLabel?: string | null
+}) {
+  const assignment = assignmentTypeLabel?.trim() ?? ''
+  const event = specialLeaveReasonLabel?.trim() ?? ''
+  if (!assignment && !event) return null
+  return (
+    <>
+      <LeaveInfoRow label="Assignment Type" value={assignment || '—'} />
+      <LeaveInfoRow
+        label="Qualifying Event / Relationship"
+        value={event || '—'}
+      />
+    </>
+  )
+}
