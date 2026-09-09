@@ -44,7 +44,7 @@ export function ApproverStatusBadge({
   return (
     <span className="inline-flex items-center gap-1.5 text-text-gray">
       <Circle className="size-4" aria-hidden="true" />
-      No Action Yet
+      Pending Action
     </span>
   )
 }
