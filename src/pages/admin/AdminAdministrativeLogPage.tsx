@@ -300,7 +300,7 @@ export function AdminAdministrativeLogPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load administrative log. Try again."
+                    message="Unable to load the administrative log. Please try again."
                   />
                 ) : rows.length === 0 ? (
                   <TableEmptyRow

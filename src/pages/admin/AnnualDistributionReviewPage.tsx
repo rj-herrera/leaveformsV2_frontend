@@ -260,7 +260,7 @@ export function AnnualDistributionReviewPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load selected employees. Go back and try again."
+                    message="Unable to load the selected employees. Please go back and try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow

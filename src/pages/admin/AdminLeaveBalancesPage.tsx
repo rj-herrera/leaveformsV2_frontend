@@ -383,7 +383,7 @@ export function AdminLeaveBalancesPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load leave balances. Try again."
+                    message="Unable to load leave balances. Please try again."
                   />
                 ) : rows.length === 0 ? (
                   <TableEmptyRow

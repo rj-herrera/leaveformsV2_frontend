@@ -382,7 +382,7 @@ export function ContractualDistributionAssignPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load contractual employees. Try again."
+                    message="Unable to load contractual employees. Please try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow

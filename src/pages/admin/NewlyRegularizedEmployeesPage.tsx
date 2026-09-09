@@ -337,7 +337,7 @@ export function NewlyRegularizedEmployeesPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load eligible employees. Try again."
+                    message="Unable to load eligible employees. Please try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow

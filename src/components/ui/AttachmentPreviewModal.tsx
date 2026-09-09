@@ -149,7 +149,7 @@ export function AttachmentPreviewModal({
           headers: { Accept: '*/*' },
         })
         if (!response.ok) {
-          throw new Error(`Unable to load attachment (${response.status}).`)
+          throw new Error(`Unable to load the attachment (${response.status}). Please try again.`)
         }
 
         const blob = await response.blob()
@@ -186,7 +186,7 @@ export function AttachmentPreviewModal({
         setLoadError(
           error instanceof Error
             ? error.message
-            : 'Unable to load attachment.',
+            : 'Unable to load the attachment. Please try again.',
         )
         setLoaded(null)
       } finally {
