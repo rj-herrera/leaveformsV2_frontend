@@ -216,7 +216,7 @@ export function FileField({
             }}
           />
           {files.length === 0 && !isUploading ? (
-            <span className="text-body text-text-gray">No file chosen</span>
+            <span className="text-body text-text-gray">No file selected.</span>
           ) : null}
         </div>
 

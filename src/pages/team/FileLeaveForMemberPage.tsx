@@ -578,7 +578,7 @@ export function FileLeaveForMemberPage() {
           !groupMissing &&
           members.length === 0 ? (
             <p className="mt-2 text-small text-text-gray">
-              No members you can file leave for in this group.
+              No members available to file leave for in this group.
             </p>
           ) : null}
         </section>

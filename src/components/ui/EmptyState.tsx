@@ -6,7 +6,7 @@ import { Button } from './Button'
 export type EmptyStateVariant = 'no-data' | 'no-results'
 
 export const EMPTY_STATE_MESSAGE = {
-  noData: 'No data to show',
+  noData: 'No data available.',
   noResults: 'No results found',
 } as const
 

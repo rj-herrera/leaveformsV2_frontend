@@ -446,7 +446,7 @@ export function TeamLeaveCalendarPage() {
               <EmptyState
                 variant="no-data"
                 icon={CalendarDays}
-                message="No upcoming approved leaves for your team."
+                message="No upcoming approved leave for your team."
                 className="mt-4 min-h-0 flex-1 px-2 py-3"
               />
             ) : (

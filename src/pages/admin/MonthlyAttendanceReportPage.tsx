@@ -302,7 +302,7 @@ export function MonthlyAttendanceReportPage() {
               emptyLabel={
                 employeesLoading
                   ? 'Loading employees…'
-                  : 'No employees in group'
+                  : 'No employees in this group.'
               }
             />
             <div className="flex shrink-0 items-end gap-2">
