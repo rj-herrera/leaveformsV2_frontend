@@ -12,6 +12,8 @@ import type {
   DayType,
   LeaveAttachmentFile,
   LeaveDetail,
+  LeaveLwopParams,
+  LeaveLwopResource,
   LeaveQuarterUsageParams,
   LeaveQuarterUsageResource,
   LeaveStatus,
@@ -77,6 +79,22 @@ export async function listMyLeaves(
 /** GET /leaves/{id} — full detail (approvals + conversion). */
 export async function getLeave(leaveId: number): Promise<LeaveDetail> {
   return apiGetData<LeaveDetail>(`/leaves/${leaveId}`)
+}
+
+/**
+ * GET /leaves/lwop — accepted VL/SL unpaid days in a calendar year.
+ * Omit `year` for the current Asia/Manila year. Same on-behalf rules as
+ * GET /balances. Always returns zeros when there is no accepted LWOP.
+ */
+export async function getLeaveLwop(
+  params?: LeaveLwopParams,
+): Promise<LeaveLwopResource> {
+  return apiGetData<LeaveLwopResource>('/leaves/lwop', {
+    params: {
+      ...(params?.year != null ? { year: params.year } : {}),
+      ...(params?.emp_id != null ? { emp_id: params.emp_id } : {}),
+    },
+  })
 }
 
 /**

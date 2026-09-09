@@ -350,6 +350,7 @@ export function AdminLeaveRequestViewPage() {
         mutate(isAdminActivitiesListKey, undefined, { revalidate: true }),
         mutate(swrKeys.balances()),
         mutate(swrKeys.memberBalances(detail.emp_id)),
+        mutate(swrKeys.leaveLwop()),
       ])
 
       toast.success(TOAST_CONFIRMED_LEAVE_CANCELLED)

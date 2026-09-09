@@ -562,21 +562,13 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                   className="sm:col-span-2"
                 />
               ) : null}
-              {leadTimeValidation.gated ? (
+              {leadTimeValidation.gated && !leadTimeValidation.ok ? (
                 <div
-                  className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
-                    leadTimeValidation.ok
-                      ? 'border-status-pending bg-status-pending/15'
-                      : 'border-status-rejected bg-status-rejected/10'
-                  }`}
+                  className="flex gap-3 rounded-md border-2 border-status-rejected bg-status-rejected/10 px-3 py-3 sm:col-span-2"
                   role="alert"
                 >
                   <TriangleAlert
-                    className={`mt-0.5 size-5 shrink-0 ${
-                      leadTimeValidation.ok
-                        ? 'text-status-pending'
-                        : 'text-status-rejected'
-                    }`}
+                    className="mt-0.5 size-5 shrink-0 text-status-rejected"
                     aria-hidden="true"
                   />
                   <div>
@@ -584,18 +576,8 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                       {leadTimeValidation.title}
                     </p>
                     <p className="mt-1 text-small text-text-black">
-                      {leadTimeValidation.message}
-                      {leadTimeValidation.ok ? (
-                        <>
-                          {' '}
-                          Your{' '}
-                          <span className="font-semibold">
-                            selected dates meet this requirement.
-                          </span>
-                        </>
-                      ) : (
-                        ' Choose a later start date or shorten the leave duration.'
-                      )}
+                      {leadTimeValidation.message} Choose a later start date or
+                      shorten the leave duration.
                     </p>
                   </div>
                 </div>
@@ -757,16 +739,15 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
         }}
         title={
           quarterUsageExceeded
-            ? 'Save changes and notify admin?'
-            : 'Confirm changes'
+            ? 'Confirm leave request'
+            : 'Confirm leave request edit'
         }
         description={
           quarterUsageExceeded ? (
             <>
-              These dates would exceed the{' '}
-              <span className="font-semibold">9-day</span> quarterly Vacation
-              Leave cap and may result in a memo. Admin will be notified. Save
-              anyway?
+              This request would exceed the{' '}
+              <span className="font-semibold">9-day quarterly leave limit</span>.
+              Do you still want to save these changes?
             </>
           ) : (
             'Are you sure you want to save these changes to the leave request?'

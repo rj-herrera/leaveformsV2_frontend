@@ -227,6 +227,7 @@ export function LeaveRequestReviewPage() {
       mutate(swrKeys.leave(updatedId), updated, { revalidate: false }),
       mutate(swrKeys.pendingApprovals),
       mutate(isApprovalsListKey, undefined, { revalidate: true }),
+      mutate(swrKeys.leaveLwop()),
     ])
   }
 

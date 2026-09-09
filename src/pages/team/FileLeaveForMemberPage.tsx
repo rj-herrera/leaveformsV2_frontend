@@ -812,21 +812,13 @@ export function FileLeaveForMemberPage() {
         onConfirm={() => {
           void handleConfirmSubmit()
         }}
-        title={
-          quarterUsageExceeded
-            ? 'Submit leave and notify admin?'
-            : 'Confirm leave request'
-        }
+        title="Confirm leave request"
         description={
           quarterUsageExceeded ? (
             <>
-              This Vacation Leave for{' '}
-              <span className="font-semibold text-primary">
-                {selectedMember?.name ?? 'the selected employee'}
-              </span>{' '}
-              would exceed the <span className="font-semibold">9-day</span>{' '}
-              quarterly cap and may result in a memo. Admin will be notified.
-              Submit anyway?
+              This request would exceed the{' '}
+              <span className="font-semibold">9-day quarterly leave limit</span>.
+              Do you still want to submit this leave request?
             </>
           ) : (
             <>

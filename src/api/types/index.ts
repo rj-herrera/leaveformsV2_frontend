@@ -65,6 +65,8 @@ export type {
   LeaveDetailConversion,
   LeaveEmployee,
   LeaveFiledBy,
+  LeaveLwopParams,
+  LeaveLwopResource,
   LeaveOrgRef,
   LeaveQuarterUsageLevel,
   LeaveQuarterUsageParams,

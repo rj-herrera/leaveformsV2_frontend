@@ -33,6 +33,10 @@ export const swrKeys = {
 
   leave: (id: number) => ['leaves', id] as const,
 
+  /** GET /leaves/lwop — current-year VL/SL unpaid days. */
+  leaveLwop: (params?: { year?: number; emp_id?: number }) =>
+    ['leave-lwop', params?.year ?? null, params?.emp_id ?? null] as const,
+
   /** GET /leaves/quarter-usage — VL quarterly cap preview. */
   leaveQuarterUsage: (params: {
     start_date: string
