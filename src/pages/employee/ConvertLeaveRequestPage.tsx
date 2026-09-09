@@ -221,7 +221,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
           void handleConfirmConversion()
         }}
         title="Confirm leave conversion"
-        description="Are you sure you want to convert this confirmed leave request?"
+        description="Are you sure you want to convert this leave request to Sick Leave?"
         requireReason={false}
         confirmLabel="Submit conversion"
         cancelLabel="Cancel"

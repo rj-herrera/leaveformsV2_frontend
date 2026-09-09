@@ -433,10 +433,10 @@ export function LeaveRequestReviewPage() {
         onConfirm={(reason) => {
           void handleRejectConfirm(reason)
         }}
-        title="Reject Leave Request"
+        title="Reject leave request"
         description="Please provide a reason for rejecting this leave request."
         reasonLabel="Rejection reason"
-        reasonPlaceholder="Why are you rejecting this request?"
+        reasonPlaceholder="Enter rejection reason..."
         confirmLabel="Reject"
         cancelLabel="Cancel"
         confirmVariant="danger"
@@ -449,7 +449,7 @@ export function LeaveRequestReviewPage() {
         onConfirm={() => {
           void handleApproveConfirm()
         }}
-        title="Approve Leave Request"
+        title="Approve leave request"
         description="Are you sure you want to approve this leave request?"
         requireReason={false}
         confirmLabel="Approve"

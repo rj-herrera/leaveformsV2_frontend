@@ -758,7 +758,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
         title={
           quarterUsageExceeded
             ? 'Save changes and notify admin?'
-            : 'Confirm leave request edit'
+            : 'Confirm changes'
         }
         description={
           quarterUsageExceeded ? (

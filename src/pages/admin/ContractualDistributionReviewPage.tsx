@@ -409,7 +409,7 @@ export function ContractualDistributionReviewPage() {
         requireReason={false}
         confirmVariant="primary"
         title="Confirm distribution"
-        description="Apply these contractual leave credit grants?"
+        description="Apply leave credits to the selected contractual employees?"
         confirmLabel="Apply"
         cancelLabel="Cancel"
       />

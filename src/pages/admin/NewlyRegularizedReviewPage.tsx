@@ -340,8 +340,8 @@ export function NewlyRegularizedReviewPage() {
         title="Confirm distribution"
         description={
           hasAlreadyGranted
-            ? 'If anyone in this selection was already granted this year, the server will reject the whole batch. Continue only if all selected employees are still pending.'
-            : 'Apply this newly regularized leave credit distribution?'
+            ? 'If any selected employee has already received leave credits for this year, the entire distribution will fail. Continue only if none of the selected employees have received their credits yet.'
+            : 'Apply leave credits to the selected newly regularized employees?'
         }
         confirmLabel="Apply"
         cancelLabel="Cancel"

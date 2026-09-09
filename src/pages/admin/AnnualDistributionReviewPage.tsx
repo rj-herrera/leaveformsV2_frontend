@@ -356,11 +356,11 @@ export function AnnualDistributionReviewPage() {
         onConfirm={() => void handleConfirmApply()}
         requireReason={false}
         confirmVariant="primary"
-        title="Confirm Distribution"
+        title="Confirm distribution"
         description={
           hasAlreadyGranted
             ? 'If anyone in this selection was already granted this year, the server will reject the whole batch. Continue only if all selected employees are still pending.'
-            : 'Apply this annual leave credit distribution?'
+            : 'Apply annual leave credits to the selected employees?'
         }
         confirmLabel="Apply"
         cancelLabel="Cancel"
