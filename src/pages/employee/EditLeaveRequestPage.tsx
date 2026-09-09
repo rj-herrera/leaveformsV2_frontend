@@ -13,9 +13,11 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
+import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { FormPageLoadingView } from '../../components/ui/Skeleton'
 import { useLeaveDetail } from '../../hooks/api/useLeaveDetail'
+import { useLeaveQuarterUsage } from '../../hooks/api/useLeaveQuarterUsage'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { isApprovalsListKey, isLeaveListKey, swrKeys } from '../../hooks/api/swrKeys'
 import {
@@ -24,6 +26,7 @@ import {
   fixedLeaveEndDate,
   formatDurationLabel,
   isLongLeaveEndInBounds,
+  isWorkingDayISO,
   leaveEndPickerLimits,
   todayISO,
   usesCalendarDayCounting,
@@ -34,16 +37,28 @@ import {
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
+  hasDerivedEndDate,
   isFixedRangeLeave,
   isLeaveSelfFiled,
   isLongLeave,
   isPaternityLeave,
   isPendingLeaveEditable,
+  isSpecialLeave,
+  isSplAssignmentType,
+  isSplSpecialLeaveReason,
+  isSplUnavailableForLongTermOverseas,
   MED_CERT_ACCEPT,
   PATERNITY_NOTIFICATION_FORM_FILENAME,
   paternityNotificationFormHref,
   requiresAttachment,
   requiresFullDay,
+  specialLeaveEndDate,
+  splReasonOptionsFor,
+  splSpecialLeaveReasonLabel,
+  SPL_ASSIGNMENT_TYPE_OPTIONS,
+  usesSplCalendarDays,
+  type SplAssignmentType,
+  type SplSpecialLeaveReason,
 } from '../../utils/leaveFiling'
 import {
   clearLeaveFormApiErrors,
@@ -54,6 +69,7 @@ import {
   LEAVE_LEAD_TIME_UNGATED,
   validateLeaveLeadTime,
 } from '../../utils/leaveLeadTime'
+import { isQuarterUsageExceeded } from '../../utils/quarterlyVlLimit'
 
 const DAY_TYPE_OPTIONS = [
   { value: 'full', label: 'Whole day' },
@@ -94,6 +110,16 @@ type EditLeaveFormProps = {
   detailsPath: string
 }
 
+function storedSplAssignment(detail: LeaveDetail): '' | SplAssignmentType {
+  const value = detail.assignment_type ?? ''
+  return isSplAssignmentType(value) ? value : ''
+}
+
+function storedSplReason(detail: LeaveDetail): '' | SplSpecialLeaveReason {
+  const value = detail.special_leave_reason ?? ''
+  return isSplSpecialLeaveReason(value) ? value : ''
+}
+
 function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -108,8 +134,9 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     detail.employee?.employee_number ?? String(detail.emp_id)
   const employeeName = detail.employee?.name?.trim() || '—'
   const needsAttachment = requiresAttachment(leaveTypeCode)
+  const needsSplDetails = isSpecialLeave(leaveTypeCode)
   const fullDayOnly = requiresFullDay(leaveTypeCode)
-  const fixedRange = isFixedRangeLeave(leaveTypeCode)
+  const derivedEndDate = hasDerivedEndDate(leaveTypeCode)
   const longLeave = isLongLeave(leaveTypeCode)
   const storedAttachments = detail.attachments ?? []
   const attachmentLabel = attachmentFieldLabel(leaveTypeCode)
@@ -123,6 +150,12 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   const [startDate, setStartDate] = useState(detail.start_date)
   const [endDate, setEndDate] = useState(detail.end_date)
   const [reason, setReason] = useState(detail.leave_reason)
+  const [assignmentType, setAssignmentType] = useState<
+    '' | SplAssignmentType
+  >(storedSplAssignment(detail))
+  const [specialLeaveReason, setSpecialLeaveReason] = useState<
+    '' | SplSpecialLeaveReason
+  >(storedSplReason(detail))
   const [attachments, setAttachments] = useState<File[]>([])
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([])
   const [attachmentUploading, setAttachmentUploading] = useState(false)
@@ -131,6 +164,12 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [apiErrors, setApiErrors] = useState<LeaveFormApiErrors>(
     clearLeaveFormApiErrors,
+  )
+
+  const splReasonOptions = splReasonOptionsFor(assignmentType)
+  const splCalendarDays = usesSplCalendarDays(
+    assignmentType,
+    specialLeaveReason,
   )
 
   function clearApiErrors() {
@@ -145,8 +184,16 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
       startDate,
       endDate,
       nonWorkingDates,
+      { calendarDays: splCalendarDays },
     )
-  }, [dayType, startDate, endDate, leaveTypeCode, nonWorkingDates])
+  }, [
+    dayType,
+    startDate,
+    endDate,
+    leaveTypeCode,
+    nonWorkingDates,
+    splCalendarDays,
+  ])
 
   const durationLabel = useMemo(() => {
     if (dayType === 'half_am' || dayType === 'half_pm') {
@@ -168,10 +215,24 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     })
   }, [dayType, leaveDuration, leaveTypeCode, nonWorkingDates, selfFiled, startDate])
 
-  const workingDaysOnly = !usesCalendarDayCounting(leaveTypeCode)
+  const { data: quarterUsage } = useLeaveQuarterUsage({
+    code: leaveTypeCode,
+    startDate,
+    endDate,
+    dayType,
+    empId: selfFiled ? null : detail.emp_id,
+  })
+  const quarterUsageExceeded = isQuarterUsageExceeded(quarterUsage)
+
+  const workingDaysOnly = needsSplDetails
+    ? !splCalendarDays
+    : !usesCalendarDayCounting(leaveTypeCode)
   const endPickerLimits = leaveEndPickerLimits(leaveTypeCode, startDate)
 
-  const reasonMissing = reason.trim().length === 0
+  const reasonMissing = !needsSplDetails && reason.trim().length === 0
+  const assignmentTypeMissing = needsSplDetails && assignmentType === ''
+  const specialLeaveReasonMissing =
+    needsSplDetails && specialLeaveReason === ''
   const keptExisting = storedAttachments.filter(
     (file) => !removedAttachmentIds.includes(file.id),
   )
@@ -187,17 +248,79 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     dayType !== detail.day_type ||
     startDate !== detail.start_date ||
     endDate !== detail.end_date ||
-    reason.trim() !== detail.leave_reason.trim()
+    (needsSplDetails
+      ? assignmentType !== storedSplAssignment(detail) ||
+        specialLeaveReason !== storedSplReason(detail)
+      : reason.trim() !== detail.leave_reason.trim())
   const isDirty = fieldsDirty || attachmentsDirty
   const formValid =
     startDate !== '' &&
     endDate !== '' &&
     !reasonMissing &&
+    !assignmentTypeMissing &&
+    !specialLeaveReasonMissing &&
     !attachmentMissing &&
     !attachmentUploading &&
     leadTimeValidation.ok &&
     isDirty &&
     !(longLeave && !isLongLeaveEndInBounds(startDate, endDate))
+
+  function applySplMatrix(
+    nextAssignment: '' | SplAssignmentType,
+    nextReason: '' | SplSpecialLeaveReason,
+    nextStart = startDate,
+  ) {
+    let start = nextStart
+    if (
+      start &&
+      nextAssignment &&
+      nextReason &&
+      !usesSplCalendarDays(nextAssignment, nextReason) &&
+      !isWorkingDayISO(start, nonWorkingDates)
+    ) {
+      start = ''
+    }
+    if (start !== startDate) setStartDate(start)
+    setEndDate(
+      start
+        ? specialLeaveEndDate(
+            start,
+            nextAssignment,
+            nextReason,
+            nonWorkingDates,
+          )
+        : '',
+    )
+  }
+
+  function handleAssignmentTypeChange(value: string) {
+    const next = value as '' | SplAssignmentType
+    const nextReason =
+      specialLeaveReason !== '' &&
+      next === 'long_term_overseas' &&
+      isSplUnavailableForLongTermOverseas(specialLeaveReason)
+        ? ''
+        : specialLeaveReason
+    setAssignmentType(next)
+    if (nextReason !== specialLeaveReason) {
+      setSpecialLeaveReason(nextReason)
+    }
+    applySplMatrix(next, nextReason)
+    if (
+      apiErrors.assignmentType ||
+      apiErrors.specialLeaveReason ||
+      apiErrors.form
+    ) {
+      clearApiErrors()
+    }
+  }
+
+  function handleSpecialLeaveReasonChange(value: string) {
+    const next = value as '' | SplSpecialLeaveReason
+    setSpecialLeaveReason(next)
+    applySplMatrix(assignmentType, next)
+    if (apiErrors.specialLeaveReason || apiErrors.form) clearApiErrors()
+  }
 
   function handleDayTypeChange(value: string) {
     const next = value as DayType
@@ -212,6 +335,15 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     setStartDate(value)
     if (isFixedRangeLeave(leaveTypeCode)) {
       setEndDate(fixedLeaveEndDate(leaveTypeCode, value, nonWorkingDates))
+    } else if (needsSplDetails) {
+      setEndDate(
+        specialLeaveEndDate(
+          value,
+          assignmentType,
+          specialLeaveReason,
+          nonWorkingDates,
+        ),
+      )
     } else if (longLeave) {
       setEndDate(clampLongLeaveEndDate(value, endDate))
     } else if (dayType !== 'full' || !endDate || value > endDate) {
@@ -257,7 +389,15 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
           start_date: startDate,
           end_date: endDate,
           day_type: dayType as ApiDayType,
-          leave_reason: reason.trim(),
+          leave_reason: needsSplDetails
+            ? splSpecialLeaveReasonLabel(specialLeaveReason)
+            : reason.trim(),
+          ...(needsSplDetails
+            ? {
+                assignment_type: assignmentType,
+                special_leave_reason: specialLeaveReason,
+              }
+            : {}),
         })
       }
 
@@ -337,6 +477,35 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
           <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4">
             <div className="grid min-w-0 grid-cols-1 content-start gap-3 sm:grid-cols-2 sm:gap-4">
               <TextField label="Leave Type" value={leaveTypeLabel} readOnly />
+              {needsSplDetails ? (
+                <>
+                  <SelectField
+                    label="Assignment Type"
+                    value={assignmentType}
+                    onChange={handleAssignmentTypeChange}
+                    placeholder="Select Assignment Type"
+                    options={[...SPL_ASSIGNMENT_TYPE_OPTIONS]}
+                    error={
+                      triedSubmit && assignmentTypeMissing
+                        ? 'Please select an assignment type.'
+                        : (apiErrors.assignmentType ?? null)
+                    }
+                  />
+                  <SelectField
+                    label="Qualifying Event / Relationship"
+                    value={specialLeaveReason}
+                    onChange={handleSpecialLeaveReasonChange}
+                    placeholder="Select Qualifying Event / Relationship"
+                    options={[...splReasonOptions]}
+                    disabled={assignmentType === ''}
+                    error={
+                      triedSubmit && specialLeaveReasonMissing
+                        ? 'Please select a qualifying event / relationship.'
+                        : (apiErrors.specialLeaveReason ?? null)
+                    }
+                  />
+                </>
+              ) : null}
               <SelectField
                 label="Day Type"
                 value={dayType}
@@ -364,7 +533,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                 holidayNames={holidayNames}
                 min={endPickerLimits.min}
                 max={endPickerLimits.max}
-                disabled={dayType !== 'full' || fixedRange}
+                disabled={dayType !== 'full' || derivedEndDate}
                 invalid={Boolean(apiErrors.dates) && dayType === 'full'}
               />
               {apiErrors.dates ? (
@@ -387,6 +556,12 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                 readOnly
                 className="sm:col-span-2"
               />
+              {leaveTypeCode.toUpperCase() === 'VL' ? (
+                <QuarterlyVlLimitBanner
+                  usage={quarterUsage}
+                  className="sm:col-span-2"
+                />
+              ) : null}
               {leadTimeValidation.gated ? (
                 <div
                   className={`flex gap-3 rounded-md border-2 px-3 py-3 sm:col-span-2 ${
@@ -425,19 +600,28 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                   </div>
                 </div>
               ) : null}
-              <TextAreaField
-                label="Reason"
-                value={reason}
-                onChange={handleReasonChange}
-                placeholder="Enter reason for leave"
-                className="sm:col-span-2"
-                rows={3}
-                error={
-                  triedSubmit && reasonMissing
-                    ? 'Reason is required.'
-                    : (apiErrors.reason ?? null)
-                }
-              />
+              {needsSplDetails ? (
+                <TextField
+                  label="Reason"
+                  value={splSpecialLeaveReasonLabel(specialLeaveReason)}
+                  readOnly
+                  className="sm:col-span-2"
+                />
+              ) : (
+                <TextAreaField
+                  label="Reason"
+                  value={reason}
+                  onChange={handleReasonChange}
+                  placeholder="Enter reason for leave"
+                  className="sm:col-span-2"
+                  rows={3}
+                  error={
+                    triedSubmit && reasonMissing
+                      ? 'Reason is required.'
+                      : (apiErrors.reason ?? null)
+                  }
+                />
+              )}
               {needsAttachment ? (
                 <div className="sm:col-span-2">
                   {keptExisting.length > 0 ? (
@@ -571,8 +755,23 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
         onConfirm={() => {
           void handleConfirmEdit()
         }}
-        title="Confirm leave request edit"
-        description="Are you sure you want to save these changes to the leave request?"
+        title={
+          quarterUsageExceeded
+            ? 'Save changes and notify admin?'
+            : 'Confirm leave request edit'
+        }
+        description={
+          quarterUsageExceeded ? (
+            <>
+              These dates would exceed the{' '}
+              <span className="font-semibold">9-day</span> quarterly Vacation
+              Leave cap and may result in a memo. Admin will be notified. Save
+              anyway?
+            </>
+          ) : (
+            'Are you sure you want to save these changes to the leave request?'
+          )
+        }
         requireReason={false}
         confirmLabel="Save changes"
         cancelLabel="Cancel"
