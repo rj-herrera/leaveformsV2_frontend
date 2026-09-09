@@ -148,7 +148,7 @@ export function FileField({
 
     const messages = [
       ...failures,
-      skipped > 0 ? `Only ${maxFiles} files are allowed; ${skipped} skipped.` : null,
+      skipped > 0 ? `You can attach up to ${maxFiles} files. ${skipped} file(s) were not added.` : null,
     ].filter(Boolean) as string[]
 
     setUploadError(messages.length > 0 ? messages.join(' ') : null)

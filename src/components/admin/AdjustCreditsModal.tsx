@@ -322,10 +322,10 @@ export function AdjustCreditsModal({
           submitError) && (
           <div className="rounded-md border border-status-rejected/30 bg-status-rejected/5 px-3 py-2 text-small text-status-rejected">
             {invalidCredits ? (
-              <p>Credits must be greater than 0 in 0.5 steps.</p>
+              <p>Leave credits must be greater than 0 and entered in increments of 0.5.</p>
             ) : null}
             {deductWouldGoNegative ? (
-              <p>Deduction cannot bring the balance below zero.</p>
+              <p>The deduction cannot reduce the leave balance below zero..</p>
             ) : null}
             {reasonInvalid ? (
               <p>Reason must be at least 10 characters.</p>

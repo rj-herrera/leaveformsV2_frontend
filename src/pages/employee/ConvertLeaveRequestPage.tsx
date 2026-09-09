@@ -33,7 +33,7 @@ function messageFromApiError(error: unknown): string {
     }
     if (error.message) return error.message
   }
-  return 'Unable to submit conversion request. Please try again.'
+  return 'Unable to submit the conversion request. Please try again.'
 }
 
 function reasonErrorFromApi(error: unknown): string | null {
@@ -164,7 +164,7 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
               className="min-h-0"
               error={
                 triedSubmit && attachmentMissing
-                  ? 'At least one medical certificate is required to submit a conversion request.'
+                  ? 'Please attach at least one medical certificate.'
                   : null
               }
             />
