@@ -189,7 +189,7 @@ export function LeaveRequestReviewPage() {
   const canShowEdit = detail ? canShowLeaveEdit(detail, user.id) : false
   const canEdit = detail ? isPendingLeaveEditable(detail, user.id) : false
   const editDisabledTitle = isConversionReviewStatus(detail?.status)
-    ? 'Editing is not available during leave conversion'
+    ? 'Editing is not available while a leave conversion is pending.'
     : 'Editing is disabled after an approver has taken action'
 
   const decisionSettled = isLeaveDecisionSettled(detail?.status)
@@ -434,10 +434,10 @@ export function LeaveRequestReviewPage() {
         onConfirm={(reason) => {
           void handleRejectConfirm(reason)
         }}
-        title="Reject Leave Request"
+        title="Reject leave request"
         description="Please provide a reason for rejecting this leave request."
         reasonLabel="Rejection reason"
-        reasonPlaceholder="Why are you rejecting this request?"
+        reasonPlaceholder="Enter rejection reason..."
         confirmLabel="Reject"
         cancelLabel="Cancel"
         confirmVariant="danger"
@@ -450,7 +450,7 @@ export function LeaveRequestReviewPage() {
         onConfirm={() => {
           void handleApproveConfirm()
         }}
-        title="Approve Leave Request"
+        title="Approve leave request"
         description="Are you sure you want to approve this leave request?"
         requireReason={false}
         confirmLabel="Approve"

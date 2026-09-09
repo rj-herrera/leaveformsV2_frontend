@@ -250,7 +250,7 @@ export function AdminLeaveRequestViewPage() {
     (detail?.status === 'confirmed' || detail?.status === 'pending_conversion')
   const cancelDisabledTitle =
     detail?.status === 'pending_conversion'
-      ? 'Leave with a pending conversion cannot be cancelled. Reject the conversion first, then cancel the confirmed leave.'
+      ? 'This leave cannot be cancelled while a conversion is pending.'
       : undefined
 
   const notFound =

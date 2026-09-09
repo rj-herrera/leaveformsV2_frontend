@@ -37,7 +37,7 @@ export function EmployeeMultiSelect({
   className = '',
   disabled = false,
   controlHeight = 'min-h-11',
-  emptyLabel = 'No employees in group',
+  emptyLabel = 'No employees in this group.',
 }: EmployeeMultiSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)

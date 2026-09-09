@@ -578,7 +578,7 @@ export function FileLeaveForMemberPage() {
           !groupMissing &&
           members.length === 0 ? (
             <p className="mt-2 text-small text-text-gray">
-              No members you can file leave for in this group.
+              No members available to file leave for in this group.
             </p>
           ) : null}
         </section>
@@ -757,7 +757,7 @@ export function FileLeaveForMemberPage() {
                         labelDownloadFileName:
                           PATERNITY_NOTIFICATION_FORM_FILENAME,
                         labelDownloadTooltip:
-                          'Download the Paternity Notification Form to fill out and submit as required.',
+                          'Download the Paternity Notification Form.',
                       }
                     : {})}
                   error={

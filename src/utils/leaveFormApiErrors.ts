@@ -89,7 +89,7 @@ function looksDateRelated(message: string): boolean {
  */
 export function parseLeaveFormApiError(
   error: unknown,
-  fallback = 'Unable to submit leave request. Please try again.',
+  fallback = 'Unable to submit the leave request. Please try again.',
 ): LeaveFormApiErrors {
   if (!(error instanceof ApiError)) {
     return { ...EMPTY, form: fallback }

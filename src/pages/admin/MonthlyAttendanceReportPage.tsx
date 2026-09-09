@@ -237,7 +237,7 @@ export function MonthlyAttendanceReportPage() {
     try {
       await downloadMonthlyAttendanceExcel(report)
     } catch {
-      setActionNotice('Unable to export Excel. Please try again.')
+      setActionNotice('Unable to export the Excel file. Please try again.')
     } finally {
       setExporting(false)
     }
@@ -302,7 +302,7 @@ export function MonthlyAttendanceReportPage() {
               emptyLabel={
                 employeesLoading
                   ? 'Loading employees…'
-                  : 'No employees in group'
+                  : 'No employees in this group.'
               }
             />
             <div className="flex shrink-0 items-end gap-2">

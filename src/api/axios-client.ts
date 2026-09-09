@@ -128,7 +128,7 @@ function messageFromPayload(payload: unknown, status: number): string {
   ) {
     return (payload as { message: string }).message
   }
-  return `Request failed (${status})`
+  return `Something went wrong. Please try again.`
 }
 
 axiosClient.interceptors.response.use(

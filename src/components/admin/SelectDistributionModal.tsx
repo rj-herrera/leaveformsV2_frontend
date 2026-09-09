@@ -49,7 +49,7 @@ export function SelectDistributionModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Select Leave Credit Distribution"
+      title="Select leave credit distribution"
       maxWidthClass="max-w-xl"
       footer={
         <div className="flex justify-end gap-2">

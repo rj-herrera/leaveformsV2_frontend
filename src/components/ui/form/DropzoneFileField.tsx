@@ -93,7 +93,7 @@ export function DropzoneFileField({
   const atMax = files.length >= maxFiles
   const chooseDisabled = disabled || isUploading || atMax
   const displayError = uploadError ?? error ?? null
-  const chooseLabel = multiple ? 'choose files' : 'choose file'
+  const chooseLabel = 'choose files'
   const hasFileList = files.length > 0 || isUploading
 
   function openFilePicker() {
@@ -156,7 +156,7 @@ export function DropzoneFileField({
 
     const messages = [
       ...failures,
-      skipped > 0 ? `Only ${maxFiles} files are allowed; ${skipped} skipped.` : null,
+      skipped > 0 ? `You can attach up to ${maxFiles} files. ${skipped} file(s) were not added.` : null,
     ].filter(Boolean) as string[]
 
     setUploadError(messages.length > 0 ? messages.join(' ') : null)
@@ -260,7 +260,7 @@ export function DropzoneFileField({
             <FolderUp className="size-6" aria-hidden="true" />
           </span>
           <p className="text-body text-text-black">
-            Drag & drop your {multiple ? 'files' : 'file'} here or{' '}
+            Drag & drop files here or{' '}
             <button
               type="button"
               disabled={chooseDisabled}

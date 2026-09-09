@@ -960,8 +960,8 @@ export function AdminLeaveRequestsPage() {
           void handleSendReminderConfirm()
         }}
         requireReason={false}
-        title="Send Reminder to All"
-        description="Send a reminder to approvers who have leave requests awaiting their action?"
+        title="Send reminder to all"
+        description="Send a reminder to all approvers with pending leave requests?"
         confirmLabel="Send Reminder"
         cancelLabel="Cancel"
         confirmVariant="reminder"

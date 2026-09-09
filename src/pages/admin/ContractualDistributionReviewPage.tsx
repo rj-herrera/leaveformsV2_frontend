@@ -307,7 +307,7 @@ export function ContractualDistributionReviewPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load selected employees. Go back and try again."
+                    message="Unable to load the selected employees. Please go back and try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
@@ -409,7 +409,7 @@ export function ContractualDistributionReviewPage() {
         requireReason={false}
         confirmVariant="primary"
         title="Confirm distribution"
-        description="Apply these contractual leave credit grants?"
+        description="Apply leave credits to the selected contractual employees?"
         confirmLabel="Apply"
         cancelLabel="Cancel"
       />

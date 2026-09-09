@@ -342,7 +342,7 @@ export function AnnualDistributionEmployeesPage() {
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
-                    message="Could not load eligible employees. Try again."
+                    message="Unable to load eligible employees. Please try again."
                   />
                 ) : paginatedItems.length === 0 ? (
                   <TableEmptyRow
@@ -436,7 +436,7 @@ function CandidateRow({
               ? `${emp.name ?? 'Employee'} already granted`
               : `Select ${emp.name ?? 'employee'}`
           }
-          title={disabled ? 'Already granted this year' : undefined}
+          title={disabled ? 'Leave credits already granted this year.' : undefined}
           className="size-4 accent-primary disabled:cursor-not-allowed"
         />
       </td>

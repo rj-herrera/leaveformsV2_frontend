@@ -34,7 +34,7 @@ function messageFromApiError(error: unknown): string {
     }
     if (error.message) return error.message
   }
-  return 'Unable to submit conversion request. Please try again.'
+  return 'Unable to submit the conversion request. Please try again.'
 }
 
 function reasonErrorFromApi(error: unknown): string | null {
@@ -192,7 +192,7 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
               className="min-h-0"
               error={
                 triedSubmit && attachmentMissing
-                  ? 'At least one supporting document is required to submit a conversion request.'
+                  ? 'Please attach at least one supporting document.'
                   : null
               }
             />
@@ -247,13 +247,13 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
                 : reasonMissing
-                  ? 'Enter a conversion reason before confirming.'
+                  ? 'Enter a conversion reason.'
                   : attachmentMissing
-                    ? 'Upload at least one supporting document before confirming.'
+                    ? 'Upload at least one supporting document.'
                     : elBalancesLoading
-                      ? 'Checking Emergency Leave credits.'
+                      ? 'Checking Emergency Leave credits...'
                       : exceedsElCredits
-                        ? 'Remaining Emergency Leave credits are less than this leave duration.'
+                        ? 'Not enough Emergency Leave credits to cover this leave.'
                         : undefined
             }
           >
@@ -269,7 +269,7 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
           void handleConfirmConversion()
         }}
         title="Confirm leave conversion"
-        description="Are you sure you want to convert this confirmed leave request?"
+        description="Are you sure you want to convert this leave request to Emergency Leave?"
         requireReason={false}
         confirmLabel="Submit conversion"
         cancelLabel="Cancel"

@@ -316,7 +316,7 @@ export function EmployeesWithLwopPage() {
         totals: filteredTotals,
       })
     } catch {
-      setActionNotice('Unable to export Excel. Please try again.')
+      setActionNotice('Unable to export the Excel file. Please try again.')
     } finally {
       setExporting(false)
     }

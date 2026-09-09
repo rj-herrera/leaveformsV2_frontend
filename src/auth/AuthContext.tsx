@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return {
           ok: false,
           message:
-            'Unable to reach the server. Is the API running on port 8000?',
+            'Unable to connect to the system. Please try again.',
         }
       }
     },

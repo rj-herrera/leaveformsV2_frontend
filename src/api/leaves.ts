@@ -224,7 +224,7 @@ export async function syncLeaveAttachments(
       continue
     }
 
-    throw new Error('Unable to update attachments. Keep at least one file.')
+    throw new Error('At least one attachment is required. Keep one file attached before removing another.')
   }
 
   return latest
