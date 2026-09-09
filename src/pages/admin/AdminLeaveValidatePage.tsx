@@ -279,6 +279,7 @@ export function AdminLeaveValidatePage() {
       mutate(swrKeys.pendingConversions),
       mutate(swrKeys.pendingApprovals),
       mutate(isAdminLeavesListKey, undefined, { revalidate: true }),
+      mutate(swrKeys.leaveLwop()),
     ])
   }
 

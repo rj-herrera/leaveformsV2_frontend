@@ -739,16 +739,15 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
         }}
         title={
           quarterUsageExceeded
-            ? 'Save changes and notify admin?'
+            ? 'Confirm leave request'
             : 'Confirm leave request edit'
         }
         description={
           quarterUsageExceeded ? (
             <>
-              These dates would exceed the{' '}
-              <span className="font-semibold">9-day</span> quarterly Vacation
-              Leave cap and may result in a memo. Admin will be notified. Save
-              anyway?
+              This request would exceed the{' '}
+              <span className="font-semibold">9-day quarterly leave limit</span>.
+              Do you still want to save these changes?
             </>
           ) : (
             'Are you sure you want to save these changes to the leave request?'

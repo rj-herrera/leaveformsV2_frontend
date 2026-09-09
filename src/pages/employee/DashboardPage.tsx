@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
+import { LwopSummarySection } from '../../components/leave/LwopSummarySection'
 import { ReservedCreditsSection } from '../../components/leave/ReservedCreditsSection'
 import { LeaveTypeIconBadge } from '../../components/ui/LeaveTypeIconBadge'
 import { Pagination } from '../../components/ui/Pagination'
@@ -37,6 +38,7 @@ import {
   VACATION_LEAVE_THEME,
   type SelectableLeaveType,
 } from '../../constants/leaveTypeTheme'
+import { useLeaveLwop } from '../../hooks/api/useLeaveLwop'
 import { useMyBalances } from '../../hooks/api/useMyBalances'
 import { useMyLeaves } from '../../hooks/api/useMyLeaves'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
@@ -77,6 +79,7 @@ export function DashboardPage() {
   } = useContentSizedTableRefs()
 
   const { data: balances, isLoading: balancesLoading } = useMyBalances()
+  const { data: lwopSummary, isLoading: lwopLoading } = useLeaveLwop()
   const showBalanceSkeleton = balancesLoading
 
   // Max API page size; filter/sort/paginate client-side for this slice.
@@ -323,6 +326,8 @@ export function DashboardPage() {
           </>
         )}
       </section>
+
+      <LwopSummarySection data={lwopSummary} isLoading={lwopLoading} />
 
       {/* Remaining viewport slot: measures max table capacity; does not stretch the table. */}
       <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
