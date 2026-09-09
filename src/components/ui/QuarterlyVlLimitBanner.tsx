@@ -1,7 +1,8 @@
 import { TriangleAlert } from 'lucide-react'
 import type { LeaveQuarterUsageResource } from '../../api/types'
 import {
-  formatQuarterLabel,
+  formatQuarterlyApprovedVlDays,
+  formatQuarterlyVlDayHyphen,
   formatQuarterlyVlDays,
   shouldShowQuarterUsageBanner,
 } from '../../utils/quarterlyVlLimit'
@@ -13,8 +14,8 @@ export type QuarterlyVlLimitBannerProps = {
 }
 
 /**
- * Informational warning when projected VL hits or exceeds the quarterly
- * cap (9 days). Driven by `GET /leaves/quarter-usage`. Never blocks filing.
+ * Informational warning when projected VL exceeds the quarterly cap
+ * (9 days). Hidden at exactly 9 days (`at_cap`). Never blocks filing.
  */
 export function QuarterlyVlLimitBanner({
   usage,
@@ -22,21 +23,10 @@ export function QuarterlyVlLimitBanner({
 }: QuarterlyVlLimitBannerProps) {
   if (!shouldShowQuarterUsageBanner(usage) || usage == null) return null
 
-  const exceeded = usage.level === 'exceeded'
-  const period = formatQuarterLabel(usage.quarter)
-  const periodSuffix = period ? ` (${period})` : ''
-  const takenLabel = formatQuarterlyVlDays(usage.taken)
+  const takenLabel = formatQuarterlyApprovedVlDays(usage.taken)
   const projectedLabel = formatQuarterlyVlDays(usage.projected)
-  const capLabel = formatQuarterlyVlDays(usage.cap)
-  const thisRequestLabel = formatQuarterlyVlDays(usage.this_request)
-
-  const title = exceeded
-    ? 'Quarterly Vacation Leave limit exceeded'
-    : 'Quarterly Vacation Leave limit reached'
-
-  const body = exceeded
-    ? `You have ${takenLabel} of confirmed VL this quarter${periodSuffix}. Including this request (${thisRequestLabel}), that would be ${projectedLabel}, which exceeds the ${capLabel} quarterly cap. Exceeding 9 VL days in a quarter may result in a memo.`
-    : `You have ${takenLabel} of confirmed VL this quarter${periodSuffix}. Including this request (${thisRequestLabel}), that would be ${projectedLabel} — the ${capLabel} quarterly cap.`
+  const requestHyphen = formatQuarterlyVlDayHyphen(usage.this_request)
+  const capHyphen = formatQuarterlyVlDayHyphen(usage.cap)
 
   return (
     <div
@@ -48,8 +38,17 @@ export function QuarterlyVlLimitBanner({
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="text-body font-semibold text-text-black">{title}</p>
-        <p className="mt-1 text-small text-text-black">{body}</p>
+        <p className="text-body font-semibold text-text-black">
+          Quarterly leave limit may be exceeded
+        </p>
+        <p className="mt-1 text-small text-text-black">
+          You currently have{' '}
+          <span className="font-semibold">{takenLabel}</span> this quarter. This{' '}
+          <span className="font-semibold">{requestHyphen} request</span> would
+          bring your total to{' '}
+          <span className="font-semibold">{projectedLabel}</span>, exceeding the{' '}
+          <span className="font-semibold">{capHyphen} quarterly limit</span>.
+        </p>
       </div>
     </div>
   )
