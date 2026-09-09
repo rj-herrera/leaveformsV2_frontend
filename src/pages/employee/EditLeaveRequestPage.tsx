@@ -654,7 +654,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                                 aria-label={`Remove ${file.name}`}
                                 title={
                                   totalAttachmentCount <= 1
-                                    ? 'At least one file must remain'
+                                    ? 'At least one attachment must remain.'
                                     : 'Remove file'
                                 }
                               >
@@ -691,7 +691,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                             labelDownloadFileName:
                               PATERNITY_NOTIFICATION_FORM_FILENAME,
                             labelDownloadTooltip:
-                              'Download the Paternity Notification Form to fill out and submit as required.',
+                              'Download the Paternity Notification Form.',
                           }
                         : {})}
                       error={

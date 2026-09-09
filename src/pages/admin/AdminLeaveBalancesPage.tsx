@@ -60,7 +60,7 @@ const EMPLOYMENT_STATUS_OPTIONS: Array<{
 ]
 
 const ADJUST_TOOLTIP =
-  'For corrections and exceptions only. Use Distribute Leave Credits for routine grants.'
+  'Use only for corrections and exceptions.'
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)

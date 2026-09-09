@@ -316,7 +316,7 @@ export function LeaveRequestDetailsPage() {
               className="inline-flex"
               title={
                 isConversion
-                  ? 'Editing is not available during leave conversion'
+                  ? 'Editing is not available while a leave conversion is pending.'
                   : 'Editing is disabled after an approver has taken action'
               }
             >

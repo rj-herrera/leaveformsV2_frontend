@@ -436,7 +436,7 @@ function CandidateRow({
               ? `${emp.name ?? 'Employee'} already granted`
               : `Select ${emp.name ?? 'employee'}`
           }
-          title={disabled ? 'Already granted this year' : undefined}
+          title={disabled ? 'Leave credits already granted this year.' : undefined}
           className="size-4 accent-primary disabled:cursor-not-allowed"
         />
       </td>

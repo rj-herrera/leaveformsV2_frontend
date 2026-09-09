@@ -291,7 +291,7 @@ export function AttachmentPreviewModal({
                 title={
                   loadingFile
                     ? 'Loading file…'
-                    : 'Download unavailable — no file URL'
+                    : 'No file available to download.'
                 }
               >
                 <Download className="size-5" aria-hidden="true" />

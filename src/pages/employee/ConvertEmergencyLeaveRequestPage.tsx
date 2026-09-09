@@ -247,13 +247,13 @@ function ConvertEmergencyLeaveForm({ detail }: ConvertEmergencyLeaveFormProps) {
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
                 : reasonMissing
-                  ? 'Enter a conversion reason before confirming.'
+                  ? 'Enter a conversion reason.'
                   : attachmentMissing
-                    ? 'Upload at least one supporting document before confirming.'
+                    ? 'Upload at least one supporting document.'
                     : elBalancesLoading
-                      ? 'Checking Emergency Leave credits.'
+                      ? 'Checking Emergency Leave credits...'
                       : exceedsElCredits
-                        ? 'Remaining Emergency Leave credits are less than this leave duration.'
+                        ? 'Not enough Emergency Leave credits to cover this leave.'
                         : undefined
             }
           >

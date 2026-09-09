@@ -189,7 +189,7 @@ export function LeaveRequestReviewPage() {
   const canShowEdit = detail ? canShowLeaveEdit(detail, user.id) : false
   const canEdit = detail ? isPendingLeaveEditable(detail, user.id) : false
   const editDisabledTitle = isConversionReviewStatus(detail?.status)
-    ? 'Editing is not available during leave conversion'
+    ? 'Editing is not available while a leave conversion is pending.'
     : 'Editing is disabled after an approver has taken action'
 
   const decisionSettled = isLeaveDecisionSettled(detail?.status)

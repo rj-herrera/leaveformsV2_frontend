@@ -203,9 +203,9 @@ function ConvertLeaveForm({ detail }: ConvertLeaveFormProps) {
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
                 : reasonMissing
-                  ? 'Enter a conversion reason before confirming.'
+                  ? 'Enter a conversion reason.'
                   : attachmentMissing
-                    ? 'Upload at least one medical certificate before confirming.'
+                    ? 'Upload at least one medical certificate.'
                     : undefined
             }
           >

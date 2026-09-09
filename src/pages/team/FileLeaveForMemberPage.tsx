@@ -757,7 +757,7 @@ export function FileLeaveForMemberPage() {
                         labelDownloadFileName:
                           PATERNITY_NOTIFICATION_FORM_FILENAME,
                         labelDownloadTooltip:
-                          'Download the Paternity Notification Form to fill out and submit as required.',
+                          'Download the Paternity Notification Form.',
                       }
                     : {})}
                   error={
