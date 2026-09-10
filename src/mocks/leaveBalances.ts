@@ -1,10 +1,10 @@
 /**
  * Shared leave-balance types/labels plus employee seed for mock-backed reports.
  *
- * Admin Leave Balances, adjustments, and entitlement distributions use the API
- * (`useAdminBalances`, `utils/*Draft`). Keep this seed only while LWOP /
- * monetization / monthly-attendance smoke mocks still depend on
- * `getAdminLeaveBalanceRows()`. Remove once those APIs are wired.
+ * Admin Leave Balances columns/adjust types live in `ADMIN_BALANCE_KEYS`
+ * (VL/SL/EL/PTB). Keep this seed only while LWOP / monetization /
+ * monthly-attendance smoke mocks still depend on `getAdminLeaveBalanceRows()`.
+ * Remove once those APIs are wired.
  */
 import { MOCK_DATA_ENABLED } from './config'
 
@@ -53,15 +53,6 @@ export const EMPLOYMENT_STATUS_LABELS: Record<EmploymentStatus, string> = {
   probationary: 'Probationary',
   contractual: 'Contractual',
 }
-
-export const LEAVE_BALANCE_KEYS: LeaveBalanceKey[] = [
-  'vl',
-  'sl',
-  'el',
-  'ml',
-  'pl',
-  'ptb',
-]
 
 export const LEAVE_BALANCE_LABELS: Record<LeaveBalanceKey, string> = {
   vl: 'Vacation Leave',

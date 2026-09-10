@@ -59,6 +59,7 @@ import {
 import { compareEmployeeNumber } from '../../utils/sort'
 import {
   LEAVE_TYPE_FILTER_OPTIONS,
+  isAdminApproved,
   type LeaveTypeFilter,
 } from '../../utils/leaveFiling'
 
@@ -272,6 +273,14 @@ function statusBadgeLabel(item: AdminListRow): string | undefined {
   return ADMIN_STATUS_LABELS[item.status]
 }
 
+/** Pending Validation and All-tab rows that still need admin approve/reject. */
+function needsAdminValidateAction(item: AdminListRow): boolean {
+  if (item.apiStatus === 'pending_conversion') return true
+  return (
+    item.apiStatus === 'pending_approval' && isAdminApproved(item.leaveTypeCode)
+  )
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
 
@@ -366,6 +375,12 @@ export function AdminLeaveRequestsPage() {
   } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'PL' })
 
   const {
+    data: pendingSplData,
+    error: pendingSplError,
+    isLoading: pendingSplLoading,
+  } = useAdminLeaves({ ...pendingAdminApprovedParams, code: 'SPL' })
+
+  const {
     data: reminderStats,
     error: reminderErrorFromApi,
     isLoading: reminderLoading,
@@ -457,6 +472,7 @@ export function AdminLeaveRequestsPage() {
     const llLeaves = (pendingLlData?.data ?? []).map(toPendingDirectFilingRow)
     const mlLeaves = (pendingMlData?.data ?? []).map(toPendingDirectFilingRow)
     const plLeaves = (pendingPlData?.data ?? []).map(toPendingDirectFilingRow)
+    const splLeaves = (pendingSplData?.data ?? []).map(toPendingDirectFilingRow)
     return [
       ...conversions,
       ...sickLeaves,
@@ -465,6 +481,7 @@ export function AdminLeaveRequestsPage() {
       ...llLeaves,
       ...mlLeaves,
       ...plLeaves,
+      ...splLeaves,
     ]
   }, [
     pendingData,
@@ -474,6 +491,7 @@ export function AdminLeaveRequestsPage() {
     pendingLlData,
     pendingMlData,
     pendingPlData,
+    pendingSplData,
   ])
 
   const allRows = useMemo(
@@ -592,7 +610,8 @@ export function AdminLeaveRequestsPage() {
     (pendingElLoading && !pendingElData) ||
     (pendingLlLoading && !pendingLlData) ||
     (pendingMlLoading && !pendingMlData) ||
-    (pendingPlLoading && !pendingPlData)
+    (pendingPlLoading && !pendingPlData) ||
+    (pendingSplLoading && !pendingSplData)
   const showAllSkeleton = (allLoading && !allData) || awaitingAllReset
   const showSkeleton = tab === 'pending' ? showPendingSkeleton : showAllSkeleton
   const listError =
@@ -603,7 +622,8 @@ export function AdminLeaveRequestsPage() {
         (pendingElError && !pendingElData) ||
         (pendingLlError && !pendingLlData) ||
         (pendingMlError && !pendingMlData) ||
-        (pendingPlError && !pendingPlData)
+        (pendingPlError && !pendingPlData) ||
+        (pendingSplError && !pendingSplData)
       : allError && !allData
 
   const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
@@ -920,9 +940,13 @@ export function AdminLeaveRequestsPage() {
                       key={item.id}
                       item={item}
                       showStatus={tab === 'all'}
-                      actionLabel={tab === 'pending' ? 'Review' : 'View'}
+                      actionLabel={
+                        tab === 'pending' || needsAdminValidateAction(item)
+                          ? 'Review'
+                          : 'View'
+                      }
                       actionTo={
-                        tab === 'pending'
+                        tab === 'pending' || needsAdminValidateAction(item)
                           ? `/admin/leave-requests/${item.id}/validate`
                           : `/admin/leave-requests/${item.id}`
                       }

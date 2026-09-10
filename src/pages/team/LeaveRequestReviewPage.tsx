@@ -43,6 +43,7 @@ import {
 import {
   canShowLeaveEdit,
   isPendingLeaveEditable,
+  isSpecialLeave,
   requiresAttachment,
 } from '../../utils/leaveFiling'
 
@@ -379,7 +380,9 @@ export function LeaveRequestReviewPage() {
               assignmentTypeLabel={detail.assignment_type_label}
               specialLeaveReasonLabel={detail.special_leave_reason_label}
             />
-            <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+            {!isSpecialLeave(detail.leave_type.code) ? (
+              <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+            ) : null}
             <LeaveAttachmentRow
               fileCount={previewAttachmentFiles.length}
               alwaysShow={showAttachmentField}

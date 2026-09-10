@@ -10,20 +10,20 @@ import { TextField } from '../ui/form/TextField'
 import { fieldLabelClassName } from '../ui/form/fieldStyles'
 import {
   ADJUSTMENT_REASON_OPTIONS,
-  LEAVE_BALANCE_KEYS,
   LEAVE_BALANCE_LABELS,
   LEAVE_BALANCE_SHORT,
   type AdjustmentDirection,
   type AdjustmentReasonCategory,
-  type LeaveBalanceKey,
 } from '../../mocks/leaveBalances'
 import {
   ADMIN_BALANCE_COLUMN_CODES,
+  ADMIN_BALANCE_KEYS,
   adminBalanceAvailableNumber,
   formatAdminBalanceAvailable,
   formatAvailableDelta,
   formatAvailableNumber,
   isAdminBalanceTypeApplicable,
+  type AdminBalanceKey,
 } from '../../utils/adminBalances'
 
 type AdjustCreditsModalProps = {
@@ -38,9 +38,6 @@ const DIRECTION_OPTIONS: Array<{ value: AdjustmentDirection; label: string }> =
     { value: 'add', label: 'Add' },
     { value: 'deduct', label: 'Deduct' },
   ]
-
-const LARGE_ML_ADD_THRESHOLD = 30
-const LARGE_PL_ADD_THRESHOLD = 5
 
 function parseCredits(value: string): number | null {
   const trimmed = value.trim()
@@ -70,8 +67,8 @@ function messageFromApiError(error: unknown, fallback: string): string {
 
 function defaultLeaveTypeKey(
   employee: AdminEmployeeBalanceRow,
-): LeaveBalanceKey {
-  const applicable = LEAVE_BALANCE_KEYS.find((key) =>
+): AdminBalanceKey {
+  const applicable = ADMIN_BALANCE_KEYS.find((key) =>
     isAdminBalanceTypeApplicable(employee, key),
   )
   return applicable ?? 'vl'
@@ -85,7 +82,7 @@ export function AdjustCreditsModal({
 }: AdjustCreditsModalProps) {
   const toast = useToast()
 
-  const [leaveTypeKey, setLeaveTypeKey] = useState<LeaveBalanceKey>('vl')
+  const [leaveTypeKey, setLeaveTypeKey] = useState<AdminBalanceKey>('vl')
   const [direction, setDirection] = useState<AdjustmentDirection>('add')
   const [credits, setCredits] = useState('')
   const [reasonCategory, setReasonCategory] =
@@ -109,7 +106,7 @@ export function AdjustCreditsModal({
 
   const leaveTypeOptions = useMemo(() => {
     if (!employee) return []
-    return LEAVE_BALANCE_KEYS.filter((key) =>
+    return ADMIN_BALANCE_KEYS.filter((key) =>
       isAdminBalanceTypeApplicable(employee, key),
     ).map((key) => ({
       value: key,
@@ -234,8 +231,8 @@ export function AdjustCreditsModal({
           <p className="mt-0.5 text-small text-text-gray">
             {emp.employee_number} · {groupLabel}
           </p>
-          <dl className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {LEAVE_BALANCE_KEYS.map((key) => (
+          <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {ADMIN_BALANCE_KEYS.map((key) => (
               <div key={key}>
                 <dt className="text-small text-text-gray">
                   {LEAVE_BALANCE_SHORT[key]}
@@ -252,7 +249,7 @@ export function AdjustCreditsModal({
           <SelectField
             label="Leave type"
             value={leaveTypeKey}
-            onChange={(value) => setLeaveTypeKey(value as LeaveBalanceKey)}
+            onChange={(value) => setLeaveTypeKey(value as AdminBalanceKey)}
             options={leaveTypeOptions}
           />
           <SelectField
