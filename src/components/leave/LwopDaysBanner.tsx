@@ -28,12 +28,12 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
 
   return (
     <div
-      className="flex shrink-0 items-center justify-between gap-3 rounded-lg border-2 border-yellow-500 bg-yellow-50 px-3.5 py-1.5"
+      className="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-yellow-200 px-3.5 py-1.5"
       role="status"
     >
-      <p className="min-w-0 text-body text-yellow-500">
+      <p className="min-w-0 text-body text-gray">
         You have{' '}
-        <span className="font-semibold text-yellow-600">
+        <span className="font-semibold">
           {formatDurationDays(data.total_lwop_days)}
         </span>{' '}
         of Leave Without Pay (LWOP).
@@ -42,7 +42,7 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
       <div className="group relative shrink-0">
         <button
           type="button"
-          className="inline-flex size-6 items-center justify-center rounded-full text-yellow-500 transition-colors hover:bg-yellow-500 hover:text-white"
+          className="inline-flex size-6 items-center justify-center rounded-full text-gray transition-colors hover:bg-white hover:text-yellow-400"
           aria-label="Leave Without Pay breakdown"
           aria-describedby={tooltipId}
         >
