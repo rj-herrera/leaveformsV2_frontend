@@ -594,14 +594,7 @@ export function FileLeavePage() {
                   </div>
                 </div>
               ) : null}
-              {needsSplDetails ? (
-                <TextField
-                  label="Reason"
-                  value={splSpecialLeaveReasonLabel(specialLeaveReason)}
-                  readOnly
-                  className="sm:col-span-2"
-                />
-              ) : (
+              {needsSplDetails ? null : (
                 <TextAreaField
                   label="Reason"
                   value={reason}

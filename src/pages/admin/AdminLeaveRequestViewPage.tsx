@@ -44,7 +44,11 @@ import {
   type AttachmentFile,
 } from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import { isAdminApproved, requiresAttachment } from '../../utils/leaveFiling'
+import {
+  isAdminApproved,
+  isSpecialLeave,
+  requiresAttachment,
+} from '../../utils/leaveFiling'
 import {
   formatDateTime,
   formatDurationDays,
@@ -506,7 +510,9 @@ export function AdminLeaveRequestViewPage() {
                 assignmentTypeLabel={detail.assignment_type_label}
                 specialLeaveReasonLabel={detail.special_leave_reason_label}
               />
-              <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+              {!isSpecialLeave(detail.leave_type.code) ? (
+                <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+              ) : null}
               <LeaveAttachmentRow
                 fileCount={detail.attachments?.length ?? 0}
                 alwaysShow={requiresAttachment(detail.leave_type.code)}

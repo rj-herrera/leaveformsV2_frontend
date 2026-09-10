@@ -711,14 +711,7 @@ export function FileLeaveForMemberPage() {
                   className="sm:col-span-2"
                 />
               ) : null}
-              {needsSplDetails ? (
-                <TextField
-                  label="Reason"
-                  value={splSpecialLeaveReasonLabel(specialLeaveReason)}
-                  readOnly
-                  className="sm:col-span-2"
-                />
-              ) : (
+              {needsSplDetails ? null : (
                 <TextAreaField
                   label="Reason"
                   value={reason}

@@ -35,7 +35,11 @@ import {
   type AttachmentFile,
 } from '../../utils/attachments'
 import { formatDayTypeLabel } from '../../utils/leaveDates'
-import { isPendingLeaveEditable, requiresAttachment } from '../../utils/leaveFiling'
+import {
+  isPendingLeaveEditable,
+  isSpecialLeave,
+  requiresAttachment,
+} from '../../utils/leaveFiling'
 import { canRequestConversion as leaveIsConvertible } from '../../utils/leaveConversion'
 import {
   formatDateTime,
@@ -391,7 +395,9 @@ export function LeaveRequestDetailsPage() {
                 assignmentTypeLabel={detail.assignment_type_label}
                 specialLeaveReasonLabel={detail.special_leave_reason_label}
               />
-              <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+              {!isSpecialLeave(detail.leave_type.code) ? (
+                <LeaveInfoRow label="Reason" value={detail.leave_reason} />
+              ) : null}
               <LeaveAttachmentRow
                 fileCount={detail.attachments?.length ?? 0}
                 alwaysShow={requiresAttachment(detail.leave_type.code)}

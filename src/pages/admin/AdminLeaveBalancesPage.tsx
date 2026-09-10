@@ -35,10 +35,13 @@ import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useContentSizedTableRefs } from '../../hooks/useContentSizedTableRefs'
 import {
   EMPLOYMENT_STATUS_LABELS,
-  LEAVE_BALANCE_KEYS,
   type EmploymentStatus,
 } from '../../mocks/leaveBalances'
-import { formatAdminBalanceAvailable } from '../../utils/adminBalances'
+import {
+  ADMIN_BALANCE_KEYS,
+  ADMIN_BALANCE_TABLE_COLUMN_COUNT,
+  formatAdminBalanceAvailable,
+} from '../../utils/adminBalances'
 import { distributionEmployeesPath } from '../../utils/distributionPaths'
 
 type DepartmentFilter = 'ALL' | string
@@ -314,16 +317,14 @@ export function AdminLeaveBalancesPage() {
             <table className="w-full min-w-[960px] table-fixed text-left">
               <colgroup>
                 <col className="w-[12%]" />
-                <col className="w-[18%]" />
+                <col className="w-[22%]" />
+                <col className="w-[10%]" />
+                <col className="w-[16%]" />
                 <col className="w-[8%]" />
-                <col className="w-[14%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[6%]" />
-                <col className="w-[12%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
               </colgroup>
               <thead>
                 <tr className="h-11 border-b border-border bg-surface-muted text-small text-text-gray">
@@ -357,7 +358,7 @@ export function AdminLeaveBalancesPage() {
                   <th className="px-5 py-3 font-bold uppercase tracking-wide">
                     Employment Status
                   </th>
-                  {LEAVE_BALANCE_KEYS.map((key) => (
+                  {ADMIN_BALANCE_KEYS.map((key) => (
                     <th
                       key={key}
                       className="px-3 py-3 text-center font-bold uppercase tracking-wide"
@@ -374,12 +375,12 @@ export function AdminLeaveBalancesPage() {
                 {showSkeleton ? (
                   <TableBodySkeleton
                     rows={pageSize}
-                    cols={11}
+                    cols={ADMIN_BALANCE_TABLE_COLUMN_COUNT}
                     rowClassName={APPROVALS_TABLE_ROW_HEIGHT_CLASS}
                   />
                 ) : error && !data ? (
                   <TableEmptyRow
-                    colSpan={11}
+                    colSpan={ADMIN_BALANCE_TABLE_COLUMN_COUNT}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant="no-data"
@@ -387,7 +388,7 @@ export function AdminLeaveBalancesPage() {
                   />
                 ) : rows.length === 0 ? (
                   <TableEmptyRow
-                    colSpan={11}
+                    colSpan={ADMIN_BALANCE_TABLE_COLUMN_COUNT}
                     pageSize={pageSize}
                     rowHeight={APPROVALS_TABLE_ROW_HEIGHT}
                     variant={hasActiveFilters ? 'no-results' : 'no-data'}
@@ -424,7 +425,7 @@ export function AdminLeaveBalancesPage() {
                             status={row.employment_status}
                           />
                         </td>
-                        {LEAVE_BALANCE_KEYS.map((key) => (
+                        {ADMIN_BALANCE_KEYS.map((key) => (
                           <td
                             key={key}
                             className="px-3 text-center text-body text-text-black"

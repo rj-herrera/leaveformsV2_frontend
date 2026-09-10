@@ -1,13 +1,25 @@
 import type { AdminBalanceTypeRow, AdminEmployeeBalanceRow } from '../api/types'
 import type { LeaveBalanceKey } from '../mocks/leaveBalances'
 
-/** Table columns map to these leave_type codes (excludes LL). */
-export const ADMIN_BALANCE_COLUMN_CODES: Record<LeaveBalanceKey, string> = {
+/**
+ * Rolling credit types on admin Leave Balances + Adjust.
+ * ML/PL are granted on submit (not a yearly pot); LL/SPL have no rolling balance.
+ */
+export const ADMIN_BALANCE_KEYS = ['vl', 'sl', 'el', 'ptb'] as const
+
+export type AdminBalanceKey = (typeof ADMIN_BALANCE_KEYS)[number]
+
+/** Identity columns + Action. Used with `ADMIN_BALANCE_KEYS` for table colSpan. */
+export const ADMIN_BALANCE_FIXED_COLUMN_COUNT = 5
+
+export const ADMIN_BALANCE_TABLE_COLUMN_COUNT =
+  ADMIN_BALANCE_FIXED_COLUMN_COUNT + ADMIN_BALANCE_KEYS.length
+
+/** Table / adjust codes for rolling balance types. */
+export const ADMIN_BALANCE_COLUMN_CODES: Record<AdminBalanceKey, string> = {
   vl: 'VL',
   sl: 'SL',
   el: 'EL',
-  ml: 'ML',
-  pl: 'PL',
   ptb: 'PTB',
 }
 
@@ -15,7 +27,7 @@ function findBalanceRow(
   balances: AdminBalanceTypeRow[],
   balanceKey: LeaveBalanceKey,
 ): AdminBalanceTypeRow | undefined {
-  const code = ADMIN_BALANCE_COLUMN_CODES[balanceKey]
+  const code = balanceKey.toUpperCase()
   return balances.find((b) => b.code.toUpperCase() === code)
 }
 
@@ -34,7 +46,7 @@ export function formatAdminBalanceAvailable(
 /** Numeric `available` for adjust preview; inapplicable → 0. */
 export function adminBalanceAvailableNumber(
   row: AdminEmployeeBalanceRow,
-  balanceKey: LeaveBalanceKey,
+  balanceKey: AdminBalanceKey,
 ): number {
   const bal = findBalanceRow(row.balances, balanceKey)
   if (!bal || !bal.applicable) return 0
@@ -44,7 +56,7 @@ export function adminBalanceAvailableNumber(
 
 export function isAdminBalanceTypeApplicable(
   row: AdminEmployeeBalanceRow,
-  balanceKey: LeaveBalanceKey,
+  balanceKey: AdminBalanceKey,
 ): boolean {
   const bal = findBalanceRow(row.balances, balanceKey)
   return bal?.applicable === true
