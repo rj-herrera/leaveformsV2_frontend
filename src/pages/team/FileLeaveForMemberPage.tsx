@@ -6,6 +6,7 @@ import type { MeGroupRef } from '../../api/auth'
 import { createLeave } from '../../api/leaves'
 import type { DayType as ApiDayType } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { DurationEntitlementNote } from '../../components/leave/DurationEntitlementNote'
 import { LeaveCreditsFilingBanner } from '../../components/leave/LeaveCreditsFilingBanner'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
@@ -650,7 +651,10 @@ export function FileLeaveForMemberPage() {
                     : (apiErrors.dayType ?? null)
                 }
               />
-              <TextField label="Duration" value={durationLabel} readOnly />
+              <div className="min-w-0">
+                <TextField label="Duration" value={durationLabel} readOnly />
+                {derivedEndDate ? <DurationEntitlementNote /> : null}
+              </div>
               <DateFieldCustom
                 label="Start Date"
                 value={startDate}

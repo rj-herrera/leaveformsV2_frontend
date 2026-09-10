@@ -12,6 +12,7 @@ import { FileField } from '../../components/ui/form/FileField'
 import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
+import { DurationEntitlementNote } from '../../components/leave/DurationEntitlementNote'
 import { LeaveCreditsFilingBanner } from '../../components/leave/LeaveCreditsFilingBanner'
 import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
@@ -552,12 +553,14 @@ export function FileLeavePage() {
                   </p>
                 </div>
               ) : null}
-              <TextField
-                label="Duration"
-                value={durationLabel}
-                readOnly
-                className="sm:col-span-2"
-              />
+              <div className="min-w-0 sm:col-span-2">
+                <TextField
+                  label="Duration"
+                  value={durationLabel}
+                  readOnly
+                />
+                {derivedEndDate ? <DurationEntitlementNote /> : null}
+              </div>
               {leaveType === 'VL' ? (
                 <QuarterlyVlLimitBanner
                   usage={quarterUsage}

@@ -32,6 +32,7 @@ import {
   usesCalendarDayCounting,
   type DayType,
 } from '../../utils/leaveDates'
+import { DurationEntitlementNote } from '../../components/leave/DurationEntitlementNote'
 import {
   appliesVlLeadTime,
   ATTACHMENT_MAX_FILES,
@@ -550,12 +551,14 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                   </p>
                 </div>
               ) : null}
-              <TextField
-                label="Duration"
-                value={durationLabel}
-                readOnly
-                className="sm:col-span-2"
-              />
+              <div className="min-w-0 sm:col-span-2">
+                <TextField
+                  label="Duration"
+                  value={durationLabel}
+                  readOnly
+                />
+                {derivedEndDate ? <DurationEntitlementNote /> : null}
+              </div>
               {leaveTypeCode.toUpperCase() === 'VL' ? (
                 <QuarterlyVlLimitBanner
                   usage={quarterUsage}
