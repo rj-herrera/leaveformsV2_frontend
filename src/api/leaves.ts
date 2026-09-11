@@ -82,7 +82,7 @@ export async function getLeave(leaveId: number): Promise<LeaveDetail> {
 }
 
 /**
- * GET /leaves/lwop — accepted VL/SL unpaid days in a calendar year.
+ * GET /leaves/lwop — accepted VL/SL/LL unpaid days in a calendar year.
  * Omit `year` for the current Asia/Manila year. Same on-behalf rules as
  * GET /balances. Always returns zeros when there is no accepted LWOP.
  */

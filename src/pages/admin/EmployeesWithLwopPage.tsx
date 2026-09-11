@@ -44,13 +44,14 @@ type SortDir = 'asc' | 'desc'
 
 const DEFAULT_YEAR = new Date().getFullYear()
 const FILTER_CONTROL_H = 'h-[2.375rem]'
-const SUMMARY_COL_COUNT = 8
+const SUMMARY_COL_COUNT = 9
 
 const EMPTY_TOTALS: EmployeesWithLwopGrandTotals = {
   vl_balance: '0.00',
   vl_consumed: '0.00',
   sl_balance: '0.00',
   sl_consumed: '0.00',
+  ll_consumed: '0.00',
   total_lwop_days: '0.00',
 }
 
@@ -144,6 +145,9 @@ function sumTotals(rows: EmployeesWithLwopRow[]): EmployeesWithLwopGrandTotals {
       sl_balance: fromAmount(toAmount(acc.sl_balance) + toAmount(row.sl_balance)),
       sl_consumed: fromAmount(
         toAmount(acc.sl_consumed) + toAmount(row.sl_consumed),
+      ),
+      ll_consumed: fromAmount(
+        toAmount(acc.ll_consumed) + toAmount(row.ll_consumed),
       ),
       total_lwop_days: fromAmount(
         toAmount(acc.total_lwop_days) + toAmount(row.total_lwop_days),
@@ -452,7 +456,7 @@ export function EmployeesWithLwopPage() {
                 <Skeleton className="h-10 w-3/4" />
               </div>
             ) : report ? (
-              <table className="w-full min-w-[56rem] table-fixed text-left">
+              <table className="w-full min-w-[64rem] table-fixed text-left">
                 <thead>
                   <tr className="h-11 bg-surface-muted text-small text-text-gray">
                     <th className="border-b border-border px-4 py-3 font-bold uppercase tracking-wide">
@@ -480,6 +484,9 @@ export function EmployeesWithLwopPage() {
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
                       SL Consumed
+                    </th>
+                    <th className="border-b border-border px-3 py-3 text-center font-bold uppercase tracking-wide">
+                      LL Consumed
                     </th>
                     <th className="border-b border-border px-3 py-3 text-center text-red-700 font-bold uppercase tracking-wide">
                       <SortableHeader
@@ -531,6 +538,9 @@ export function EmployeesWithLwopPage() {
                       </td>
                       <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
                         {formatDays(filteredTotals.sl_consumed)}
+                      </td>
+                      <td className="border-t border-border bg-surface-muted px-3 py-2.5 text-center text-body text-text-black">
+                        {formatDays(filteredTotals.ll_consumed)}
                       </td>
                       <td className="border-t border-border bg-red-50 px-3 py-2.5 text-center text-body text-red-700">
                         {formatDays(filteredTotals.total_lwop_days)}
@@ -597,6 +607,9 @@ function EmployeeRow({ row }: { row: EmployeesWithLwopRow }) {
       </td>
       <td className="px-3 text-center text-body text-text-black">
         {formatDays(row.sl_consumed)}
+      </td>
+      <td className="px-3 text-center text-body text-text-black">
+        {formatDays(row.ll_consumed)}
       </td>
       <td className="px-3 text-center bg-red-50 text-body text-red-700 font-semibold">
         {formatDays(row.total_lwop_days)}

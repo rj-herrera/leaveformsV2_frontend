@@ -1,6 +1,7 @@
 import { Info } from 'lucide-react'
 import type { LeaveLwopResource } from '../../api/types'
 import {
+  LONG_LEAVE_THEME,
   SICK_LEAVE_THEME,
   VACATION_LEAVE_THEME,
 } from '../../constants/leaveTypeTheme'
@@ -52,7 +53,7 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
         <div
           id={tooltipId}
           role="tooltip"
-          className="pointer-events-none absolute top-full right-0 z-20 mt-1.5 w-52 rounded-md border border-border bg-white px-3 py-2.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none absolute top-full right-0 z-20 mt-1.5 w-56 rounded-md border border-border bg-white px-3 py-2.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
         >
           <p className="text-small font-semibold text-text-black">
             LWOP breakdown
@@ -68,6 +69,12 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
               <dt>{SICK_LEAVE_THEME.label}</dt>
               <dd className="font-medium text-text-black">
                 {formatDurationDays(data.sl_lwop_days)}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt>{LONG_LEAVE_THEME.label}</dt>
+              <dd className="font-medium text-text-black">
+                {formatDurationDays(data.ll_lwop_days)}
               </dd>
             </div>
           </dl>

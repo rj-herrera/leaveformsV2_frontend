@@ -6,6 +6,7 @@ export type EmployeesWithLwopRow = {
   vl_consumed: string
   sl_balance: string
   sl_consumed: string
+  ll_consumed: string
   total_lwop_days: string
 }
 
@@ -14,6 +15,7 @@ export type EmployeesWithLwopGrandTotals = {
   vl_consumed: string
   sl_balance: string
   sl_consumed: string
+  ll_consumed: string
   total_lwop_days: string
 }
 

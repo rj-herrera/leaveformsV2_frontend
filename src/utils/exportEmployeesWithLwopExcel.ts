@@ -17,7 +17,7 @@ const FILL_LWOP = mixOnWhite('#dc3545', 0.08)
 const MIME =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-const LAST_COL = 8
+const LAST_COL = 9
 
 const thin = {
   style: 'thin' as const,
@@ -39,6 +39,7 @@ const HEADERS: { label: string; color?: string }[] = [
   { label: 'VL Consumed' },
   { label: 'SL Balance' },
   { label: 'SL Consumed' },
+  { label: 'LL Consumed' },
   { label: 'Total LWOP Days', color: FONT_LWOP },
 ]
 
@@ -227,7 +228,8 @@ export async function downloadEmployeesWithLwopExcel(params: {
     writeDaysCell(excelRow.getCell(5), row.vl_consumed)
     writeDaysCell(excelRow.getCell(6), row.sl_balance)
     writeDaysCell(excelRow.getCell(7), row.sl_consumed)
-    writeDaysCell(excelRow.getCell(8), row.total_lwop_days, {
+    writeDaysCell(excelRow.getCell(8), row.ll_consumed)
+    writeDaysCell(excelRow.getCell(9), row.total_lwop_days, {
       fill: FILL_LWOP,
       color: FONT_LWOP,
       bold: true,
@@ -258,7 +260,11 @@ export async function downloadEmployeesWithLwopExcel(params: {
     fill: HEADER_BG,
     bold: true,
   })
-  writeDaysCell(total.getCell(8), totals.total_lwop_days, {
+  writeDaysCell(total.getCell(8), totals.ll_consumed, {
+    fill: HEADER_BG,
+    bold: true,
+  })
+  writeDaysCell(total.getCell(9), totals.total_lwop_days, {
     fill: FILL_LWOP,
     color: FONT_LWOP,
     bold: true,
@@ -267,7 +273,7 @@ export async function downloadEmployeesWithLwopExcel(params: {
   sheet.getColumn(1).width = 16
   sheet.getColumn(2).width = 28
   sheet.getColumn(3).width = 12
-  for (let col = 4; col <= 8; col += 1) {
+  for (let col = 4; col <= 9; col += 1) {
     sheet.getColumn(col).width = 16
   }
 
