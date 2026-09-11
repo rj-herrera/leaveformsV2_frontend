@@ -232,13 +232,15 @@ export type LeaveQuarterUsageParams = {
 }
 
 /**
- * Current-year VL/SL unpaid days from GET /leaves/lwop.
+ * Current-year VL/SL/LL unpaid days from GET /leaves/lwop.
  * Decimal fields are JSON strings (e.g. `"1.50"`).
+ * `total_lwop_days` is VL + SL + LL.
  */
 export type LeaveLwopResource = {
   year: number
   vl_lwop_days: string
   sl_lwop_days: string
+  ll_lwop_days: string
   total_lwop_days: string
 }
 

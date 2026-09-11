@@ -6,7 +6,7 @@ export type ListEmployeesWithLwopParams = {
   group_id?: number
 }
 
-/** GET /admin/reports/employees-with-lwop — VL/SL unpaid days (admin only). */
+/** GET /admin/reports/employees-with-lwop — VL/SL/LL unpaid days (admin only). */
 export async function getEmployeesWithLwop(
   params: ListEmployeesWithLwopParams,
 ): Promise<EmployeesWithLwopReport> {
