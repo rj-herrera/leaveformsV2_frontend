@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ClearFiltersButton } from '../../components/ui/EmptyState'
 import { FilterSelect } from '../../components/ui/FilterSelect'
-import { LwopSummarySection } from '../../components/leave/LwopSummarySection'
+import { LwopDaysBanner } from '../../components/leave/LwopDaysBanner'
 import { ReservedCreditsSection } from '../../components/leave/ReservedCreditsSection'
 import { LeaveTypeIconBadge } from '../../components/ui/LeaveTypeIconBadge'
 import { Pagination } from '../../components/ui/Pagination'
@@ -197,6 +197,8 @@ export function DashboardPage() {
 
   return (
     <div className={`${TABLE_PAGE_ROOT} gap-5`}>
+      <LwopDaysBanner data={lwopSummary} isLoading={lwopLoading} />
+
       {/* Balance cards — VL/SL fixed; EL/PTB via the third-card picker */}
       <section className="grid shrink-0 grid-cols-1 gap-4 md:grid-cols-3">
         {showBalanceSkeleton ? (
@@ -326,8 +328,6 @@ export function DashboardPage() {
           </>
         )}
       </section>
-
-      <LwopSummarySection data={lwopSummary} isLoading={lwopLoading} />
 
       {/* Remaining viewport slot: measures max table capacity; does not stretch the table. */}
       <div ref={availableSlotRef} className={TABLE_AVAILABLE_SLOT}>
