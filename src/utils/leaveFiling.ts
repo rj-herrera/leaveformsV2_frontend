@@ -57,8 +57,12 @@ export const MED_CERT_ACCEPT =
 /** API max files per leave / conversion (`leave.attachments.max_files`). */
 export const ATTACHMENT_MAX_FILES = 5
 
+/** Stated max size per attachment (MB) shown in upload hints. */
+export const ATTACHMENT_MAX_FILE_SIZE_MB = 10
+
+/** Short hint shown under file upload fields (File Leave, convert, edit). */
 export function attachmentFieldHint(): string {
-  return `PDF, JPG, or PNG. Up to ${ATTACHMENT_MAX_FILES} files.`
+  return `You can upload up to ${ATTACHMENT_MAX_FILES} files, with a maximum size of ${ATTACHMENT_MAX_FILE_SIZE_MB} MB per file. PDF, JPG, or PNG.`
 }
 
 export function isFilableLeaveCode(code: string): code is FilableLeaveCode {

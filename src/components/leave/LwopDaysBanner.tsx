@@ -28,10 +28,10 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
 
   return (
     <div
-      className="flex shrink-0 items-center justify-between gap-3 rounded-lg bg-yellow-200 px-3.5 py-1.5"
+      className="flex shrink-0 items-center justify-between gap-3 rounded-md border-2 border-status-pending bg-status-pending/15 px-3 py-1.5"
       role="status"
     >
-      <p className="min-w-0 text-body text-gray">
+      <p className="min-w-0 text-body text-text-black">
         You have{' '}
         <span className="font-semibold">
           {formatDurationDays(data.total_lwop_days)}
@@ -42,11 +42,11 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
       <div className="group relative shrink-0">
         <button
           type="button"
-          className="inline-flex size-6 items-center justify-center rounded-full text-gray transition-colors hover:bg-white hover:text-yellow-400"
+          className="inline-flex size-7 items-center justify-center rounded-full text-status-pending transition-colors hover:bg-status-pending/40 hover:text-text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-pending/40"
           aria-label="Leave Without Pay breakdown"
           aria-describedby={tooltipId}
         >
-          <Info className="size-4" aria-hidden="true" />
+          <Info className="size-4" strokeWidth={2.25} aria-hidden="true" />
         </button>
 
         <div
@@ -54,7 +54,9 @@ export function LwopDaysBanner({ data, isLoading }: LwopDaysBannerProps) {
           role="tooltip"
           className="pointer-events-none absolute top-full right-0 z-20 mt-1.5 w-52 rounded-md border border-border bg-white px-3 py-2.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
         >
-          <p className="text-small font-semibold text-text-black">LWOP breakdown</p>
+          <p className="text-small font-semibold text-text-black">
+            LWOP breakdown
+          </p>
           <dl className="mt-1.5 space-y-1 text-small text-text-gray">
             <div className="flex items-center justify-between gap-3">
               <dt>{VACATION_LEAVE_THEME.label}</dt>
