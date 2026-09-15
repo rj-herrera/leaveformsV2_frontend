@@ -82,8 +82,10 @@ export const swrKeys = {
   approvals: (params?: ListApprovalsParams) =>
     [
       'approvals',
+      params?.q ?? null,
       params?.status ?? null,
       params?.code ?? null,
+      params?.group_id ?? null,
       params?.sort ?? null,
       params?.per_page ?? null,
       params?.page ?? null,
@@ -108,6 +110,7 @@ export const swrKeys = {
   adminLeaves: (params?: ListAdminLeavesParams) =>
     [
       'admin-leaves',
+      params?.q ?? null,
       params?.status ?? null,
       params?.code ?? null,
       params?.group_id ?? null,
@@ -214,12 +217,12 @@ export function isLeaveListKey(key: unknown): boolean {
   )
 }
 
-/** True for paginated All Approvals keys `['approvals', status, code, sort, per_page, page]`. */
+/** True for paginated All Approvals keys `['approvals', q, status, code, group_id, sort, per_page, page]`. */
 export function isApprovalsListKey(key: unknown): boolean {
   return (
     Array.isArray(key) &&
     key[0] === 'approvals' &&
-    key.length === 6
+    key.length === 8
   )
 }
 
@@ -228,7 +231,7 @@ export function isAdminLeavesListKey(key: unknown): boolean {
   return (
     Array.isArray(key) &&
     key[0] === 'admin-leaves' &&
-    key.length === 7
+    key.length === 8
   )
 }
 

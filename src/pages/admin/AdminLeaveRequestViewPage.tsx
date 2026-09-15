@@ -504,7 +504,7 @@ export function AdminLeaveRequestViewPage() {
               <LeaveInfoRow label="Filed By" value={filedByLabel(detail)} />
               <LeaveInfoRow
                 label="Duration"
-                value={formatDurationDays(detail.duration)}
+                value={formatDurationDays(detail.duration, detail.day_type)}
               />
               <SpecialLeaveDetailRows
                 assignmentTypeLabel={detail.assignment_type_label}

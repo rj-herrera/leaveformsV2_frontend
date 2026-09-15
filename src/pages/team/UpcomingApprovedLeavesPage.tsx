@@ -68,7 +68,7 @@ function groupLabel(entry: TeamCalendarEntry): string {
 }
 
 function calendarEntryDuration(entry: TeamCalendarEntry): string {
-  return formatDurationDays(entry.duration)
+  return formatDurationDays(entry.duration, entry.day_type)
 }
 
 export function UpcomingApprovedLeavesPage() {

@@ -26,6 +26,7 @@ import {
   TABLE_BODY_ROW_BORDER_CLASS,
   TABLE_SEARCH_INPUT_CLASS,
 } from '../../components/ui/tableStyles'
+import { useAuth } from '../../auth/AuthContext'
 import type { LeaveRequestStatus } from '../../constants/leaveStatus'
 import { useApprovals } from '../../hooks/api/useApprovals'
 import { usePendingApprovals } from '../../hooks/api/usePendingApprovals'
@@ -60,6 +61,7 @@ type ApprovalRowView = {
   id: number
   employeeNumber: string
   requesterName: string
+  groupId: number | null
   groupLabel: string
   leaveType: string
   period: string
@@ -82,6 +84,15 @@ const APPROVALS_STATUS_FILTER_OPTIONS: {
 ]
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
+const SEARCH_DEBOUNCE_MS = 300
+
+function groupOptionLabel(group: {
+  abbreviation: string | null
+  name: string | null
+  id: number
+}): string {
+  return group.abbreviation?.trim() || group.name?.trim() || String(group.id)
+}
 
 function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
   const employee = row.employee
@@ -89,13 +100,14 @@ function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
     id: row.id,
     employeeNumber: employee?.employee_number ?? '—',
     requesterName: employee?.name?.trim() || '—',
+    groupId: employee?.group?.id ?? null,
     groupLabel:
       employee?.group?.abbreviation?.trim() ||
       employee?.group?.name?.trim() ||
       '—',
     leaveType: row.leave_type.name,
     period: formatLeavePeriod(row.start_date, row.end_date),
-    duration: formatDurationDays(row.duration),
+    duration: formatDurationDays(row.duration, row.day_type),
     filedOnDate: row.created_at ?? '',
     filedOnLabel: formatShortDate(row.created_at),
     status: mapApiLeaveStatusToUi(row.status),
@@ -132,7 +144,8 @@ function matchesRowFilters(
     item.employeeNumber.toLowerCase().includes(query)
 
   const matchesGroup =
-    groupFilter === 'ALL' || item.groupLabel === groupFilter
+    groupFilter === 'ALL' ||
+    (item.groupId != null && String(item.groupId) === groupFilter)
 
   return matchesSearch && matchesGroup
 }
@@ -166,6 +179,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 }
 
 export function LeaveApprovalsPage() {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const {
     availableSlotRef,
@@ -179,6 +193,7 @@ export function LeaveApprovalsPage() {
 
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [statusFilter, setStatusFilter] = useState<ApprovalsStatusFilter>('ALL')
   const [sortKey, setSortKey] = useState<SortKey>('filedOn')
@@ -198,14 +213,21 @@ export function LeaveApprovalsPage() {
   /** All tab: API sorts by created_at only (Date Filed). */
   const apiSort = sortDir
 
+  const allGroupId = groupFilter !== 'ALL' ? Number(groupFilter) : undefined
+
   const allListParams = useMemo(
     () => ({
+      q: debouncedSearch.length > 0 ? debouncedSearch : undefined,
       status: toApiStatus(statusFilter),
+      group_id:
+        allGroupId != null && Number.isInteger(allGroupId) && allGroupId > 0
+          ? allGroupId
+          : undefined,
       sort: apiSort,
       page: allPage,
       per_page: pageSize,
     }),
-    [statusFilter, apiSort, allPage, pageSize],
+    [debouncedSearch, statusFilter, allGroupId, apiSort, allPage, pageSize],
   )
 
   const {
@@ -233,7 +255,7 @@ export function LeaveApprovalsPage() {
       return
     }
     setAwaitingAllReset(true)
-  }, [tab, statusFilter, apiSort])
+  }, [tab, statusFilter, apiSort, groupFilter, debouncedSearch])
 
   // All tab: page-size change — keep approximate scroll position.
   useEffect(() => {
@@ -268,19 +290,16 @@ export function LeaveApprovalsPage() {
     [allData, awaitingAllReset],
   )
 
-  const groupOptions = useMemo(() => {
-    const groups = Array.from(
-      new Set(
-        [...pendingRows, ...allRows]
-          .map((item) => item.groupLabel)
-          .filter((label) => label !== '—'),
-      ),
-    ).sort((a, b) => a.localeCompare(b))
-    return [
+  const groupOptions = useMemo(
+    () => [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...groups.map((group) => ({ value: group, label: group })),
-    ]
-  }, [pendingRows, allRows])
+      ...user.picGroups.map((group) => ({
+        value: String(group.id),
+        label: groupOptionLabel(group),
+      })),
+    ],
+    [user.picGroups],
+  )
 
   const searchQuery = search.trim().toLowerCase()
 
@@ -311,18 +330,9 @@ export function LeaveApprovalsPage() {
     paginatedItems: pendingPageItems,
   } = usePagination(filteredPending, pageSize, pendingFilterResetKey)
 
-  // All tab: search/group on the current server page (order comes from API).
-  const displayAllRows = useMemo(
-    () =>
-      allRows.filter((item) =>
-        matchesRowFilters(item, searchQuery, groupFilter),
-      ),
-    [allRows, searchQuery, groupFilter],
-  )
-
   const allTotalItems = awaitingAllReset
     ? 0
-    : (allData?.meta?.total ?? displayAllRows.length)
+    : (allData?.meta?.total ?? allRows.length)
   const allTotalPages = awaitingAllReset
     ? 1
     : Math.max(1, allData?.meta?.last_page ?? 1)
@@ -379,7 +389,7 @@ export function LeaveApprovalsPage() {
     tab === 'pending'
       ? pendingError && !pendingData
       : allError && !allData
-  const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
+  const pageItems = tab === 'pending' ? pendingPageItems : allRows
   const currentPage = tab === 'pending' ? pendingPage : allPage
   const totalPages = tab === 'pending' ? pendingTotalPages : allTotalPages
   const totalItems =
