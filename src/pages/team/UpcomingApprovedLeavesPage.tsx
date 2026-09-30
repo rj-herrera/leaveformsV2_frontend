@@ -68,7 +68,7 @@ function groupLabel(entry: TeamCalendarEntry): string {
 }
 
 function calendarEntryDuration(entry: TeamCalendarEntry): string {
-  return formatDurationDays(entry.duration)
+  return formatDurationDays(entry.duration, entry.day_type)
 }
 
 export function UpcomingApprovedLeavesPage() {
@@ -193,13 +193,15 @@ export function UpcomingApprovedLeavesPage() {
                 options={LEAVE_TYPE_FILTER_OPTIONS}
                 selectHeight="h-[2.125rem]"
               />
-              <FilterSelect
-                label="Filter by group"
-                value={groupFilter}
-                onChange={setGroupFilter}
-                options={groupOptions}
-                selectHeight="h-[2.125rem]"
-              />
+              {user.isPresident ? null : (
+                <FilterSelect
+                  label="Filter by group"
+                  value={groupFilter}
+                  onChange={setGroupFilter}
+                  options={groupOptions}
+                  selectHeight="h-[2.125rem]"
+                />
+              )}
             </div>
           </div>
 

@@ -443,7 +443,7 @@ export function DashboardPage() {
                           )}
                         </td>
                         <td className="px-5 whitespace-nowrap">
-                          {formatDurationDays(request.duration)}
+                          {formatDurationDays(request.duration, request.day_type)}
                         </td>
                         <td className="px-5">
                           <StatusBadge status={uiStatus} />

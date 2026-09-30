@@ -13,7 +13,10 @@ import { SelectField } from '../../components/ui/form/SelectField'
 import { TextAreaField } from '../../components/ui/form/TextAreaField'
 import { TextField } from '../../components/ui/form/TextField'
 import { DurationEntitlementNote } from '../../components/leave/DurationEntitlementNote'
-import { LeaveCreditsFilingBanner } from '../../components/leave/LeaveCreditsFilingBanner'
+import {
+  creditsFilingSubmitTitle,
+  LeaveCreditsFilingBanner,
+} from '../../components/leave/LeaveCreditsFilingBanner'
 import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
@@ -180,9 +183,8 @@ export function FileLeavePage() {
       weekdayDuration: dayType === 'full' ? leaveDuration : 0,
       startDateISO: startDate,
       filedOnISO: todayISO(),
-      nonWorkingDates,
     })
-  }, [dayType, leaveDuration, leaveType, nonWorkingDates, startDate])
+  }, [dayType, leaveDuration, leaveType, startDate])
 
   const { data: quarterUsage } = useLeaveQuarterUsage({
     code: leaveType,
@@ -213,6 +215,7 @@ export function FileLeavePage() {
   })
   const exceedsCredits = creditsNotice === 'exceedsCredits'
   const noCredits = creditsNotice === 'noCredits'
+  const filingNotAllowed = leadTimeValidation.gated && !leadTimeValidation.ok
   const remainingLabel = useMemo(() => {
     if (!Number.isFinite(remainingDays)) return '0 days'
     return formatDurationLabel(remainingDays, 'full')
@@ -669,13 +672,21 @@ export function FileLeavePage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={attachmentUploading}
+            disabled={
+              attachmentUploading ||
+              noCredits ||
+              exceedsCredits ||
+              filingNotAllowed
+            }
             loading={submitting}
             loadingText="Submitting…"
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
-                : undefined
+                : creditsFilingSubmitTitle(creditsNotice, selectedTypeLabel) ??
+                  (filingNotAllowed
+                    ? (leadTimeValidation.message ?? undefined)
+                    : undefined)
             }
           >
             Submit Request

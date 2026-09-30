@@ -9,6 +9,9 @@ import { userInitials } from '../utils/userDisplay'
 const COLLAPSED_ICON_BUTTON =
   'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors'
 
+/** Dev-only sidebar logout. Flip to `false` for screenshots. */
+const SHOW_DEV_LOGOUT = true
+
 function canAccessSection(
   requires: 'employee' | 'approver' | 'admin',
   roles: { employee: true; approver: boolean; admin: boolean },
@@ -350,9 +353,10 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const navigate = useNavigate()
   const initials = userInitials(user.firstName, user.lastName)
 
-  const visibleSections = NAV_SECTIONS.filter((section) =>
-    canAccessSection(section.requires, user.roles),
-  )
+  const visibleSections = NAV_SECTIONS.filter((section) => {
+    if (section.id === 'employee' && user.isPresident) return false
+    return canAccessSection(section.requires, user.roles)
+  })
 
   function handleLogout() {
     signOut()
@@ -420,15 +424,17 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           <SidebarUserAvatar
             initials={initials}
           />
-          <button
-            type="button"
-            title="Log out"
-            aria-label="Log out"
-            onClick={handleLogout}
-            className={`${COLLAPSED_ICON_BUTTON} text-white/90 hover:bg-white/25`}
-          >
-            <LogOut className="size-4" strokeWidth={2.5} aria-hidden="true" />
-          </button>
+          {SHOW_DEV_LOGOUT ? (
+            <button
+              type="button"
+              title="Log out"
+              aria-label="Log out"
+              onClick={handleLogout}
+              className={`${COLLAPSED_ICON_BUTTON} text-white/90 hover:bg-white/25`}
+            >
+              <LogOut className="size-4" strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="shrink-0 border-t border-white/15 px-3 py-3">
@@ -442,15 +448,17 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                 <p className="truncate text-small text-white/70">{user.group.abbreviation} • {user.designation.acronym}</p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full border-white/25 bg-white/10 text-white hover:bg-white/10"
-              onClick={handleLogout}
-            >
-              Log out
-            </Button>
+            {SHOW_DEV_LOGOUT ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full border-white/25 bg-white/10 text-white hover:bg-white/10"
+                onClick={handleLogout}
+              >
+                Log out
+              </Button>
+            ) : null}
           </div>
         </div>
       )}

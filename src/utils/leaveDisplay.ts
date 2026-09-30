@@ -2,6 +2,7 @@ import type { LeaveRequestStatus } from '../constants/leaveStatus'
 import { PTB_LEAVE_THEME } from '../constants/leaveTypeTheme'
 import type {
   ConversionStatus,
+  DayType,
   LeaveApprovalRequirement,
   LeaveStatus,
   LeaveTypeRef,
@@ -249,11 +250,17 @@ export function formatLeavePeriod(startDate: string, endDate: string): string {
   return `${formatShortDate(startDate)} – ${formatShortDate(endDate)}`
 }
 
-export function formatDurationDays(duration: string): string {
+export function formatDurationDays(
+  duration: string,
+  dayType?: DayType | null,
+): string {
   const n = Number(duration)
   if (Number.isNaN(n)) return duration
   const days = Number.parseFloat(n.toFixed(2))
-  return `${days} ${days === 1 ? 'day' : 'days'}`
+  const base = `${days} ${days === 1 ? 'day' : 'days'}`
+  if (dayType === 'half_am') return `${base} (AM)`
+  if (dayType === 'half_pm') return `${base} (PM)`
+  return base
 }
 
 export function approvalRequirementLabel(

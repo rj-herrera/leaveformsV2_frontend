@@ -122,6 +122,7 @@ const ADMIN_STATUS_LABELS: Partial<Record<LeaveRequestStatus, string>> = {
 }
 
 const PAGE_SIZE_DEBOUNCE_MS = 150
+const SEARCH_DEBOUNCE_MS = 300
 
 function messageFromReminderError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -181,7 +182,7 @@ function toPendingValidationRow(
       : (leave.leave_type?.code ?? ''),
     pendingValidation,
     period: formatLeavePeriod(leave.start_date, leave.end_date),
-    duration: formatDurationDays(leave.duration),
+    duration: formatDurationDays(leave.duration, leave.day_type),
     filedOnDate: conversion.created_at ?? '',
     filedOnLabel: formatShortDate(conversion.created_at),
     status: mapApiLeaveStatusToUi(leave.status),
@@ -214,7 +215,7 @@ function toAdminAllRow(row: ApprovalInboxRow): AdminListRow {
     leaveType: row.leave_type.name,
     leaveTypeCode: row.leave_type.code,
     period: formatLeavePeriod(row.start_date, row.end_date),
-    duration: formatDurationDays(row.duration),
+    duration: formatDurationDays(row.duration, row.day_type),
     filedOnDate: row.created_at ?? '',
     filedOnLabel: formatShortDate(row.created_at),
     status: mapApiLeaveStatusToUi(row.status),
@@ -307,6 +308,7 @@ export function AdminLeaveRequestsPage() {
 
   const tab = parseListTab(searchParams.get(LIST_TAB_QUERY_KEY))
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS)
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
   const [leaveTypeFilter, setLeaveTypeFilter] =
     useState<LeaveTypeFilter>('ALL')
@@ -394,6 +396,7 @@ export function AdminLeaveRequestsPage() {
 
   const allListParams = useMemo(
     () => ({
+      q: debouncedSearch.length > 0 ? debouncedSearch : undefined,
       status: toApiAdminStatus(statusFilter),
       code: leaveTypeFilter === 'ALL' ? undefined : leaveTypeFilter,
       group_id:
@@ -405,6 +408,7 @@ export function AdminLeaveRequestsPage() {
       per_page: pageSize,
     }),
     [
+      debouncedSearch,
       statusFilter,
       leaveTypeFilter,
       allGroupId,
@@ -439,7 +443,7 @@ export function AdminLeaveRequestsPage() {
       return
     }
     setAwaitingAllReset(true)
-  }, [tab, statusFilter, leaveTypeFilter, groupFilter, apiSort])
+  }, [tab, statusFilter, leaveTypeFilter, groupFilter, apiSort, debouncedSearch])
 
   useEffect(() => {
     if (tab !== 'all') return
@@ -577,21 +581,9 @@ export function AdminLeaveRequestsPage() {
     paginatedItems: pendingPageItems,
   } = usePagination(filteredPending, pageSize, pendingFilterResetKey)
 
-  const displayAllRows = useMemo(
-    () =>
-      allRows.filter((item) => {
-        if (searchQuery.length === 0) return true
-        return (
-          item.requesterName.toLowerCase().includes(searchQuery) ||
-          item.employeeNumber.toLowerCase().includes(searchQuery)
-        )
-      }),
-    [allRows, searchQuery],
-  )
-
   const allTotalItems = awaitingAllReset
     ? 0
-    : (allData?.meta?.total ?? displayAllRows.length)
+    : (allData?.meta?.total ?? allRows.length)
   const allTotalPages = awaitingAllReset
     ? 1
     : Math.max(1, allData?.meta?.last_page ?? 1)
@@ -626,7 +618,7 @@ export function AdminLeaveRequestsPage() {
         (pendingSplError && !pendingSplData)
       : allError && !allData
 
-  const pageItems = tab === 'pending' ? pendingPageItems : displayAllRows
+  const pageItems = tab === 'pending' ? pendingPageItems : allRows
   const currentPage = tab === 'pending' ? pendingPage : allPage
   const totalPages = tab === 'pending' ? pendingTotalPages : allTotalPages
   const totalItems =

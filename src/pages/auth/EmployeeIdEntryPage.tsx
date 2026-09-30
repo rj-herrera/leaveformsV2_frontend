@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import { BootLoadingView } from '../../components/ui/BootLoadingView'
+import { homePath } from '../../utils/homePath'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/form/TextField'
 
@@ -10,15 +11,21 @@ type LocationState = {
 }
 
 export function EmployeeIdEntryPage() {
-  const { isAuthenticated, isBootstrapping, signInWithEmployeeNumber } =
+  const { user, isAuthenticated, isBootstrapping, signInWithEmployeeNumber } =
     useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from =
+  const requestedFrom =
     (location.state as LocationState | null)?.from &&
     (location.state as LocationState).from !== '/login'
       ? (location.state as LocationState).from!
-      : '/dashboard'
+      : null
+  const from =
+    requestedFrom &&
+    requestedFrom !== '/dashboard' &&
+    !requestedFrom.startsWith('/my-leave')
+      ? requestedFrom
+      : homePath(user.isPresident)
 
   const [employeeId, setEmployeeId] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +57,13 @@ export function EmployeeIdEntryPage() {
       return
     }
 
-    navigate(from, { replace: true })
+    const dest =
+      requestedFrom &&
+      requestedFrom !== '/dashboard' &&
+      !requestedFrom.startsWith('/my-leave')
+        ? requestedFrom
+        : homePath(result.isPresident)
+    navigate(dest, { replace: true })
   }
 
   return (

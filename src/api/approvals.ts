@@ -17,8 +17,12 @@ export type ApprovalsListStatus = Extract<
 >
 
 export type ListApprovalsParams = {
+  /** Employee name or number — applied before pagination. */
+  q?: string
   status?: ApprovalsListStatus
   code?: string
+  /** Must be a `GET /me` `role.pic_groups[].id`. */
+  group_id?: number
   sort?: 'asc' | 'desc'
   per_page?: number
   page?: number

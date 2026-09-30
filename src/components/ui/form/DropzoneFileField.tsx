@@ -1,10 +1,9 @@
 import { useId, useRef, useState } from 'react'
 import { FolderUp, Loader2, Paperclip, X } from 'lucide-react'
 import { fieldLabelClassName, fieldShellClassName } from './fieldStyles'
+import { assertAttachmentFileAllowed } from '../../../utils/leaveFiling'
 
 const UPLOAD_DELAY_MS = 900
-// File size validation is disabled for now. Re-enable if product/API needs a cap again:
-// const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 const DEFAULT_MAX_FILES = 5
 
 type DropzoneFileFieldProps = {
@@ -48,18 +47,10 @@ function formatBytes(bytes: number): string {
 }
 
 async function mockUploadFile(file: File): Promise<void> {
+  assertAttachmentFileAllowed(file)
   await new Promise<void>((resolve) => {
     window.setTimeout(resolve, UPLOAD_DELAY_MS)
   })
-
-  if (file.size <= 0) {
-    throw new Error('The selected file is empty.')
-  }
-  // File size limit checks intentionally omitted for now.
-  // Example (re-enable with MAX_UPLOAD_BYTES above if needed):
-  // if (file.size > MAX_UPLOAD_BYTES) {
-  //   throw new Error('File is too large (max 10 MB).')
-  // }
 }
 
 /**

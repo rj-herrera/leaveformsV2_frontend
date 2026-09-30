@@ -18,6 +18,8 @@ export type AdminLeavesListStatus = Extract<
 >
 
 export type ListAdminLeavesParams = {
+  /** Employee name or number — applied before pagination. */
+  q?: string
   status?: AdminLeavesListStatus
   code?: string
   group_id?: number

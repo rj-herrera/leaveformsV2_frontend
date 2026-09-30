@@ -7,8 +7,8 @@ type LeaveCreditsFilingBannerProps = {
   notice: LeaveCreditsFilingNotice
   leaveTypeLabel: string
   /**
-   * Who the leave is for. Affects only the `mayBeLwop` body
-   * (“your”/duration totals vs “the employee’s”); all other variants share one wording.
+   * Who the leave is for. Changes “you” vs “this employee” on blocking
+   * credit banners, and the `mayBeLwop` body.
    */
   audience?: LeaveCreditsFilingAudience
   /** Formatted leave duration — used in the self `mayBeLwop` message. */
@@ -31,6 +31,25 @@ function mayBeLwopBody(
   return `The requested duration (${durationLabel}) exceeds the remaining leave credits (${remainingLabel}). Excess days may be treated as Leave Without Pay (LWOP).`
 }
 
+/** Tooltip when Submit is disabled by a blocking credit notice. */
+export function creditsFilingSubmitTitle(
+  notice: LeaveCreditsFilingNotice | null,
+  leaveTypeLabel: string,
+  audience: LeaveCreditsFilingAudience = 'self',
+): string | undefined {
+  if (notice === 'noCredits') {
+    return audience === 'member'
+      ? `This employee has no remaining ${leaveTypeLabel} credits.`
+      : `You have no remaining ${leaveTypeLabel} credits.`
+  }
+  if (notice === 'exceedsCredits') {
+    return audience === 'member'
+      ? `This leave exceeds the employee’s remaining ${leaveTypeLabel} credits.`
+      : `This leave exceeds your remaining ${leaveTypeLabel} credits.`
+  }
+  return undefined
+}
+
 function copyForNotice(
   notice: LeaveCreditsFilingNotice,
   leaveTypeLabel: string,
@@ -42,13 +61,19 @@ function copyForNotice(
     case 'noCredits':
       return {
         title: `No remaining ${leaveTypeLabel} credits`,
-        body: `You cannot file ${leaveTypeLabel} because you have no remaining credits.`,
+        body:
+          audience === 'member'
+            ? `You cannot file ${leaveTypeLabel} because this employee has no remaining credits.`
+            : `You cannot file ${leaveTypeLabel} because you have no remaining credits.`,
         role: 'alert',
       }
     case 'exceedsCredits':
       return {
         title: `Insufficient ${leaveTypeLabel} credits`,
-        body: 'This leave exceeds your remaining credits. Shorten the leave or file the remaining days as Vacation Leave.',
+        body:
+          audience === 'member'
+            ? 'This leave exceeds the employee’s remaining credits. Shorten the leave or file the remaining days as Vacation Leave.'
+            : 'This leave exceeds your remaining credits. Shorten the leave or file the remaining days as Vacation Leave.',
         role: 'alert',
       }
     case 'fullLwop':
