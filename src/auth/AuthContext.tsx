@@ -39,6 +39,8 @@ export type AuthUser = {
   dateHired: string | null
   /** PIC groups from `/me` `role.pic_groups`. Empty if not a PIC. */
   picGroups: MeGroupRef[]
+  /** From `/me` `role.is_president`. */
+  isPresident: boolean
   /** Employee access is always true for authenticated users */
   roles: {
     employee: true
@@ -58,7 +60,7 @@ export type AuthUser = {
 }
 
 export type SignInResult =
-  | { ok: true }
+  | { ok: true; isPresident: boolean }
   | { ok: false; message: string }
 
 type AuthContextValue = {
@@ -82,6 +84,7 @@ const FALLBACK_USER: AuthUser = {
   gender: null,
   dateHired: null,
   picGroups: [],
+  isPresident: false,
   roles: { employee: true, approver: false, admin: false },
   group: { id: 0, name: '', abbreviation: '' },
   designation: { id: 0, name: '', acronym: '' },
@@ -107,6 +110,7 @@ function mapMeToAuthUser(me: MeResponse): AuthUser {
     gender: mapApiGender(me.gender),
     dateHired: me.date_hired,
     picGroups: me.role.pic_groups ?? [],
+    isPresident: me.role.is_president === true,
     roles: rolesFromMe(me),
     group: me.group ?? { id: 0, name: null, abbreviation: null },
     designation: me.designation ?? { id: 0, name: '', acronym: '' },
@@ -165,8 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCookie(cookieName, login.userID)
 
         const me = await fetchCurrentUser()
-        setUser(mapMeToAuthUser(me))
-        return { ok: true }
+        const mapped = mapMeToAuthUser(me)
+        setUser(mapped)
+        return { ok: true, isPresident: mapped.isPresident }
       } catch (error) {
         if (error instanceof ApiError) {
           return {

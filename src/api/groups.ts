@@ -17,3 +17,9 @@ export async function listGroupMembers(
   )
   return data
 }
+
+/** GET /p4-members — active P4 employees the president may file leave for. */
+export async function listP4Members(): Promise<GroupMember[]> {
+  const { data } = await apiGetList<GroupMember>('/p4-members')
+  return data
+}

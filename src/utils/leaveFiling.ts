@@ -57,8 +57,21 @@ export const MED_CERT_ACCEPT =
 /** API max files per leave / conversion (`leave.attachments.max_files`). */
 export const ATTACHMENT_MAX_FILES = 5
 
-/** Stated max size per attachment (MB) shown in upload hints. */
+/** Max size per attachment (MB). Enforced on select and shown in upload hints. */
 export const ATTACHMENT_MAX_FILE_SIZE_MB = 10
+
+export const ATTACHMENT_MAX_FILE_SIZE_BYTES =
+  ATTACHMENT_MAX_FILE_SIZE_MB * 1024 * 1024
+
+/** Reject empty or oversized files before they are attached. */
+export function assertAttachmentFileAllowed(file: File): void {
+  if (file.size <= 0) {
+    throw new Error('The selected file is empty.')
+  }
+  if (file.size > ATTACHMENT_MAX_FILE_SIZE_BYTES) {
+    throw new Error(`File is too large (max ${ATTACHMENT_MAX_FILE_SIZE_MB} MB).`)
+  }
+}
 
 /** Short hint shown under file upload fields (File Leave, convert, edit). */
 export function attachmentFieldHint(): string {
@@ -250,8 +263,8 @@ export function getLeaveCreditsFilingNotice(options: {
 }
 
 /**
- * Self-filed VL advance notice: exactly 3 workdays → 3 working days;
- * more than 3 workdays → 30 calendar days. On-behalf skips this.
+ * Self-filed VL advance notice: 3 or more workdays → 30 calendar days.
+ * On-behalf skips this.
  */
 export function appliesVlLeadTime(code: string): boolean {
   return code.toUpperCase() === 'VL'

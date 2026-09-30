@@ -212,9 +212,8 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
       weekdayDuration: dayType === 'full' ? leaveDuration : 0,
       startDateISO: startDate,
       filedOnISO: todayISO(),
-      nonWorkingDates,
     })
-  }, [dayType, leaveDuration, leaveTypeCode, nonWorkingDates, selfFiled, startDate])
+  }, [dayType, leaveDuration, leaveTypeCode, selfFiled, startDate])
 
   const { data: quarterUsage } = useLeaveQuarterUsage({
     code: leaveTypeCode,
@@ -265,6 +264,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     leadTimeValidation.ok &&
     isDirty &&
     !(longLeave && !isLongLeaveEndInBounds(startDate, endDate))
+  const filingNotAllowed = leadTimeValidation.gated && !leadTimeValidation.ok
 
   function applySplMatrix(
     nextAssignment: '' | SplAssignmentType,
@@ -717,9 +717,11 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
-                : !isDirty
-                  ? 'No changes to save'
-                  : undefined
+                : filingNotAllowed
+                  ? (leadTimeValidation.message ?? undefined)
+                  : !isDirty
+                    ? 'No changes to save'
+                    : undefined
             }
           >
             Confirm

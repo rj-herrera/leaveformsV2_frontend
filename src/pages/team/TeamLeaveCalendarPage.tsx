@@ -245,12 +245,14 @@ export function TeamLeaveCalendarPage() {
             onChange={(value) => setLeaveTypeFilter(value as LeaveTypeFilter)}
             options={LEAVE_TYPE_FILTER_OPTIONS}
           />
-          <FilterSelect
-            label="Group"
-            value={groupFilter}
-            onChange={setGroupFilter}
-            options={groupOptions}
-          />
+          {user.isPresident ? null : (
+            <FilterSelect
+              label="Group"
+              value={groupFilter}
+              onChange={setGroupFilter}
+              options={groupOptions}
+            />
+          )}
         </div>
       </div>
 

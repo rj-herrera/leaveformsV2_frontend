@@ -23,6 +23,9 @@ export const swrKeys = {
 
   groupMembers: (groupId: number) => ['group-members', groupId] as const,
 
+  /** GET /p4-members — president File Leave for Member picker. */
+  p4Members: ['p4-members'] as const,
+
   leaves: (params?: ListMyLeavesParams) =>
     [
       'leaves',

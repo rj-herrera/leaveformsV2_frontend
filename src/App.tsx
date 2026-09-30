@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { RedirectPresidentFromEmployee } from './auth/RedirectPresidentFromEmployee'
 import { RequireAuth } from './auth/RequireAuth'
 import { RequireCapability } from './auth/RequireCapability'
+import { useAuth } from './auth/AuthContext'
+import { homePath } from './utils/homePath'
 import { AppLayout } from './layouts/AppLayout'
 import { EmployeeIdEntryPage } from './pages/auth/EmployeeIdEntryPage'
 import { ActivityLogPage } from './pages/employee/ActivityLogPage'
@@ -42,6 +45,11 @@ import {
   leaveBalancesLandingPath,
 } from './utils/distributionPaths'
 
+function HomeRedirect() {
+  const { user } = useAuth()
+  return <Navigate to={homePath(user.isPresident)} replace />
+}
+
 function App() {
   return (
     <Routes>
@@ -62,28 +70,30 @@ function App() {
 
       <Route element={<RequireAuth />}>
         <Route path="/" element={<AppLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<HomeRedirect />} />
 
           {/* Employee — src/pages/employee */}
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="my-leave/file" element={<FileLeavePage />} />
-          <Route path="my-leave/activity-log" element={<ActivityLogPage />} />
-          <Route
-            path="my-leave/requests/:leaveRequestId"
-            element={<LeaveRequestDetailsPage />}
-          />
-          <Route
-            path="my-leave/requests/:leaveRequestId/edit"
-            element={<EditLeaveRequestPage />}
-          />
-          <Route
-            path="my-leave/requests/:leaveRequestId/convert"
-            element={<ConvertLeaveRequestPage />}
-          />
-          <Route
-            path="my-leave/requests/:leaveRequestId/convert/emergency"
-            element={<ConvertEmergencyLeaveRequestPage />}
-          />
+          <Route element={<RedirectPresidentFromEmployee />}>
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="my-leave/file" element={<FileLeavePage />} />
+            <Route path="my-leave/activity-log" element={<ActivityLogPage />} />
+            <Route
+              path="my-leave/requests/:leaveRequestId"
+              element={<LeaveRequestDetailsPage />}
+            />
+            <Route
+              path="my-leave/requests/:leaveRequestId/edit"
+              element={<EditLeaveRequestPage />}
+            />
+            <Route
+              path="my-leave/requests/:leaveRequestId/convert"
+              element={<ConvertLeaveRequestPage />}
+            />
+            <Route
+              path="my-leave/requests/:leaveRequestId/convert/emergency"
+              element={<ConvertEmergencyLeaveRequestPage />}
+            />
+          </Route>
 
           {/* Approver / Team — src/pages/team */}
           <Route element={<RequireCapability capability="approver" />}>

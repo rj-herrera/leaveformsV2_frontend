@@ -7,7 +7,10 @@ import { createLeave } from '../../api/leaves'
 import type { DayType as ApiDayType } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { DurationEntitlementNote } from '../../components/leave/DurationEntitlementNote'
-import { LeaveCreditsFilingBanner } from '../../components/leave/LeaveCreditsFilingBanner'
+import {
+  creditsFilingSubmitTitle,
+  LeaveCreditsFilingBanner,
+} from '../../components/leave/LeaveCreditsFilingBanner'
 import { Button } from '../../components/ui/Button'
 import { ConfirmReasonModal } from '../../components/ui/ConfirmReasonModal'
 import { DateFieldCustom } from '../../components/ui/form/DateFieldCustom'
@@ -18,6 +21,7 @@ import { TextField } from '../../components/ui/form/TextField'
 import { QuarterlyVlLimitBanner } from '../../components/ui/QuarterlyVlLimitBanner'
 import { useToast } from '../../components/ui/ToastProvider'
 import { useGroupMembers } from '../../hooks/api/useGroupMembers'
+import { useP4Members } from '../../hooks/api/useP4Members'
 import { useNonWorkingHolidayDates } from '../../hooks/api/useHolidays'
 import { useLeaveQuarterUsage } from '../../hooks/api/useLeaveQuarterUsage'
 import { useMemberBalances } from '../../hooks/api/useMemberBalances'
@@ -130,14 +134,25 @@ export function FileLeaveForMemberPage() {
     clearLeaveFormApiErrors,
   )
 
+  const isPresident = user.isPresident
   const selectedGroupId = groupId === '' ? null : Number(groupId)
   const selectedEmpId = employeeId === '' ? null : Number(employeeId)
 
   const {
-    data: members = [],
-    isLoading: membersLoading,
-    error: membersError,
-  } = useGroupMembers(selectedGroupId)
+    data: groupMembers = [],
+    isLoading: groupMembersLoading,
+    error: groupMembersError,
+  } = useGroupMembers(isPresident ? null : selectedGroupId)
+
+  const {
+    data: p4Members = [],
+    isLoading: p4MembersLoading,
+    error: p4MembersError,
+  } = useP4Members(isPresident)
+
+  const members = isPresident ? p4Members : groupMembers
+  const membersLoading = isPresident ? p4MembersLoading : groupMembersLoading
+  const membersError = isPresident ? p4MembersError : groupMembersError
 
   const { data: balances, isLoading: balancesLoading } = useMemberBalances(
     selectedEmpId,
@@ -269,7 +284,7 @@ export function FileLeaveForMemberPage() {
     ? !splCalendarDays
     : leaveType !== '' && !usesCalendarDayCounting(leaveType)
 
-  const groupMissing = groupId === ''
+  const groupMissing = !isPresident && groupId === ''
   const employeeMissing = employeeId === ''
   const leaveTypeMissing = leaveType === ''
   const dayTypeMissing = dayType === ''
@@ -514,7 +529,9 @@ export function FileLeaveForMemberPage() {
   }
 
   const employeeSelectDisabled =
-    groupMissing || membersLoading || Boolean(membersError)
+    (!isPresident && groupMissing) ||
+    membersLoading ||
+    Boolean(membersError)
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden">
@@ -529,19 +546,21 @@ export function FileLeaveForMemberPage() {
         <section className="shrink-0 rounded-lg border border-border bg-surface px-4 py-3 sm:px-5">
           <h2 className="text-h2 text-text-black">Employee Information</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-4">
+            {isPresident ? null : (
+              <SelectField
+                className="sm:col-span-1"
+                label="Group"
+                value={groupId}
+                onChange={handleGroupChange}
+                placeholder="Select Group"
+                options={groupOptions}
+                error={
+                  triedSubmit && groupMissing ? 'Please select a group.' : null
+                }
+              />
+            )}
             <SelectField
-              className="sm:col-span-1"
-              label="Group"
-              value={groupId}
-              onChange={handleGroupChange}
-              placeholder="Select Group"
-              options={groupOptions}
-              error={
-                triedSubmit && groupMissing ? 'Please select a group.' : null
-              }
-            />
-            <SelectField
-              className="sm:col-span-2"
+              className={isPresident ? 'sm:col-span-3' : 'sm:col-span-2'}
               label="Employee Name"
               value={employeeId}
               onChange={handleEmployeeChange}
@@ -564,14 +583,16 @@ export function FileLeaveForMemberPage() {
               readOnly
             />
           </div>
-          {user.picGroups.length === 0 ? (
+          {!isPresident && user.picGroups.length === 0 ? (
             <p className="mt-2 text-small text-text-gray">
               You are not assigned to any PIC groups.
             </p>
           ) : null}
           {membersError ? (
             <p className="mt-2 text-small text-status-rejected" role="alert">
-              Unable to load members for this group. Please try again.
+              {isPresident
+                ? 'Unable to load P4 employees. Please try again.'
+                : 'Unable to load members for this group. Please try again.'}
             </p>
           ) : null}
           {!membersLoading &&
@@ -579,7 +600,9 @@ export function FileLeaveForMemberPage() {
           !groupMissing &&
           members.length === 0 ? (
             <p className="mt-2 text-small text-text-gray">
-              No members available to file leave for in this group.
+              {isPresident
+                ? 'No P4 employees available to file leave for.'
+                : 'No members available to file leave for in this group.'}
             </p>
           ) : null}
         </section>
@@ -789,13 +812,17 @@ export function FileLeaveForMemberPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={attachmentUploading}
+            disabled={attachmentUploading || noCredits || exceedsCredits}
             loading={submitting}
             loadingText="Submitting…"
             title={
               attachmentUploading
                 ? 'Wait for the attachment upload to finish.'
-                : undefined
+                : creditsFilingSubmitTitle(
+                    creditsNotice,
+                    selectedTypeLabel,
+                    'member',
+                  )
             }
           >
             Submit Request

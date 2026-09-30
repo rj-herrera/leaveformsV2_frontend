@@ -440,13 +440,15 @@ export function LeaveApprovalsPage() {
               </label>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <FilterSelect
-                  label="Filter by group"
-                  value={groupFilter}
-                  onChange={setGroupFilter}
-                  options={groupOptions}
-                  selectHeight="h-[2.125rem]"
-                />
+                {user.isPresident ? null : (
+                  <FilterSelect
+                    label="Filter by group"
+                    value={groupFilter}
+                    onChange={setGroupFilter}
+                    options={groupOptions}
+                    selectHeight="h-[2.125rem]"
+                  />
+                )}
 
                 {tab === 'all' ? (
                   <FilterSelect
