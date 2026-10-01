@@ -9,11 +9,10 @@ import { clearCookie } from '../utils/cookies'
  * `links` / `meta`). Use the `api*Data` / `apiGetList` helpers for those.
  * Use `apiPostFormData` for multipart uploads (SL `leave_attachment`, conversion `med_cert`) —
  * do not force `Content-Type: application/json`.
- * Plain endpoints like `/me` and `/dev/login` are not wrapped — call
- * `axiosClient` directly for those.
+ * Plain endpoints like `/me` are not wrapped — call `axiosClient` directly.
  *
- * On 401 with `login_url`, clears the session cookie and redirects (local →
- * `/login`, otherwise → portal `login_url`).
+ * On 401 with `login_url`, clears the session cookie and redirects to the
+ * portal login page.
  */
 export class ApiError extends Error {
   readonly status: number
@@ -45,37 +44,16 @@ function loginUrlFromPayload(payload: unknown): string | null {
   return null
 }
 
-function requestPath(error: AxiosError): string {
-  return error.config?.url ?? ''
-}
-
-/**
- * Clear session and send the browser to login.
- * Local/dev uses the SPA `/login` page; other builds use the API's portal URL.
- */
-function handleUnauthorized(payload: unknown, requestUrl: string): void {
+/** Clear the session cookie and send the browser to the portal login page. */
+function handleUnauthorized(payload: unknown): void {
   if (handlingUnauthorized) return
-  // Dev login failures are not a lost session — leave the UI to show the error.
-  if (requestUrl.includes('/dev/login')) return
 
   const loginUrl = loginUrlFromPayload(payload)
   if (!loginUrl) return
 
   handlingUnauthorized = true
   clearCookie(AUTH_COOKIE_NAME)
-
-  const redirectTo = import.meta.env.DEV ? '/login' : loginUrl
-
-  if (
-    import.meta.env.DEV &&
-    (window.location.pathname === '/login' ||
-      window.location.pathname === '/login/')
-  ) {
-    handlingUnauthorized = false
-    return
-  }
-
-  window.location.href = redirectTo
+  window.location.href = loginUrl
 }
 
 /** Laravel LengthAwarePaginator `meta` on resource collections. */
@@ -138,7 +116,7 @@ axiosClient.interceptors.response.use(
       const status = error.response?.status ?? 0
       const payload = error.response?.data ?? null
       if (status === 401) {
-        handleUnauthorized(payload, requestPath(error))
+        handleUnauthorized(payload)
       }
       return Promise.reject(
         new ApiError(status, messageFromPayload(payload, status), payload),

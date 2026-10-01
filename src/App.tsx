@@ -5,7 +5,6 @@ import { RequireCapability } from './auth/RequireCapability'
 import { useAuth } from './auth/AuthContext'
 import { homePath } from './utils/homePath'
 import { AppLayout } from './layouts/AppLayout'
-import { EmployeeIdEntryPage } from './pages/auth/EmployeeIdEntryPage'
 import { ActivityLogPage } from './pages/employee/ActivityLogPage'
 import { ConvertEmergencyLeaveRequestPage } from './pages/employee/ConvertEmergencyLeaveRequestPage'
 import { ConvertLeaveRequestPage } from './pages/employee/ConvertLeaveRequestPage'
@@ -53,8 +52,6 @@ function HomeRedirect() {
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<EmployeeIdEntryPage />} />
-
       {/* Error previews — outside AppLayout (no sidebar / auth gate) */}
       <Route path="/401" element={<SessionExpiredPage />} />
       <Route path="/403" element={<AccessDeniedPage />} />

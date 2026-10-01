@@ -1,9 +1,5 @@
 import { axiosClient } from './axios-client'
-
-export type DevLoginResponse = {
-  userID: string
-  cookie: string
-}
+import { clearCookie } from '../utils/cookies'
 
 /** Group nest on `/me` (`group` and `role.pic_groups[]`). */
 export type MeGroupRef = {
@@ -41,18 +37,21 @@ export type MeResponse = {
   designation: MeDesignationRef | null
 }
 
-/** Local-only: resolve emp_id → portal userID hash (frontend sets the cookie). */
-export async function loginWithEmployeeId(
-  empId: number,
-): Promise<DevLoginResponse> {
-  const { data } = await axiosClient.post<DevLoginResponse>('/dev/login', {
-    emp_id: empId,
-  })
-  return data
-}
-
 /** Current employee from the portal userID cookie. */
 export async function fetchCurrentUser(): Promise<MeResponse> {
   const { data } = await axiosClient.get<MeResponse>('/me')
   return data
+}
+
+/**
+ * Drop the portal cookie and follow the API 401 `login_url`
+ * (KDTPortalLogin).
+ */
+export async function redirectToPortalLogin(): Promise<void> {
+  clearCookie('userID')
+  try {
+    await fetchCurrentUser()
+  } catch {
+    // The 401 interceptor sends the browser to login_url.
+  }
 }

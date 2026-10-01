@@ -10,7 +10,7 @@ The frontend already:
 - Needs **holidays** from the API as ISO dates (`YYYY-MM-DD`)
 - Uses a custom date picker (`DateFieldCustom`) that disables days when `weekdaysOnly` is on
 
-This endpoint replaces the frontend mock in `src/mocks/workCalendar.ts`.
+Filing pages load these dates from the API. Weekends are still excluded in the browser.
 
 ---
 

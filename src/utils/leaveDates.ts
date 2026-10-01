@@ -1,5 +1,3 @@
-import { isNonWorkingHoliday } from '../mocks/workCalendar'
-
 const MONTH_INDEX: Record<string, number> = {
   jan: 0,
   january: 0,
@@ -154,9 +152,8 @@ export function isWorkingDay(
   nonWorkingDates?: ReadonlySet<string>,
 ): boolean {
   if (!isWeekday(date)) return false
-  const iso = toLocalISODate(date)
-  if (nonWorkingDates) return !nonWorkingDates.has(iso)
-  return !isNonWorkingHoliday(iso)
+  if (!nonWorkingDates) return true
+  return !nonWorkingDates.has(toLocalISODate(date))
 }
 
 export function isWorkingDayISO(

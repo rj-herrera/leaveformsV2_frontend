@@ -1,10 +1,8 @@
 import { LogIn } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { redirectToPortalLogin } from '../../api/auth'
 import { ErrorPage } from '../../components/feedback/ErrorPage'
 
 export function SessionExpiredPage() {
-  const navigate = useNavigate()
-
   return (
     <ErrorPage
       code="401"
@@ -13,7 +11,9 @@ export function SessionExpiredPage() {
       icon={<LogIn strokeWidth={1.75} />}
       primaryAction={{
         label: 'Log In Again',
-        onClick: () => navigate('/login'),
+        onClick: () => {
+          void redirectToPortalLogin()
+        },
       }}
     />
   )

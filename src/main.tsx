@@ -9,7 +9,6 @@ import App from './App.tsx'
 
 /**
  * AuthProvider bootstraps from the portal userID cookie via GET /api/me.
- * Dev sign-in: POST /api/dev/login (see AuthContext / EmployeeIdEntryPage).
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

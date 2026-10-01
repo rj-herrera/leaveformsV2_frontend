@@ -32,7 +32,7 @@ type DateFieldCustomProps = {
   weekdaysOnly?: boolean
   /**
    * ISO dates (`YYYY-MM-DD`) treated as non-working holidays.
-   * When omitted, falls back to the mock work calendar.
+   * When omitted, only weekends are blocked.
    */
   nonWorkingDates?: ReadonlySet<string>
   /** Holiday display names keyed by ISO date — shown on hover for disabled holiday cells. */

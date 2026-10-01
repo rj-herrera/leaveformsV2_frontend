@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, LogOut } from 'lucide-react'
-import { matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
+import { matchPath, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { Button } from './ui/Button'
 import { NAV_SECTIONS, type NavChildItem, type NavItem } from '../nav/navConfig'
 import { userInitials } from '../utils/userDisplay'
 
 const COLLAPSED_ICON_BUTTON =
   'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors'
-
-/** Dev-only sidebar logout. Flip to `false` for screenshots. */
-const SHOW_DEV_LOGOUT = true
 
 function canAccessSection(
   requires: 'employee' | 'approver' | 'admin',
@@ -349,19 +345,13 @@ function SidebarUserAvatar({
 }
 
 export function Sidebar({ collapsed }: { collapsed: boolean }) {
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const initials = userInitials(user.firstName, user.lastName)
 
   const visibleSections = NAV_SECTIONS.filter((section) => {
     if (section.id === 'employee' && user.isPresident) return false
     return canAccessSection(section.requires, user.roles)
   })
-
-  function handleLogout() {
-    signOut()
-    navigate('/login', { replace: true })
-  }
 
   return (
     <aside
@@ -424,17 +414,6 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           <SidebarUserAvatar
             initials={initials}
           />
-          {SHOW_DEV_LOGOUT ? (
-            <button
-              type="button"
-              title="Log out"
-              aria-label="Log out"
-              onClick={handleLogout}
-              className={`${COLLAPSED_ICON_BUTTON} text-white/90 hover:bg-white/25`}
-            >
-              <LogOut className="size-4" strokeWidth={2.5} aria-hidden="true" />
-            </button>
-          ) : null}
         </div>
       ) : (
         <div className="shrink-0 border-t border-white/15 px-3 py-3">
@@ -448,17 +427,6 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                 <p className="truncate text-small text-white/70">{user.group.abbreviation} • {user.designation.acronym}</p>
               </div>
             </div>
-            {SHOW_DEV_LOGOUT ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="w-full border-white/25 bg-white/10 text-white hover:bg-white/10"
-                onClick={handleLogout}
-              >
-                Log out
-              </Button>
-            ) : null}
           </div>
         </div>
       )}

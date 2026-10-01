@@ -1,20 +1,13 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { BootLoadingView } from '../components/ui/BootLoadingView'
 import { useAuth } from './AuthContext'
 
-/** Redirects unauthenticated visitors to the employee ID entry page. */
+/** Holds the shell until the portal cookie is confirmed. A missing cookie redirects to KDTPortalLogin. */
 export function RequireAuth() {
   const { isAuthenticated, isBootstrapping } = useAuth()
-  const location = useLocation()
 
-  if (isBootstrapping) {
+  if (isBootstrapping || !isAuthenticated) {
     return <BootLoadingView />
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <Navigate to="/login" replace state={{ from: location.pathname }} />
-    )
   }
 
   return <Outlet />

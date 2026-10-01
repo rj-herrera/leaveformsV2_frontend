@@ -1,26 +1,21 @@
 /**
  * Auth bootstrap via portal cookie (userID) + GET /api/me.
- *
- * Dev login: POST /api/dev/login with emp_id → frontend sets the cookie.
  * Roles come from /api/me `role` (approval_level, is_president, is_admin).
  */
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { ApiError } from '../api/axios-client'
 import {
   fetchCurrentUser,
-  loginWithEmployeeId,
   type MeGroupRef,
   type MeResponse,
 } from '../api/auth'
-import { clearCookie, getCookie, setCookie } from '../utils/cookies'
+import { clearCookie } from '../utils/cookies'
 import { mapApiGender, type UserGender } from '../utils/gender'
 
 export type UserRole = 'employee' | 'approver' | 'admin'
@@ -59,17 +54,11 @@ export type AuthUser = {
   }
 }
 
-export type SignInResult =
-  | { ok: true; isPresident: boolean }
-  | { ok: false; message: string }
-
 type AuthContextValue = {
   user: AuthUser
   isAuthenticated: boolean
   /** True while checking an existing cookie / loading /api/me on startup. */
   isBootstrapping: boolean
-  signInWithEmployeeNumber: (employeeNumber: string) => Promise<SignInResult>
-  signOut: () => void
 }
 
 const DEFAULT_COOKIE_NAME = 'userID'
@@ -128,13 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function run() {
       setIsBootstrapping(true)
-      if (!getCookie(DEFAULT_COOKIE_NAME)) {
-        if (!cancelled) {
-          setUser(null)
-          setIsBootstrapping(false)
-        }
-        return
-      }
 
       try {
         const me = await fetchCurrentUser()
@@ -155,56 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signInWithEmployeeNumber = useCallback(
-    async (employeeNumber: string): Promise<SignInResult> => {
-      const trimmed = employeeNumber.trim()
-      const empId = Number(trimmed)
-      if (!trimmed || !Number.isInteger(empId) || empId < 1) {
-        return { ok: false, message: 'Please enter a valid employee ID.' }
-      }
-
-      try {
-        const login = await loginWithEmployeeId(empId)
-        const cookieName = login.cookie || DEFAULT_COOKIE_NAME
-        setCookie(cookieName, login.userID)
-
-        const me = await fetchCurrentUser()
-        const mapped = mapMeToAuthUser(me)
-        setUser(mapped)
-        return { ok: true, isPresident: mapped.isPresident }
-      } catch (error) {
-        if (error instanceof ApiError) {
-          return {
-            ok: false,
-            message:
-              error.message ||
-              'Employee ID not found. Please check and try again.',
-          }
-        }
-        return {
-          ok: false,
-          message:
-            'Unable to connect to the system. Please try again.',
-        }
-      }
-    },
-    [],
-  )
-
-  const signOut = useCallback(() => {
-    clearCookie(DEFAULT_COOKIE_NAME)
-    setUser(null)
-  }, [])
-
   const value = useMemo(
     () => ({
       user: user ?? FALLBACK_USER,
       isAuthenticated: user != null,
       isBootstrapping,
-      signInWithEmployeeNumber,
-      signOut,
     }),
-    [user, isBootstrapping, signInWithEmployeeNumber, signOut],
+    [user, isBootstrapping],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
