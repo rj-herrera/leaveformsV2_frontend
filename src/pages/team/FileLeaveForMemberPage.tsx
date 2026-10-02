@@ -49,7 +49,6 @@ import {
   filableLeaveLabel,
   filableLeaveTypeOptionsForGender,
   getLeaveCreditsFilingNotice,
-  grantsCreditsOnSubmit,
   hasDerivedEndDate,
   hidesRemainingCredits,
   isFilableLeaveCode,

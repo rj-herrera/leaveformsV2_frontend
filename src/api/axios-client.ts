@@ -88,26 +88,16 @@ type ListEnvelope<T> = {
   meta?: PaginationMeta
 }
 
+const apiRoot = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+
 export const axiosClient = axios.create({
-  baseURL: '/api',
+  baseURL: apiRoot ? `${apiRoot}/api` : '/api',
   withCredentials: true,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
 })
-
-function messageFromPayload(payload: unknown, status: number): string {
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'message' in payload &&
-    typeof (payload as { message: unknown }).message === 'string'
-  ) {
-    return (payload as { message: string }).message
-  }
-  return `Something went wrong. Please try again.`
-}
 
 axiosClient.interceptors.response.use(
   (response) => response,
@@ -118,9 +108,6 @@ axiosClient.interceptors.response.use(
       if (status === 401) {
         handleUnauthorized(payload)
       }
-      return Promise.reject(
-        new ApiError(status, messageFromPayload(payload, status), payload),
-      )
     }
     return Promise.reject(error)
   },

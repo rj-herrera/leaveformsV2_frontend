@@ -107,7 +107,7 @@ function toApprovalRowView(row: ApprovalInboxRow): ApprovalRowView {
       '—',
     leaveType: row.leave_type.name,
     period: formatLeavePeriod(row.start_date, row.end_date),
-    duration: formatDurationDays(row.duration, row.day_type),
+    duration: formatDurationDays(row.duration),
     filedOnDate: row.created_at ?? '',
     filedOnLabel: formatShortDate(row.created_at),
     status: mapApiLeaveStatusToUi(row.status),

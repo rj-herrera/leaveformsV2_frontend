@@ -8,7 +8,7 @@ export function BootLoadingView() {
       aria-label="Loading"
     >
       <img
-        src="/wind2.svg"
+        src={`${import.meta.env.BASE_URL}wind2.svg`}
         alt=""
         width={500}
         height={500}
