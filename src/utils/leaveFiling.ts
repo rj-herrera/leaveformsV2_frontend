@@ -193,9 +193,9 @@ export function isFixedRangeLeave(code: string): boolean {
   return normalized === 'ML' || normalized === 'PL'
 }
 
-/** ML/PL/SPL end dates are derived — the end picker stays locked. */
+/** ML/PL end dates are derived — the end picker stays locked. SPL is a capped range. */
 export function hasDerivedEndDate(code: string): boolean {
-  return isFixedRangeLeave(code) || isSpecialLeave(code)
+  return isFixedRangeLeave(code)
 }
 
 /** ML/PL credits are granted on submit — do not treat remaining 0 as a block. */
@@ -263,7 +263,7 @@ export function getLeaveCreditsFilingNotice(options: {
 }
 
 /**
- * Self-filed VL advance notice: 3 or more workdays → 30 calendar days.
+ * Self-filed VL advance notice: 3 workdays → 7 calendar days; 4 or more → 30.
  * On-behalf skips this.
  */
 export function appliesVlLeadTime(code: string): boolean {
@@ -429,7 +429,7 @@ export function usesSplCalendarDays(
   return splAllotment(assignment, reason)?.usesCalendarDays === true
 }
 
-/** FE-computed SPL end date; API re-checks the matrix. */
+/** Latest allowed SPL end date for this event. A shorter end is allowed. */
 export function specialLeaveEndDate(
   startISO: string,
   assignment: SplAssignmentType | '',
@@ -442,6 +442,57 @@ export function specialLeaveEndDate(
     return inclusiveCalendarEndDate(startISO, allotment.days)
   }
   return nthWorkingDayEndDate(startISO, allotment.days, nonWorkingDates)
+}
+
+/**
+ * Keep `currentEnd` when it is on or between the start date and the event
+ * maximum. Otherwise use the maximum (full entitlement is still allowed).
+ */
+export function clampSpecialLeaveEndDate(
+  startISO: string,
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+  currentEnd: string,
+  nonWorkingDates?: ReadonlySet<string>,
+): string {
+  const max = specialLeaveEndDate(
+    startISO,
+    assignment,
+    reason,
+    nonWorkingDates,
+  )
+  if (!startISO || !max) return ''
+  if (currentEnd >= startISO && currentEnd <= max) return currentEnd
+  return max
+}
+
+export function isSpecialLeaveEndInBounds(
+  startISO: string,
+  endISO: string,
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+  nonWorkingDates?: ReadonlySet<string>,
+): boolean {
+  const max = specialLeaveEndDate(
+    startISO,
+    assignment,
+    reason,
+    nonWorkingDates,
+  )
+  if (!startISO || !endISO || !max) return false
+  return endISO >= startISO && endISO <= max
+}
+
+/** e.g. marriage → "This event allows up to 6 working days." */
+export function splDurationCapMessage(
+  assignment: SplAssignmentType | '',
+  reason: SplSpecialLeaveReason | '',
+): string | null {
+  const allotment = splAllotment(assignment, reason)
+  if (!allotment) return null
+  const kind = allotment.usesCalendarDays ? 'calendar' : 'working'
+  const noun = allotment.days === 1 ? 'day' : 'days'
+  return `This event allows up to ${allotment.days} ${kind} ${noun}.`
 }
 
 function empIdsMatch(left: number, right: string): boolean {

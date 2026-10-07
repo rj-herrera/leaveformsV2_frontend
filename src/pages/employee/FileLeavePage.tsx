@@ -48,7 +48,9 @@ import {
   isFixedRangeLeave,
   isLongLeave,
   isPaternityLeave,
+  clampSpecialLeaveEndDate,
   isSpecialLeave,
+  isSpecialLeaveEndInBounds,
   isSplUnavailableForLongTermOverseas,
   MED_CERT_ACCEPT,
   PATERNITY_NOTIFICATION_FORM_FILENAME,
@@ -56,6 +58,7 @@ import {
   requiresAttachment,
   requiresFullDay,
   specialLeaveEndDate,
+  splDurationCapMessage,
   splReasonOptionsFor,
   splSpecialLeaveReasonLabel,
   SPL_ASSIGNMENT_TYPE_OPTIONS,
@@ -132,7 +135,20 @@ export function FileLeavePage() {
   const attachmentLabel = attachmentFieldLabel(leaveType)
   const selectedTypeLabel = filableLeaveLabel(leaveType)
   const leaveTypeOptions = filableLeaveTypeOptionsForGender(user.gender)
-  const endPickerLimits = leaveEndPickerLimits(leaveType, startDate)
+  const splLatestEnd = needsSplDetails
+    ? specialLeaveEndDate(
+        startDate,
+        assignmentType,
+        specialLeaveReason,
+        nonWorkingDates,
+      )
+    : ''
+  const splCapMessage = needsSplDetails
+    ? splDurationCapMessage(assignmentType, specialLeaveReason)
+    : null
+  const endPickerLimits = needsSplDetails
+    ? { min: startDate || undefined, max: splLatestEnd || undefined }
+    : leaveEndPickerLimits(leaveType, startDate)
   const dayTypeOptions = fullDayOnly
     ? DAY_TYPE_OPTIONS.filter((option) => option.value === 'full')
     : DAY_TYPE_OPTIONS
@@ -236,6 +252,17 @@ export function FileLeavePage() {
     startDate !== '' &&
     endDate !== '' &&
     !isLongLeaveEndInBounds(startDate, endDate)
+  const splRangeInvalid =
+    needsSplDetails &&
+    startDate !== '' &&
+    endDate !== '' &&
+    !isSpecialLeaveEndInBounds(
+      startDate,
+      endDate,
+      assignmentType,
+      specialLeaveReason,
+      nonWorkingDates,
+    )
 
   const formValid =
     !leaveTypeMissing &&
@@ -251,7 +278,8 @@ export function FileLeavePage() {
     leadTimeValidation.ok &&
     !exceedsCredits &&
     !noCredits &&
-    !longLeaveRangeInvalid
+    !longLeaveRangeInvalid &&
+    !splRangeInvalid
 
   function handleLeaveTypeChange(value: string) {
     setLeaveType(value)
@@ -282,10 +310,11 @@ export function FileLeavePage() {
     if (start !== startDate) setStartDate(start)
     setEndDate(
       start
-        ? specialLeaveEndDate(
+        ? clampSpecialLeaveEndDate(
             start,
             nextAssignment,
             nextReason,
+            endDate,
             nonWorkingDates,
           )
         : EMPTY_FORM.endDate,
@@ -405,10 +434,11 @@ export function FileLeavePage() {
       setEndDate(fixedLeaveEndDate(leaveType, value, nonWorkingDates))
     } else if (needsSplDetails) {
       setEndDate(
-        specialLeaveEndDate(
+        clampSpecialLeaveEndDate(
           value,
           assignmentType,
           specialLeaveReason,
+          endDate,
           nonWorkingDates,
         ),
       )
@@ -421,7 +451,17 @@ export function FileLeavePage() {
   }
 
   function handleEndDateChange(value: string) {
-    setEndDate(value)
+    setEndDate(
+      needsSplDetails
+        ? clampSpecialLeaveEndDate(
+            startDate,
+            assignmentType,
+            specialLeaveReason,
+            value,
+            nonWorkingDates,
+          )
+        : value,
+    )
     clearApiErrors()
   }
 
@@ -535,11 +575,13 @@ export function FileLeavePage() {
                 disabled={!endDateEnabled || dayType !== 'full' || derivedEndDate}
                 min={endPickerLimits.min}
                 max={endPickerLimits.max}
-                invalid={Boolean(apiErrors.dates) && !endMissing}
+                invalid={(Boolean(apiErrors.dates) && !endMissing) || splRangeInvalid}
                 error={
                   triedSubmit && endDateEnabled && endMissing
                     ? 'Please select an end date.'
-                    : null
+                    : splRangeInvalid
+                      ? splCapMessage
+                      : null
                 }
               />
               {apiErrors.dates ? (
@@ -563,6 +605,9 @@ export function FileLeavePage() {
                   readOnly
                 />
                 {derivedEndDate ? <DurationEntitlementNote /> : null}
+                {splCapMessage ? (
+                  <DurationEntitlementNote message={splCapMessage} />
+                ) : null}
               </div>
               {leaveType === 'VL' ? (
                 <QuarterlyVlLimitBanner

@@ -38,6 +38,7 @@ import {
   ATTACHMENT_MAX_FILES,
   attachmentFieldHint,
   attachmentFieldLabel,
+  clampSpecialLeaveEndDate,
   hasDerivedEndDate,
   isFixedRangeLeave,
   isLeaveSelfFiled,
@@ -45,6 +46,7 @@ import {
   isPaternityLeave,
   isPendingLeaveEditable,
   isSpecialLeave,
+  isSpecialLeaveEndInBounds,
   isSplAssignmentType,
   isSplSpecialLeaveReason,
   isSplUnavailableForLongTermOverseas,
@@ -54,6 +56,7 @@ import {
   requiresAttachment,
   requiresFullDay,
   specialLeaveEndDate,
+  splDurationCapMessage,
   splReasonOptionsFor,
   splSpecialLeaveReasonLabel,
   SPL_ASSIGNMENT_TYPE_OPTIONS,
@@ -227,7 +230,31 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   const workingDaysOnly = needsSplDetails
     ? !splCalendarDays
     : !usesCalendarDayCounting(leaveTypeCode)
-  const endPickerLimits = leaveEndPickerLimits(leaveTypeCode, startDate)
+  const splLatestEnd = needsSplDetails
+    ? specialLeaveEndDate(
+        startDate,
+        assignmentType,
+        specialLeaveReason,
+        nonWorkingDates,
+      )
+    : ''
+  const splCapMessage = needsSplDetails
+    ? splDurationCapMessage(assignmentType, specialLeaveReason)
+    : null
+  const endPickerLimits = needsSplDetails
+    ? { min: startDate || undefined, max: splLatestEnd || undefined }
+    : leaveEndPickerLimits(leaveTypeCode, startDate)
+  const splRangeInvalid =
+    needsSplDetails &&
+    startDate !== '' &&
+    endDate !== '' &&
+    !isSpecialLeaveEndInBounds(
+      startDate,
+      endDate,
+      assignmentType,
+      specialLeaveReason,
+      nonWorkingDates,
+    )
 
   const reasonMissing = !needsSplDetails && reason.trim().length === 0
   const assignmentTypeMissing = needsSplDetails && assignmentType === ''
@@ -263,6 +290,7 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     !attachmentUploading &&
     leadTimeValidation.ok &&
     isDirty &&
+    !splRangeInvalid &&
     !(longLeave && !isLongLeaveEndInBounds(startDate, endDate))
   const filingNotAllowed = leadTimeValidation.gated && !leadTimeValidation.ok
 
@@ -284,10 +312,11 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
     if (start !== startDate) setStartDate(start)
     setEndDate(
       start
-        ? specialLeaveEndDate(
+        ? clampSpecialLeaveEndDate(
             start,
             nextAssignment,
             nextReason,
+            endDate,
             nonWorkingDates,
           )
         : '',
@@ -338,10 +367,11 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
       setEndDate(fixedLeaveEndDate(leaveTypeCode, value, nonWorkingDates))
     } else if (needsSplDetails) {
       setEndDate(
-        specialLeaveEndDate(
+        clampSpecialLeaveEndDate(
           value,
           assignmentType,
           specialLeaveReason,
+          endDate,
           nonWorkingDates,
         ),
       )
@@ -354,9 +384,21 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
   }
 
   function handleEndDateChange(value: string) {
-    setEndDate(value)
-    if (startDate && value < startDate) {
-      setStartDate(value)
+    if (needsSplDetails) {
+      setEndDate(
+        clampSpecialLeaveEndDate(
+          startDate,
+          assignmentType,
+          specialLeaveReason,
+          value,
+          nonWorkingDates,
+        ),
+      )
+    } else {
+      setEndDate(value)
+      if (startDate && value < startDate) {
+        setStartDate(value)
+      }
     }
     clearApiErrors()
   }
@@ -535,7 +577,11 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                 min={endPickerLimits.min}
                 max={endPickerLimits.max}
                 disabled={dayType !== 'full' || derivedEndDate}
-                invalid={Boolean(apiErrors.dates) && dayType === 'full'}
+                invalid={
+                  (Boolean(apiErrors.dates) && dayType === 'full') ||
+                  splRangeInvalid
+                }
+                error={splRangeInvalid ? splCapMessage : null}
               />
               {apiErrors.dates ? (
                 <div
@@ -558,6 +604,9 @@ function EditLeaveForm({ detail, detailsPath }: EditLeaveFormProps) {
                   readOnly
                 />
                 {derivedEndDate ? <DurationEntitlementNote /> : null}
+                {splCapMessage ? (
+                  <DurationEntitlementNote message={splCapMessage} />
+                ) : null}
               </div>
               {leaveTypeCode.toUpperCase() === 'VL' ? (
                 <QuarterlyVlLimitBanner
