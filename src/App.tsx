@@ -119,6 +119,10 @@ function App() {
               element={<UpcomingApprovedLeavesPage />}
             />
             <Route
+              path="team/reports/monthly-attendance"
+              element={<MonthlyAttendanceReportPage scope="team" />}
+            />
+            <Route
               path="team/leave-requests/:leaveRequestId/edit"
               element={<EditLeaveRequestPage />}
             />

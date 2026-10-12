@@ -7,6 +7,7 @@ import type { ListAdminEmployeesParams } from '../../api/adminEmployees'
 import type { ListAdminLeavesParams } from '../../api/adminLeaves'
 import type { ListEmployeesWithLwopParams } from '../../api/adminEmployeesWithLwop'
 import type { ListMonthlyAttendanceParams } from '../../api/adminMonthlyAttendance'
+import type { ListTeamMonthlyAttendanceEmployeesParams } from '../../api/teamMonthlyAttendance'
 import type { ListAdminContractualEntitlementsParams } from '../../api/adminContractualEntitlements'
 import type { ListAdminNewlyRegularizedParams } from '../../api/adminNewlyRegularized'
 import type { ListApprovalsParams } from '../../api/approvals'
@@ -199,6 +200,21 @@ export const swrKeys = {
         ? params.emp_ids.join(',')
         : null,
     ] as const,
+
+  teamMonthlyAttendance: (params: ListMonthlyAttendanceParams) =>
+    [
+      'team-monthly-attendance',
+      params.month,
+      params.cut_off,
+      params.group_id ?? null,
+      params.emp_ids != null && params.emp_ids.length > 0
+        ? params.emp_ids.join(',')
+        : null,
+    ] as const,
+
+  teamMonthlyAttendanceEmployees: (
+    params?: ListTeamMonthlyAttendanceEmployeesParams,
+  ) => ['team-monthly-attendance-employees', params?.group_id ?? null] as const,
 
   adminLeaveMonetizationCandidates: (year: number) =>
     ['admin-leave-monetization-candidates', year] as const,

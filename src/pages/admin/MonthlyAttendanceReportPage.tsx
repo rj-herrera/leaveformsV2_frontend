@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 import { ApiError } from '../../api/axios-client'
+import { useAuth } from '../../auth/AuthContext'
 import type {
   MonthlyAttendanceCategory,
   MonthlyAttendanceCell,
@@ -18,6 +19,10 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { useAdminEmployees } from '../../hooks/api/useAdminEmployees'
 import { useAdminGroups } from '../../hooks/api/useAdminGroups'
 import { useAdminMonthlyAttendance } from '../../hooks/api/useAdminMonthlyAttendance'
+import {
+  useTeamMonthlyAttendance,
+  useTeamMonthlyAttendanceEmployees,
+} from '../../hooks/api/useTeamMonthlyAttendance'
 import { downloadMonthlyAttendanceExcel } from '../../utils/exportMonthlyAttendanceExcel'
 import { monthValue } from '../../utils/teamCalendarGrid'
 
@@ -140,7 +145,15 @@ function resolvedCell(
   }
 }
 
-export function MonthlyAttendanceReportPage() {
+export function MonthlyAttendanceReportPage({
+  scope = 'admin',
+}: {
+  /** `team` limits the report to the viewer's designated groups, or all P4s for the president. */
+  scope?: 'admin' | 'team'
+}) {
+  const { user } = useAuth()
+  const isTeam = scope === 'team'
+  const isPresidentView = isTeam && user.isPresident
   const [monthYear, setMonthYear] = useState(currentMonthValue)
   const [cutOff, setCutOff] = useState<MonthlyAttendanceCutOff>('monthly')
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('ALL')
@@ -149,27 +162,41 @@ export function MonthlyAttendanceReportPage() {
   const [exporting, setExporting] = useState(false)
 
   const groupId =
-    groupFilter !== 'ALL' && Number.isInteger(Number(groupFilter))
+    !isPresidentView &&
+    groupFilter !== 'ALL' &&
+    Number.isInteger(Number(groupFilter))
       ? Number(groupFilter)
       : undefined
 
-  const { data: adminGroups } = useAdminGroups()
+  const { data: adminGroups } = useAdminGroups(!isTeam)
   const {
-    data: employees,
-    error: employeesError,
-    isLoading: employeesLoading,
-  } = useAdminEmployees(groupId != null ? { group_id: groupId } : undefined)
+    data: adminEmployees,
+    error: adminEmployeesError,
+    isLoading: adminEmployeesLoading,
+  } = useAdminEmployees(
+    isTeam ? null : groupId != null ? { group_id: groupId } : undefined,
+  )
+  const {
+    data: teamEmployees,
+    error: teamEmployeesError,
+    isLoading: teamEmployeesLoading,
+  } = useTeamMonthlyAttendanceEmployees(
+    isTeam ? { group_id: groupId } : null,
+  )
+  const employees = isTeam ? teamEmployees : adminEmployees
+  const employeesError = isTeam ? teamEmployeesError : adminEmployeesError
+  const employeesLoading = isTeam ? teamEmployeesLoading : adminEmployeesLoading
 
-  const groupOptions = useMemo(
-    () => [
+  const groupOptions = useMemo(() => {
+    const groups = isTeam ? user.picGroups : (adminGroups ?? [])
+    return [
       { value: 'ALL' as const, label: 'All Groups' },
-      ...(adminGroups ?? []).map((group) => ({
+      ...groups.map((group) => ({
         value: String(group.id),
         label: groupOptionLabel(group),
       })),
-    ],
-    [adminGroups],
-  )
+    ]
+  }, [adminGroups, isTeam, user.picGroups])
 
   const employeeOptions = useMemo(
     () =>
@@ -213,11 +240,13 @@ export function MonthlyAttendanceReportPage() {
     }
   }, [allEmployeesSelected, cutOff, empIds, groupId, monthYear])
 
+  const adminReport = useAdminMonthlyAttendance(isTeam ? null : reportParams)
+  const teamReport = useTeamMonthlyAttendance(isTeam ? reportParams : null)
   const {
     data: report,
     error: reportError,
     isLoading: reportLoading,
-  } = useAdminMonthlyAttendance(reportParams)
+  } = isTeam ? teamReport : adminReport
 
   const showReport =
     reportParams != null && report != null && reportError == null
@@ -235,7 +264,10 @@ export function MonthlyAttendanceReportPage() {
     setExporting(true)
     setActionNotice('')
     try {
-      await downloadMonthlyAttendanceExcel(report)
+      await downloadMonthlyAttendanceExcel(
+        report,
+        isPresidentView ? { groupLabel: 'All P4' } : undefined,
+      )
     } catch {
       setActionNotice('Unable to export the Excel file. Please try again.')
     } finally {
@@ -281,16 +313,18 @@ export function MonthlyAttendanceReportPage() {
                 selectHeight={FILTER_CONTROL_H}
               />
             </div>
-            <div className="min-w-[8rem]">
-              <span className={fieldLabelClassName}>Group</span>
-              <FilterSelect
-                label="Group"
-                value={groupFilter}
-                onChange={handleGroupChange}
-                options={groupOptions}
-                selectHeight={FILTER_CONTROL_H}
-              />
-            </div>
+            {isPresidentView ? null : (
+              <div className="min-w-[8rem]">
+                <span className={fieldLabelClassName}>Group</span>
+                <FilterSelect
+                  label="Group"
+                  value={groupFilter}
+                  onChange={handleGroupChange}
+                  options={groupOptions}
+                  selectHeight={FILTER_CONTROL_H}
+                />
+              </div>
+            )}
             <EmployeeMultiSelect
               label="Employees"
               employees={employeeOptions}
@@ -302,7 +336,9 @@ export function MonthlyAttendanceReportPage() {
               emptyLabel={
                 employeesLoading
                   ? 'Loading employees…'
-                  : 'No employees in this group.'
+                  : isPresidentView
+                    ? 'No P4 employees.'
+                    : 'No employees in this group.'
               }
             />
             <div className="flex shrink-0 items-end gap-2">
@@ -311,6 +347,11 @@ export function MonthlyAttendanceReportPage() {
               </Button>
             </div>
           </div>
+          {isTeam && !isPresidentView && user.picGroups.length === 0 ? (
+            <p className="mt-2 text-body text-text-gray">
+              You are not assigned to any groups.
+            </p>
+          ) : null}
           {employeesError ? (
             <p role="status" className="mt-2 text-body text-status-rejected">
               {messageFromApiError(

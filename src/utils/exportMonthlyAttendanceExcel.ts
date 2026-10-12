@@ -180,6 +180,7 @@ async function loadWorkbook(): Promise<Workbook> {
 
 export async function downloadMonthlyAttendanceExcel(
   report: MonthlyAttendanceReport,
+  options?: { groupLabel?: string },
 ): Promise<void> {
   const workbook = await loadWorkbook()
   workbook.creator = 'Leave Forms'
@@ -210,7 +211,8 @@ export async function downloadMonthlyAttendanceExcel(
 
   sheet.mergeCells(2, 1, 2, lastCol)
   const subtitle = sheet.getCell(2, 1)
-  subtitle.value = `${report.month_label}  ·  ${report.cut_off_label}  ·  ${groupLabel(report)}  ·  ${report.employee_count} employee${report.employee_count === 1 ? '' : 's'}`
+  const scopeLabel = options?.groupLabel ?? groupLabel(report)
+  subtitle.value = `${report.month_label}  ·  ${report.cut_off_label}  ·  ${scopeLabel}  ·  ${report.employee_count} employee${report.employee_count === 1 ? '' : 's'}`
   subtitle.font = { name: 'Calibri', size: 11, color: { argb: GRAY } }
   subtitle.alignment = { vertical: 'middle', horizontal: 'left' }
 

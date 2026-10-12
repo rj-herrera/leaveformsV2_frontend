@@ -88,6 +88,11 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: CalendarDays,
         matchPaths: ['/team/leave-calendar/*'],
       },
+      {
+        label: 'Monthly Attendance Report',
+        to: '/team/reports/monthly-attendance',
+        icon: BarChart3,
+      },
     ],
   },
   {
