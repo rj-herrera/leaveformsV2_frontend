@@ -88,10 +88,12 @@ type ListEnvelope<T> = {
   meta?: PaginationMeta
 }
 
-const apiRoot = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+const apiRoot = (
+  import.meta.env.VITE_API_BASE_URL ?? import.meta.env.BASE_URL
+).replace(/\/$/, '')
 
 export const axiosClient = axios.create({
-  baseURL: apiRoot ? `${apiRoot}/api` : '/api',
+  baseURL: `${apiRoot}/api`,
   withCredentials: true,
   headers: {
     Accept: 'application/json',
